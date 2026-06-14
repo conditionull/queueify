@@ -24,7 +24,7 @@ Adding songs to playback queue requires Spotify Premium
 ### 1. Clone and install dependencies
 
 ```sh
-git clone git@github.com:conditionull/queueify.git
+git clone https://github.com/conditionull/queueify.git
 cd queueify
 npm install
 ```
