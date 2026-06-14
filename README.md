@@ -1,4 +1,4 @@
-# twitchify
+# queueify
 
 Twitch bot that handles Spotify song queuing for your stream! <br />`DISCLAIMER:` clanker helped me
 
@@ -24,8 +24,8 @@ Adding songs to playback queue requires Spotify Premium
 ### 1. Clone and install dependencies
 
 ```sh
-git clone git@github.com:conditionull/twitchify.git
-cd twitchify
+git clone git@github.com:conditionull/queueify.git
+cd queueify
 npm install
 ```
 
