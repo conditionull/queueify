@@ -1,14 +1,3 @@
-# environment
 .env
-
-# piper voice models
-voices/
-
-# persistent state files
-tts-voices.json
-tts-denied.json
-queue-blacklist.json
-queue-state.json
-
-# node
 node_modules/
+

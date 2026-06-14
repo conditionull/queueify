@@ -2,10 +2,10 @@ require('dotenv').config();
 const fs   = require('fs');
 const path = require('path');
 const tmi  = require('tmi.js');
-const { handleTTS } = require('./tts');
 const { addToQueue }  = require('./spotify');
 
-const COOLDOWN_MS = 3 * 60 * 1000;
+const COOLDOWN_SECONDS = 120; // change this to adjust how often users can add songs in seconds
+const COOLDOWN_MS = COOLDOWN_SECONDS * 1000;
 const BROADCASTER = process.env.TWITCH_BROADCASTER_USERNAME;
 
 const BLACKLIST_FILE = path.join(__dirname, 'queue-blacklist.json');
@@ -50,8 +50,6 @@ client.on('message', async (channel, tags, message, self) => {
   const username = tags.username.toLowerCase();
   const isMod = tags.mod || username === BROADCASTER;
 
-  handleTTS(client, channel, tags, message, isMod);
-
   if (!message.startsWith('!')) return;
 
   const args = message.slice(1).split(' ').filter(Boolean);
@@ -92,7 +90,7 @@ client.on('message', async (channel, tags, message, self) => {
       } else if (result === 'invalid') {
         client.say(channel, `@${username} that doesn't look right ~ must be a Spotify track link, e.g. https://open.spotify.com/track/... Enough`);
       } else if (result === 'toolong') {
-        client.say(channel, `@${username} song is too long, max is 5 minutes. umm`);
+        client.say(channel, `@${username} song is too long, max is 6 minutes. umm`);
       } else if (result === 'failed') {
         client.say(channel, `@${username} couldn't add to queue ~ is Spotify playing? umm`);
       }

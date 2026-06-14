@@ -6,7 +6,7 @@ let tokenData = {
   expires_at:    Date.now() + 3600 * 1000
 };
 
-const MAX_DURATION_MS = 5 * 60 * 1000;
+const MAX_DURATION_MS = 6 * 60 * 1000;
 const SPOTIFY_PATTERN = /https:\/\/open\.spotify\.com\/track\/[a-zA-Z0-9]{22}(?:\?si=[a-f0-9]+)?/;
 
 async function refreshAccessToken() {
