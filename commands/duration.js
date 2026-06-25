@@ -4,11 +4,16 @@ module.exports = {
     modOnly: false, // user can check duration, but only mods can change it
 
     async execute({ client, channel, username, args, state, isMod }) {
+        const formatTime = (seconds) => {
+            const mins = Math.floor(seconds / 60);
+            const secs = seconds % 60;
+            return mins > 0 ? `${mins} minutes` : `${secs} seconds`;
+        };
 
         if (!args[0]) {
             client.say(
                 channel,
-                `Current max song length: ${state.maxSongLength} seconds`
+                `Current max song length: ${formatTime(state.maxSongLength)}`
             );
             return;
         }
@@ -37,7 +42,7 @@ module.exports = {
 
         client.say(
             channel,
-            `@${username} the maximum song length has been set to ${newMaxLength} seconds`
+            `@${username} the maximum song length has been set to ${formatTime(newMaxLength)}`
         );
     }
 };

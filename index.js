@@ -44,12 +44,15 @@ client.connect();
 client.on('message', async (channel, tags, message, self) => {
   if (self) return;
 
+  message = sanitizeChatMessage(message);
+
   const username = tags.username.toLowerCase();
   const isMod = tags.mod || username === BROADCASTER;
 
   if (!message.startsWith('!')) return;
 
   const args = message.slice(1).split(' ').filter(Boolean);
+
   const command = args.shift().toLowerCase();
 
   const handler = commands.get(command);
@@ -79,3 +82,10 @@ client.on('message', async (channel, tags, message, self) => {
     client.say(channel, `@${username} command failed. umm`);
   }
 });
+
+function sanitizeChatMessage(msg) {
+  return msg
+    .replace(/[\u034F\u061C\u115F\u1160\u17B4\u17B5\u180E\u200B-\u200F\u202A-\u202E\u2060-\u206F\uFEFF]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
