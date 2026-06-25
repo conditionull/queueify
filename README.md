@@ -101,10 +101,10 @@ npm start
 
 You can customize command aliases by editing the `aliases` array in each command file under the `commands/` directory, for example:
 
-`queue-settings.json` will generate once you set a value for the following commands: `delay`, `duration`, or `repeatdelay`. Otherwise, the default values will be used.
-
 ```js
 aliases: ['q', 'sr', 'add'],
 ```
 
-Queue open/closed state persists across restarts in `queue-state.json`. The queue deny list persists in `queue-blacklist.json`. Queue delay and repeat delay persist in `queue-settings.json`. Active chat attribution persists in `queue-pending.json`, which is reconciled against Spotify's real queue when `!queue` or `!active` runs.
+`queue-settings.json` will generate once you set a value for the following commands: `delay`, `duration`, or `repeatdelay`. Otherwise, the default values will be used.
+
+Queue open/closed state persists across restarts in `queue-state.json`. The queue deny list persists in `queue-blacklist.json`. Queue delay, maxSongLength, and repeat delay persist in `queue-settings.json`. Active chat attribution persists in `queue-pending.json`, which is reconciled against Spotify's real queue when `!queue` or `!active` runs.
