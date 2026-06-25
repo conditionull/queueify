@@ -1,3 +1,5 @@
+const formatTime = require('../helpers/formatTime');
+
 module.exports = {
     name: 'delay',
     aliases: ['cooldown'],
@@ -5,7 +7,7 @@ module.exports = {
 
     execute({ client, channel, args, state }) {
         if (!args[0]) {
-            client.say(channel, `Current queue delay is ${state.cooldownSeconds}s`);
+            client.say(channel, `Current queue delay is ${formatTime(state.cooldownSeconds)}`);
             return;
         }
 
@@ -17,6 +19,6 @@ module.exports = {
 
         state.cooldownSeconds = seconds;
         state.saveSettings();
-        client.say(channel, `Queue delay set to ${seconds}s`);
+        client.say(channel, `Queue delay set to ${formatTime(state.cooldownSeconds)}`);
     }
 };

@@ -1,15 +1,11 @@
+const formatTime = require('../helpers/formatTime');
+
 module.exports = {
     name: 'duration',
     aliases: ['length', 'maxlength', 'maxduration'],
     modOnly: false, // user can check duration, but only mods can change it
 
     async execute({ client, channel, username, args, state, isMod }) {
-        const formatTime = (seconds) => {
-            const mins = Math.floor(seconds / 60);
-            const secs = seconds % 60;
-            return mins > 0 ? `${mins} minutes` : `${secs} seconds`;
-        };
-
         if (!args[0]) {
             client.say(
                 channel,

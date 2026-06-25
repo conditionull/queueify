@@ -1,3 +1,5 @@
+const formatTime = require('../helpers/formatTime');
+
 module.exports = {
     name: 'repeatdelay',
     aliases: ['repeat', 'songdelay'],
@@ -5,7 +7,7 @@ module.exports = {
 
     execute({ client, channel, args, state }) {
         if (!args[0]) {
-            client.say(channel, `Current same-song repeat block is ${state.repeatBlockSeconds}s`);
+            client.say(channel, `Current same-song repeat block is ${formatTime(state.repeatBlockSeconds)}`);
             return;
         }
 
@@ -18,6 +20,6 @@ module.exports = {
         state.repeatBlockSeconds = seconds;
         state.pruneRecentRequests();
         state.saveSettings();
-        client.say(channel, `Same-song repeat block set to ${seconds}s`);
+        client.say(channel, `Same-song repeat block set to ${formatTime(state.repeatBlockSeconds)}`);
     }
 };
