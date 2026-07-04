@@ -3,7 +3,7 @@ const { loadToken, saveToken } = require('./spotify-token-store');
 
 let tokenData = loadToken();
 
-const SPOTIFY_PATTERN = /https:\/\/open\.spotify\.com\/track\/[a-zA-Z0-9]{22}(?:\?si=[a-f0-9]+)?/;
+const SPOTIFY_PATTERN = /https:\/\/open\.spotify\.com\/(?:intl-[^/]+\/)?track\/[a-zA-Z0-9]{22}(?:\?si=[a-zA-Z0-9]+)?/;
 
 function formatTrack(track) {
   return {
