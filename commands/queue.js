@@ -20,15 +20,6 @@ module.exports = {
     aliases: ['q', 'sr', 'add'],
 
     async execute({ client, channel, username, args, state, cooldowns }) {
-        if (!state.chatEnabled) {
-            const status = state.redeemsEnabled
-                ? "Chat requests are disabled. Use the channel point redeem instead :)"
-                : "Both chat and channel point redeems are disabled Sadge";
-
-            client.say(channel, `@${username} ${status}`);
-            return;
-        }
-
         const cleanedArgs = args.map(cleanArg).filter(arg => arg.trim());
 
         if (cleanedArgs.length === 0) {
@@ -50,6 +41,15 @@ module.exports = {
             }
 
             sendQueueList(client, channel, visibleQueue);
+            return;
+        }
+
+        if (!state.chatEnabled) {
+            const status = state.redeemsEnabled
+                ? "Chat requests are disabled. Use the channel point redeem instead :)"
+                : "Both chat and channel point redeems are disabled Sadge";
+
+            client.say(channel, `@${username} ${status}`);
             return;
         }
 
