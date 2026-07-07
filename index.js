@@ -2,8 +2,8 @@ require('dotenv').config();
 const fs = require('fs');
 const path = require('path');
 const tmi = require('tmi.js');
-
 const state = require('./core/state');
+const startEventSub = require("./eventsub");
 
 const commands = new Map();
 
@@ -34,12 +34,13 @@ const client = new tmi.Client({
   options: { debug: true },
   identity: {
     username: process.env.TWITCH_BOT_USERNAME,
-    password: process.env.TWITCH_OAUTH
+    password: `oauth:${process.env.TWITCH_ACCESS_TOKEN}`
   },
   channels: [process.env.TWITCH_BROADCASTER_USERNAME]
 });
 
 client.connect();
+startEventSub(client);
 
 client.on('message', async (channel, tags, message, self) => {
   if (self) return;

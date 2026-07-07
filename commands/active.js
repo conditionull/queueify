@@ -1,15 +1,14 @@
-const { getCurrentTrack, getUserQueue } = require('../spotify');
+const { getCurrentTrack } = require('../spotify');
 
 module.exports = {
     name: 'active',
-    aliases: ['nowqueued'],
+    aliases: ['nowqueued', 'np', 'current', 'playing', 'now', 'song'],
 
-    async execute({ client, channel, state }) {
-        const spotifyQueue = await getUserQueue();
+    async execute({ client, channel }) {
         const currentTrack = await getCurrentTrack();
 
-        if (spotifyQueue === false || currentTrack === false) {
-            client.say(channel, "Couldn't check the current Spotify song. umm");
+        if (currentTrack === false) {
+            client.say(channel, "Couldn't check the current Spotify song. Is Spotify running?");
             return;
         }
 
@@ -18,14 +17,6 @@ module.exports = {
             return;
         }
 
-        const queuedTrack = state.updateActiveTrack(currentTrack);
-        state.reconcileWithSpotifyQueue(spotifyQueue.queue);
-
-        if (!queuedTrack) {
-            client.say(channel, `Current song: ${currentTrack.name} - ${currentTrack.artists}`);
-            return;
-        }
-
-        client.say(channel, `Current song queued by @${queuedTrack.queuedBy}: ${currentTrack.name} - ${currentTrack.artists}`);
+        client.say(channel, `Current song: ${currentTrack.name} - ${currentTrack.artists}`);
     }
 };

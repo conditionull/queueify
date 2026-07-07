@@ -1,5 +1,6 @@
 const fs = require('fs');
 const path = require('path');
+const crypto = require('node:crypto');
 
 const BLACKLIST_FILE = path.join(__dirname, '../queue-blacklist.json');
 const QUEUE_STATE_FILE = path.join(__dirname, '../queue-state.json');
@@ -61,12 +62,15 @@ const settings = loadJSON(QUEUE_SETTINGS_FILE, {});
 const state = {
     blacklist: new Set(loadJSON(BLACKLIST_FILE, [])),
     queueEnabled: loadJSON(QUEUE_STATE_FILE, { enabled: true }).enabled ?? true,
+    chatEnabled: loadJSON(QUEUE_SETTINGS_FILE, { chatEnabled: true }).chatEnabled ?? true,
+    redeemsEnabled: loadJSON(QUEUE_SETTINGS_FILE, { redeemsEnabled: true }).redeemsEnabled ?? true,
     cooldownSeconds: settings.cooldownSeconds ?? DEFAULT_COOLDOWN_SECONDS,
     repeatBlockSeconds: settings.repeatBlockSeconds ?? DEFAULT_REPEAT_BLOCK_SECONDS,
     maxSongLength: settings.maxSongLength ?? DEFAULT_MAX_SONG_LENGTH,
     pendingQueue: loadJSON(PENDING_QUEUE_FILE, []).map(normalizePendingItem),
     recentRequests: loadJSON(RECENT_REQUESTS_FILE, []),
     activeTrack: null,
+    cooldowns: new Map(),
 
     saveBlacklist() {
         saveJSON(BLACKLIST_FILE, [...this.blacklist]);
@@ -80,7 +84,10 @@ const state = {
         saveJSON(QUEUE_SETTINGS_FILE, {
             cooldownSeconds: this.cooldownSeconds,
             repeatBlockSeconds: this.repeatBlockSeconds,
-            maxSongLength: this.maxSongLength
+            maxSongLength: this.maxSongLength,
+            chatEnabled: this.chatEnabled,
+            redeemsEnabled: this.redeemsEnabled,
+            spotifyRewardId: this.spotifyRewardId
         });
     },
 

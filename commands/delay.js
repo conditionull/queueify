@@ -3,11 +3,19 @@ const formatTime = require('../helpers/formatTime');
 module.exports = {
     name: 'delay',
     aliases: ['cooldown'],
-    modOnly: true,
+    modOnly: false,
 
-    execute({ client, channel, args, state }) {
+    execute({ client, channel, args, state, username, isMod }) {
         if (!args[0]) {
-            client.say(channel, `Current queue delay is ${formatTime(state.cooldownSeconds)}`);
+            client.say(channel, `You can queue a song every ${formatTime(state.cooldownSeconds)}`);
+            return;
+        }
+
+        if (!isMod) {
+            client.say(
+                channel,
+                `@${username} you don't have permission to change this value`
+            );
             return;
         }
 
@@ -19,6 +27,7 @@ module.exports = {
 
         state.cooldownSeconds = seconds;
         state.saveSettings();
+
         client.say(channel, `Queue delay set to ${formatTime(state.cooldownSeconds)}`);
     }
 };

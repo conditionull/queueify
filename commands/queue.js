@@ -1,4 +1,5 @@
 const { addToQueue, getCurrentTrack, getTrackId, getUserQueue } = require('../spotify');
+const queueSong = require("../services/queueSong");
 
 function cleanArg(arg) {
     return arg.replace(/[\u034F\u061C\u115F\u1160\u17B4\u17B5\u180E\u200B-\u200F\u202A-\u202E\u2060-\u206F\uFEFF]/g, '');
@@ -19,6 +20,15 @@ module.exports = {
     aliases: ['q', 'sr', 'add'],
 
     async execute({ client, channel, username, args, state, cooldowns }) {
+        if (!state.chatEnabled) {
+            const status = state.redeemsEnabled
+                ? "Chat requests are disabled. Use the channel point redeem instead :)"
+                : "Both chat and channel point redeems are disabled Sadge";
+
+            client.say(channel, `@${username} ${status}`);
+            return;
+        }
+
         const cleanedArgs = args.map(cleanArg).filter(arg => arg.trim());
 
         if (cleanedArgs.length === 0) {
@@ -43,65 +53,17 @@ module.exports = {
             return;
         }
 
-        if (!state.queueEnabled) {
-            client.say(channel, `@${username} the queue is currently closed Sadge`);
-            return;
-        }
+        const url =
+            cleanedArgs.find(a => a.includes("spotify.com/track/")) ??
+            cleanedArgs[0];
 
-        if (state.blacklist.has(username)) {
-            client.say(channel, `@${username} you're not allowed to queue songs. wuh`);
-            return;
-        }
-
-        const lastUsed = cooldowns.get(username);
-        const cooldownMs = state.cooldownSeconds * 1000;
-        if (lastUsed) {
-            const remaining = cooldownMs - (Date.now() - lastUsed);
-            if (remaining > 0) {
-                const seconds = Math.ceil(remaining / 1000);
-                client.say(channel, `@${username} wait ${seconds}s before queuing again Clocking`);
-                return;
-            }
-        }
-
-        const url = cleanedArgs.find(a => a.includes('spotify.com/track/')) ?? cleanedArgs[0];
-        const trackId = getTrackId(url);
-
-        if (!trackId) {
-            client.say(channel, `@${username} that doesn't look right. Use a Spotify track link, e.g. https://open.spotify.com/track/... Enough`);
-            return;
-        }
-
-        const recentRequest = state.getRecentRequest(username, trackId);
-        if (recentRequest) {
-            const requestedAt = Date.parse(recentRequest.requestedAt);
-            const remaining = state.repeatBlockSeconds * 1000 - (Date.now() - requestedAt);
-            const seconds = Math.max(1, Math.ceil(remaining / 1000));
-            client.say(channel, `@${username} you already queued that song recently. Try again in ${seconds}s.`);
-            return;
-        }
-
-        const result = await addToQueue(url, state.maxSongLength);
-        const status = typeof result === 'string' ? result : result.status;
-
-        setTimeout(() => {
-            if (status === 'ok') {
-                cooldowns.set(username, Date.now());
-                state.addPendingTrack(result.track, username);
-                state.rememberRecentRequest(username, result.track.id);
-                client.say(channel, `@${username} song added to queue!! DinoDance`);
-            } else if (status === 'noinput') {
-                client.say(channel, `@${username} usage: !q <spotify track url> - e.g. !q https://open.spotify.com/track/... Enough`);
-            } else if (status === 'invalid') {
-                client.say(channel, `@${username} that doesn't look right. Use a Spotify track link, e.g. https://open.spotify.com/track/... Enough`);
-            } else if (status === 'toolong') {
-                client.say(
-                    channel,
-                    `@${username} song is too long, max length is ${state.maxSongLength} seconds. umm`
-                );
-            } else if (status === 'failed') {
-                client.say(channel, `@${username} couldn't add to queue - is Spotify playing? umm`);
-            }
-        }, 1000);
+        await queueSong({
+            client,
+            channel,
+            username,
+            url,
+            state,
+            cooldowns
+        });
     }
 };

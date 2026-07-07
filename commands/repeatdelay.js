@@ -20,6 +20,7 @@ module.exports = {
         state.repeatBlockSeconds = seconds;
         state.pruneRecentRequests();
         state.saveSettings();
-        client.say(channel, `Same-song repeat block set to ${formatTime(state.repeatBlockSeconds)}`);
+
+        client.say(channel, `Same-song queue delay set to ${formatTime(state.repeatBlockSeconds)}`);
     }
 };
