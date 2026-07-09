@@ -1,8 +1,17 @@
 .env
 node_modules/
+
 spotify-token.json
 spotify-token.json.tmp
+
 queue-settings.json
 queue-history.json
 queue-pending.json
 queue-recent.json
+queue-blacklist.json
+
+config/settings.js
+
+.DS_Store
+.parcel-cache
+.vscode

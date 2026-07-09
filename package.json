@@ -13,7 +13,12 @@
   "dependencies": {
     "dotenv": "^17.4.1",
     "express": "^5.2.1",
+    "node-vibrant": "^4.0.4",
+    "obs-websocket-js": "^5.0.8",
     "tmi.js": "^1.8.5",
-    "ws": "^8.21.0"
+    "ws": "^8.21.0",
+    "axios": "^1.6.0",
+    "google-protobuf": "^3.11.4",
+    "otpauth": "latest"
   }
 }

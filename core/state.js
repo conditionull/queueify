@@ -71,6 +71,7 @@ const state = {
     recentRequests: loadJSON(RECENT_REQUESTS_FILE, []),
     activeTrack: null,
     cooldowns: new Map(),
+    widgetPresets: settings.widgetPresets ?? {},
 
     saveBlacklist() {
         saveJSON(BLACKLIST_FILE, [...this.blacklist]);
@@ -87,8 +88,26 @@ const state = {
             maxSongLength: this.maxSongLength,
             chatEnabled: this.chatEnabled,
             redeemsEnabled: this.redeemsEnabled,
-            spotifyRewardId: this.spotifyRewardId
+            spotifyRewardId: this.spotifyRewardId,
+            widgetPresets: this.widgetPresets
         });
+    },
+
+    saveWidgetPreset(name, transform) {
+        this.widgetPresets[name] = {
+            x: transform.positionX,
+            y: transform.positionY,
+            width: transform.width,
+            height: transform.height,
+            scaleX: transform.scaleX,
+            scaleY: transform.scaleY
+        };
+
+        this.saveSettings();
+    },
+
+    getWidgetPreset(name) {
+        return this.widgetPresets[name];
     },
 
     savePendingQueue() {

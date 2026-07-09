@@ -3,7 +3,12 @@ const fs = require('fs');
 const path = require('path');
 const tmi = require('tmi.js');
 const state = require('./core/state');
+
 const startEventSub = require("./eventsub");
+const startWidgetServer = require("./widget/server");
+const startCanvasApi = require("./Spotify-Canvas-API/index");
+
+const obs = require("./services/obs");
 
 const commands = new Map();
 
@@ -39,8 +44,22 @@ const client = new tmi.Client({
   channels: [process.env.TWITCH_BROADCASTER_USERNAME]
 });
 
-client.connect();
-startEventSub(client);
+async function main() {
+  startWidgetServer();
+
+  const { default: startCanvasApi } = await import("./Spotify-Canvas-API/index.js");
+  startCanvasApi();
+
+  await obs.connect();
+  await client.connect();
+  startEventSub(client);
+}
+
+main().catch(err => {
+  console.error("Failed to start bot:", err);
+  process.exit(1);
+});
+
 
 client.on('message', async (channel, tags, message, self) => {
   if (self) return;

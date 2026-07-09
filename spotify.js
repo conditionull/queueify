@@ -1,7 +1,13 @@
 require('dotenv').config();
+const { Vibrant } = require("node-vibrant/node");
 const { loadToken, saveToken } = require('./spotify-token-store');
+const { getCanvas } = require("./canvas");
+
+console.log("Canvas function:", getCanvas);
 
 let tokenData = loadToken();
+
+const paletteCache = new Map();
 
 const SPOTIFY_PATTERN = /https:\/\/open\.spotify\.com\/(?:intl-[^/]+\/)?track\/[a-zA-Z0-9]{22}(?:\?si=[a-zA-Z0-9]+)?/;
 
@@ -10,8 +16,67 @@ function formatTrack(track) {
     id: track.id,
     name: track.name,
     artists: track.artists?.map(artist => artist.name).join(', ') || 'Unknown artist',
-    durationMs: track.duration_ms
+    durationMs: track.duration_ms,
+
+    cover: track.album?.images?.[0]?.url || null,
+    media: null
   };
+}
+
+async function getMedia(track) {
+    if (properties.media.mode !== "canvas") {
+        return {
+            type: "image",
+            url: track.cover
+        };
+    }
+
+    const canvas = await getCanvas(track.id);
+
+    if (canvas) {
+        return {
+            type: "video",
+            url: canvas
+        };
+    }
+
+    return {
+        type: "image",
+        url: track.cover
+    };
+}
+
+async function getPalette(trackId, imageUrl) {
+    if (!imageUrl) return null;
+
+  if (paletteCache.has(trackId)) {
+    return paletteCache.get(trackId);
+  }
+
+  try {
+
+    const palette = await Vibrant
+      .from(imageUrl)
+      .getPalette();
+
+    const colors = {
+      vibrant: palette.Vibrant?.hex, 
+      darkVibrant: palette.DarkVibrant?.hex,
+      lightVibrant: palette.LightVibrant?.hex,
+
+      muted: palette.Muted?.hex,
+      darkMuted: palette.DarkMuted?.hex,
+      lightMuted: palette.LightMuted?.hex
+    };
+
+    paletteCache.set(trackId, colors);
+
+    return colors;
+
+  } catch (err) {
+    console.error("Palette extraction failed:", err);
+    return null;
+  }
 }
 
 function getTrackId(url) {
@@ -126,20 +191,53 @@ async function addToQueue(url, maxSongLengthSeconds) {
 
 async function getCurrentTrack() {
   try {
-    const response = await fetchWithToken('https://api.spotify.com/v1/me/player/currently-playing');
+    const response = await fetchWithToken(
+      "https://api.spotify.com/v1/me/player"
+    );
 
-    if (response.status === 204) return null;
-    if (!response.ok) throw new Error(`Spotify current track lookup failed with ${response.status}`);
+    if (response.status === 204) {
+      return {
+        isPlaying: false
+      };
+    }
+
+    if (!response.ok) {
+      throw new Error(
+        `Spotify playback lookup failed with ${response.status}`
+      );
+    }
 
     const data = await response.json();
-    if (!data.item || data.currently_playing_type !== 'track') return null;
+
+    if (!data.item || data.currently_playing_type !== "track") {
+      return {
+        isPlaying: false
+      };
+    }
+
+    const track = formatTrack(data.item);
+    const canvas = await getCanvas(track.id);
 
     return {
-      ...formatTrack(data.item),
-      progressMs: data.progress_ms
+      ...track,
+
+      media: {
+        type: canvas ? "video" : "image",
+        url: canvas || track.cover
+      },
+
+      progressMs: data.progress_ms,
+      durationMs: data.item.duration_ms,
+
+      isPlaying: data.is_playing,
+      fetchedAt: Date.now(),
+
+      palette: await getPalette(track.id, track.cover)
     };
+
   } catch (err) {
-    console.error('Spotify active lookup failed:', err.message);
+    console.error("Spotify active lookup failed:");
+    console.error(err);
     return false;
   }
 }

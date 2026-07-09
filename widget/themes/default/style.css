@@ -1,0 +1,289 @@
+.widget {
+
+    width: 680px;
+    height: 192px;
+
+    display: flex;
+    align-items: center;
+
+    gap: 32px;
+
+    padding: 24px 16px;
+
+    background: var(--album-dark);
+    backdrop-filter: blur(12px);
+
+    border: 1px solid rgba(255, 255, 255, 0.08);
+
+    border-radius: 26px;
+
+    box-sizing: border-box;
+
+    overflow: hidden;
+
+    font-family: Inter, "Segoe UI", Arial, sans-serif;
+
+    color: white;
+
+    opacity: 1;
+
+    transform: translateY(0);
+
+    transition:
+        opacity .4s ease,
+        transform .4s ease;
+}
+
+
+.widget.hidden {
+
+    opacity: 0;
+
+    transform: translateY(20px);
+
+    pointer-events: none;
+}
+
+
+
+/* Album */
+
+.cover,
+.canvas {
+
+    width: 160px;
+    height: 160px;
+
+    flex-shrink: 0;
+
+    border-radius: 24px;
+
+    object-fit: cover;
+
+    box-shadow: 0 16px 40px rgba(0, 0, 0, .35);
+}
+
+
+/* Text area */
+
+.info {
+
+    min-width: 0;
+
+    flex: 1;
+
+    display: flex;
+
+    flex-direction: column;
+
+    gap: 12px;
+}
+
+
+
+/*
+    TITLE SCROLLER
+*/
+
+.title-wrapper {
+    width: 100%;
+    overflow: hidden;
+    position: relative;
+}
+
+
+.title-container {
+    width: 100%;
+    overflow: hidden;
+    white-space: nowrap;
+    position: relative;
+}
+
+
+/* fades only appear while scrolling */
+.title-wrapper::before,
+.title-wrapper::after {
+
+    content: "";
+
+    position: absolute;
+
+    top: 0;
+
+    width: 20px;
+
+    height: 100%;
+
+    z-index: 5;
+
+    pointer-events: none;
+
+    opacity: 0;
+
+    transition: opacity .25s ease;
+}
+
+
+.title-wrapper.scrolling::before {
+    animation: fade-left var(--scroll-duration, 8s) linear infinite;
+}
+
+.title-wrapper.scrolling::after {
+    animation: fade-right var(--scroll-duration, 8s) linear infinite;
+}
+
+
+@keyframes fade-left {
+
+    0%,
+    10% {
+        opacity: 0;
+    }
+
+    15%,
+    85% {
+        opacity: 1;
+    }
+
+    100% {
+        opacity: 0;
+    }
+}
+
+
+@keyframes fade-right {
+
+    0%,
+    10% {
+        opacity: 0;
+    }
+
+    15%,
+    85% {
+        opacity: 1;
+    }
+
+    100% {
+        opacity: 0;
+    }
+}
+
+.title-wrapper::before {
+
+    left: 0;
+
+    background: linear-gradient(
+        to right,
+        var(--album-dark),
+        transparent
+    );
+}
+
+.title-wrapper::after {
+
+    right: 0;
+
+    background: linear-gradient(
+        to left,
+        var(--album-dark),
+        transparent
+    );
+}
+
+.title {
+
+    display: inline-block;
+
+    color: var(--album-light);
+
+    font-size: 40px;
+
+    font-weight: 700;
+
+    letter-spacing: -0.02em;
+
+    white-space: nowrap;
+
+    transform: translateX(0);
+}
+
+
+.title.scroll {
+    animation:
+        scroll-title var(--scroll-duration, 8s) linear infinite;
+}
+
+
+@keyframes scroll-title {
+
+    0%,
+    20% {
+        transform: translateX(0);
+    }
+
+
+    50%,
+    80% {
+        transform:
+            translateX(calc(-100% + 260px));
+    }
+
+
+    100% {
+        transform: translateX(0);
+    }
+}
+
+
+
+
+
+/* Artist */
+
+.artist {
+
+    font-size: 28px;
+
+    font-weight: 400;
+
+    color: var(--album-light);
+
+    overflow: hidden;
+
+    text-overflow: ellipsis;
+
+    white-space: nowrap;
+}
+
+
+
+
+/* Progress */
+
+.progress-container {
+
+    width: 100%;
+
+    height: 8px;
+    margin-top: 12px;
+
+    background: rgba(255,255,255,.18);
+
+    border-radius: 999px;
+
+    overflow: hidden;
+}
+
+
+
+.progress {
+
+    height: 100%;
+
+    width: 0%;
+
+    background: var(--album-vibrant);
+
+    transition:
+        width .5s linear;
+}
