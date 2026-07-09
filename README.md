@@ -173,6 +173,9 @@ OBS_SOURCE=Queueify # match it to yours
 npm start
 ```
 
+> [!NOTE]
+if the OBS wdiegt doesn't show on startup, `Refresh` the source in OBS
+
 <br />
 
 ## Twitch Chat Commands
