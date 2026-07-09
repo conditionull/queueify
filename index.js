@@ -6,7 +6,6 @@ const state = require('./core/state');
 
 const startEventSub = require("./eventsub");
 const startWidgetServer = require("./widget/server");
-const startCanvasApi = require("./Spotify-Canvas-API/index");
 
 const obs = require("./services/obs");
 
@@ -50,7 +49,17 @@ async function main() {
   const { default: startCanvasApi } = await import("./Spotify-Canvas-API/index.js");
   startCanvasApi();
 
-  await obs.connect();
+  if (process.env.OBS_WEBSOCKET_IP) {
+    try {
+      await obs.connect();
+    } catch (err) {
+      console.warn("Failed to connect to OBS. Widget position commands will be unavailable.");
+      console.warn(err.message);
+    }
+  } else {
+    console.log("OBS not configured. Widget position commands are disabled.");
+  }
+
   await client.connect();
   startEventSub(client);
 }
