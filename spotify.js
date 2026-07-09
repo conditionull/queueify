@@ -218,12 +218,14 @@ async function getCurrentTrack() {
     const track = formatTrack(data.item);
     const canvas = await getCanvas(track.id);
 
+    const isVideoCanvas = canvas?.includes("canvaz.scdn.co");
+
     return {
       ...track,
 
       media: {
-        type: canvas ? "video" : "image",
-        url: canvas || track.cover
+        type: isVideoCanvas ? "video" : "image",
+        url: isVideoCanvas ? canvas : track.cover
       },
 
       progressMs: data.progress_ms,
