@@ -187,7 +187,7 @@ const state = {
             return null;
         }
 
-        if (this.activeTrack?.id === currentlyPlaying.id) {
+        if (this.activeTrack && this.activeTrack.id === currentlyPlaying.id) {
             if (
                 Number.isFinite(currentlyPlaying.progressMs) &&
                 Number.isFinite(this.activeTrack.lastProgressMs) &&

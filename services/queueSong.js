@@ -1,4 +1,5 @@
 const { addToQueue, getTrackId } = require("../spotify.js");
+const syncQueue = require("./syncQueue.js")
 const CLIENT_ID = process.env.TWITCH_CLIENT_ID;
 const ACCESS_TOKEN = process.env.TWITCH_ACCESS_TOKEN;
 
@@ -42,13 +43,55 @@ async function queueSong({
     redemptionId = null,
     broadcasterId = state.broadcasterId
 }) {
-    if (!state.queueEnabled) {
-        client.say(channel, `@${username} the queue is currently closed Sadge`);
+    const synced = await syncQueue(state);
+
+    if (!synced) {
+        client.say(channel, `@${username} couldn't check the Spotify queue. umm`);
+
+        if (isRedeem && redemptionId) {
+            await refundRedeem(
+                redemptionId,
+                broadcasterId,
+                state.spotifyRewardId
+            );
+        }
+
         return;
     }
 
-    if (state.blacklist.has(username)) {
-        client.say(channel, `@${username} you're not allowed to queue songs. wuh`);
+    if (!state.queueEnabled) {
+        const msg = `@${username} the queue is currently closed Sadge`;
+
+        if (isRedeem && redemptionId) {
+            const refunded = await refundRedeem(
+                redemptionId,
+                broadcasterId,
+                state.spotifyRewardId
+            );
+
+            client.say(channel, refunded ? `${msg} (points refunded)` : msg);
+        } else {
+            client.say(channel, msg);
+        }
+
+        return;
+    }
+
+    if (!state.queueEnabled) {
+        const msg = `@${username} you're not allowed to queue songs! Aware`;
+
+        if (isRedeem && redemptionId) {
+            const refunded = await refundRedeem(
+                redemptionId,
+                broadcasterId,
+                state.spotifyRewardId
+            );
+
+            client.say(channel, refunded ? `${msg} (points refunded)` : msg);
+        } else {
+            client.say(channel, msg);
+        }
+
         return;
     }
 
@@ -141,7 +184,7 @@ async function queueSong({
             state.cooldowns.set(username, Date.now());
             state.addPendingTrack(result.track, username);
             state.rememberRecentRequest(username, result.track.id);
-            client.say(channel, `@${username} song added to queue!! DinoDance`);
+            client.say(channel, `@${username} song added to queue!! DinoDance (${state.pendingQueue.length} in queue)`);
         } else if (status === "toolong") {
             const msg = `@${username} song is too long, max ${state.maxSongLength}s`;
 
