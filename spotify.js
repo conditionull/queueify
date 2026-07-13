@@ -1,4 +1,6 @@
 require('dotenv').config();
+const fs = require("fs");
+const path = require("path");
 const { Vibrant } = require("node-vibrant/node");
 const { loadToken, saveToken } = require('./spotify-token-store');
 const { getCanvas } = require("./canvas");
@@ -8,46 +10,74 @@ console.log("Canvas function:", getCanvas);
 let tokenData = loadToken();
 
 const paletteCache = new Map();
+const fallbackCache = new Map();
 
 const SPOTIFY_PATTERN = /https:\/\/open\.spotify\.com\/(?:intl-[^/]+\/)?track\/[a-zA-Z0-9]{22}(?:\?si=[a-zA-Z0-9]+)?/;
 
 function formatTrack(track) {
   return {
-    id: track.id,
+    id: track.id || `local-${track.name}-${track.duration_ms}`,
     name: track.name,
-    artists: track.artists?.map(artist => artist.name).join(', ') || 'Unknown artist',
+    artists: track.artists?.map(artist => artist.name).join(', ') || 'Local Track',
     durationMs: track.duration_ms,
 
     cover: track.album?.images?.[0]?.url || null,
-    media: null
+    isLocal: !track.id
   };
 }
 
+const FALLBACK_VIDEO_DIR = path.join(__dirname, "assets", "fallback_videos");
+
+const FALLBACK_VIDEOS = fs.existsSync(FALLBACK_VIDEO_DIR)
+  ? fs.readdirSync(FALLBACK_VIDEO_DIR)
+    .filter(file => file.endsWith(".mp4"))
+    .map(file => `/assets/fallback_videos/${file}`)
+  : [];
+
+function getRandomFallbackVideo() {
+  if (!FALLBACK_VIDEOS.length) {
+    return null;
+  }
+
+  return FALLBACK_VIDEOS[
+    Math.floor(Math.random() * FALLBACK_VIDEOS.length)
+  ];
+}
+
 async function getMedia(track) {
-    if (properties.media.mode !== "canvas") {
-        return {
-            type: "image",
-            url: track.cover
-        };
-    }
 
-    const canvas = await getCanvas(track.id);
-
-    if (canvas) {
-        return {
-            type: "video",
-            url: canvas
-        };
+  if (track.isLocal) {
+    const fallbackKey = `${track.name}-${track.artists}-${track.durationMs}`;
+    if (!fallbackCache.has(fallbackKey)) {
+      fallbackCache.set(
+        fallbackKey,
+        getRandomFallbackVideo()
+      );
     }
 
     return {
-        type: "image",
-        url: track.cover
+      type: "video",
+      url: fallbackCache.get(fallbackKey)
     };
+  }
+
+  const canvas = await getCanvas(track.id);
+
+  if (canvas?.includes("canvaz.scdn.co")) {
+    return {
+      type: "video",
+      url: canvas
+    };
+  }
+
+  return {
+    type: "image",
+    url: track.cover
+  };
 }
 
 async function getPalette(trackId, imageUrl) {
-    if (!imageUrl) return null;
+  if (!imageUrl) return null;
 
   if (paletteCache.has(trackId)) {
     return paletteCache.get(trackId);
@@ -60,7 +90,7 @@ async function getPalette(trackId, imageUrl) {
       .getPalette();
 
     const colors = {
-      vibrant: palette.Vibrant?.hex, 
+      vibrant: palette.Vibrant?.hex,
       darkVibrant: palette.DarkVibrant?.hex,
       lightVibrant: palette.LightVibrant?.hex,
 
@@ -216,24 +246,15 @@ async function getCurrentTrack() {
     }
 
     const track = formatTrack(data.item);
-    const canvas = await getCanvas(track.id);
-
-    const isVideoCanvas = canvas?.includes("canvaz.scdn.co");
+    const media = await getMedia(track);
 
     return {
       ...track,
-
-      media: {
-        type: isVideoCanvas ? "video" : "image",
-        url: isVideoCanvas ? canvas : track.cover
-      },
-
+      media,
       progressMs: data.progress_ms,
       durationMs: data.item.duration_ms,
-
       isPlaying: data.is_playing,
       fetchedAt: Date.now(),
-
       palette: await getPalette(track.id, track.cover)
     };
 

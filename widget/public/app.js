@@ -3,7 +3,6 @@ const THEME = "default";
 document.getElementById("theme").href =
     `/themes/${THEME}/style.css`;
 
-
 let themeProperties;
 let hideTimeout;
 let isPlaying = false;
@@ -186,17 +185,28 @@ async function updateSong() {
     const cover = document.querySelector(".cover");
     const canvas = document.querySelector(".canvas");
 
-    const useCanvas =
-        themeProperties.media?.mode === "canvas" &&
-        song.media?.type === "video";
+    const mediaUrl = song.media?.url || song.cover;
 
+    if (song.media?.type === "video") {
 
-    if (useCanvas) {
-        canvas.src = song.media.url;
+        if (canvas.getAttribute("src") !== mediaUrl) {
+            canvas.src = mediaUrl;
+            canvas.load();
+
+            canvas.play().catch(err => {
+                console.error("Video playback failed:", err);
+            });
+        }
+
         canvas.style.display = "block";
         cover.style.display = "none";
+
     } else {
-        cover.src = song.cover;
+
+        if (cover.src !== mediaUrl) {
+            cover.src = mediaUrl;
+        }
+
         cover.style.display = "block";
         canvas.style.display = "none";
     }

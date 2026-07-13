@@ -11,14 +11,15 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "axios": "^1.6.0",
     "dotenv": "^17.4.1",
     "express": "^5.2.1",
+    "google-protobuf": "^3.11.4",
+    "nocache": "^4.0.0",
     "node-vibrant": "^4.0.4",
     "obs-websocket-js": "^5.0.8",
+    "otpauth": "latest",
     "tmi.js": "^1.8.5",
-    "ws": "^8.21.0",
-    "axios": "^1.6.0",
-    "google-protobuf": "^3.11.4",
-    "otpauth": "latest"
+    "ws": "^8.21.0"
   }
 }

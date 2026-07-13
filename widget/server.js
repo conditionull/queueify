@@ -1,10 +1,17 @@
 const express = require("express");
 const path = require("path");
+const nocache = require("nocache");
+const app = express();
 const { getCurrentTrack } = require("../spotify");
 
-const app = express();
+
+app.use(nocache());
 
 app.use(express.static(path.join(__dirname, "public")));
+
+app.use("/assets",
+    express.static(path.join(__dirname, "..", "assets"))
+);
 
 app.use(
     "/themes",
