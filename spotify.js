@@ -45,22 +45,6 @@ function getRandomFallbackVideo() {
 }
 
 async function getMedia(track) {
-
-  if (track.isLocal) {
-    const fallbackKey = `${track.name}-${track.artists}-${track.durationMs}`;
-    if (!fallbackCache.has(fallbackKey)) {
-      fallbackCache.set(
-        fallbackKey,
-        getRandomFallbackVideo()
-      );
-    }
-
-    return {
-      type: "video",
-      url: fallbackCache.get(fallbackKey)
-    };
-  }
-
   const canvas = await getCanvas(track.id);
 
   if (canvas?.includes("canvaz.scdn.co")) {
@@ -70,9 +54,25 @@ async function getMedia(track) {
     };
   }
 
+  if (track.cover) {
+    return {
+      type: "image",
+      url: track.cover
+    };
+  }
+
+  const fallbackKey = `${track.name}-${track.artists}-${track.durationMs}`;
+
+  if (!fallbackCache.has(fallbackKey)) {
+    fallbackCache.set(
+      fallbackKey,
+      getRandomFallbackVideo()
+    );
+  }
+
   return {
-    type: "image",
-    url: track.cover
+    type: "video",
+    url: fallbackCache.get(fallbackKey)
   };
 }
 
