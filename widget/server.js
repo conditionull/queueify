@@ -3,7 +3,89 @@ const path = require("path");
 const nocache = require("nocache");
 const app = express();
 const { getCurrentTrack } = require("../spotify");
+const fs = require("fs");
 
+let widgetConfig = JSON.parse(
+    fs.readFileSync(
+        path.join(__dirname, "config.json"),
+        "utf8"
+    )
+);
+
+const themeClients = [];
+
+
+app.get("/api/widget/config", (req, res) => {
+    res.json(widgetConfig);
+});
+
+app.get("/api/widget/themes", (req, res) => {
+    const themesPath = path.join(__dirname, "themes");
+
+    const themes = fs.readdirSync(themesPath)
+        .filter(name => {
+            return fs.statSync(
+                path.join(themesPath, name)
+            ).isDirectory();
+        });
+
+    res.json(themes);
+});
+
+app.get("/api/widget/theme-events", (req, res) => {
+    res.setHeader(
+        "Content-Type",
+        "text/event-stream"
+    );
+
+    res.setHeader(
+        "Cache-Control",
+        "no-cache"
+    );
+
+    res.setHeader(
+        "Connection",
+        "keep-alive"
+    );
+
+
+    themeClients.push(res);
+
+
+    req.on("close", () => {
+        const index = themeClients.indexOf(res);
+
+        if (index !== -1) {
+            themeClients.splice(index, 1);
+        }
+    });
+});
+
+function notifyThemeChange(theme) {
+    for (const client of themeClients) {
+        client.write(
+            `data: ${JSON.stringify({ theme })}\n\n`
+        );
+    }
+}
+
+
+app.post("/api/widget/theme", express.json(), (req, res) => {
+    const { theme } = req.body;
+    widgetConfig.theme = theme;
+
+    fs.writeFileSync(
+        path.join(__dirname, "config.json"),
+        JSON.stringify(widgetConfig, null, 4)
+    );
+
+    notifyThemeChange(theme);
+
+    res.json({
+        success: true,
+        theme
+    });
+});
 
 app.use(nocache());
 

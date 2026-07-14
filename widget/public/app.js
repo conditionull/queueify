@@ -1,7 +1,23 @@
-const THEME = "default";
+const themeEvents = new EventSource("/api/widget/theme-events");
 
-document.getElementById("theme").href =
-    `/themes/${THEME}/style.css`;
+themeEvents.onmessage = (event) => {
+    const data = JSON.parse(event.data);
+
+    document.getElementById("theme").href =
+        `/themes/${data.theme}/style.css?t=${Date.now()}`;
+};
+
+let THEME;
+
+async function loadConfig() {
+    const res = await fetch("/api/widget/config");
+    const config = await res.json();
+
+    THEME = config.theme;
+
+    document.getElementById("theme").href =
+        `/themes/${THEME}/style.css`;
+}
 
 let themeProperties;
 let hideTimeout;
@@ -240,6 +256,8 @@ async function updateSong() {
 
 
 async function init() {
+    await loadConfig();
+    
     themeProperties = await loadThemeProperties();
 
     updateSong();
@@ -251,15 +269,8 @@ async function init() {
 }
 
 function updateProgress() {
-
-    if (!themeProperties.showProgress) {
-        return;
-    }
-
-    if (!currentSong || !currentSong.durationMs) {
-        return;
-    }
-
+    if (!themeProperties.showProgress) return;
+    if (!currentSong || !currentSong.durationMs) return;
 
     let progressMs = currentSong.progressMs;
 
@@ -269,7 +280,6 @@ function updateProgress() {
 
     const percent =
         (progressMs / currentSong.durationMs) * 100;
-
 
     document.querySelector(".progress").style.width =
         `${Math.min(percent, 100)}%`;

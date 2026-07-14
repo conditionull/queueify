@@ -47,7 +47,7 @@ function getRandomFallbackVideo() {
 async function getMedia(track) {
   const canvas = await getCanvas(track.id);
 
-  if (canvas?.includes("canvaz.scdn.co")) {
+  if (canvas?.includes("canvaz.scdn.co") && canvas.endsWith(".mp4")) {
     return {
       type: "video",
       url: canvas

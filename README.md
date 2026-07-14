@@ -7,6 +7,11 @@ I tried to make this README as comprehensive as possible; please let me know if 
 ### ✦・゜゜・✧ &nbsp;&nbsp;&nbsp; [Queueify OBS Widget Preview ](https://imgur.com/OpbsxM2) &nbsp;&nbsp;&nbsp; ✧・゜゜・✦
 <br />
 
+### OBS Widget Preview (ignore white edges)
+<img src="assets/swag_theme5.png" />
+<img src="assets/default_theme2.png" />
+
+<br /><br />
 > [!NOTE]
 Adding songs to playback queue requires Spotify Premium
 
