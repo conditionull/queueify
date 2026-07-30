@@ -10,6 +10,7 @@ I tried to make this README as comprehensive as possible; please let me know if 
 ### OBS Widget Preview (ignore white edges)
 <img src="assets/swag_theme5.png" />
 <img src="assets/default_theme2.png" />
+<img src="assets/minimal_theme.png" />
 
 <br /><br />
 > [!NOTE]

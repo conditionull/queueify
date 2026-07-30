@@ -2,6 +2,22 @@ const obs = require("../services/obs");
 const settings = require("../config/settings");
 const state = require("../core/state");
 
+async function getCurrentTheme() {
+    try {
+        const res = await fetch("http://localhost:3001/api/widget/config");
+        if (!res.ok) return "default";
+
+        const config = await res.json();
+        return config.theme || "default";
+    } catch (err) {
+        return "default";
+    }
+}
+
+function getThemePresetName(theme) {
+    return theme ? `topright:${theme}` : "topright";
+}
+
 module.exports = {
     name: "topright",
     aliases: ["tr"],
@@ -17,11 +33,13 @@ module.exports = {
             }
 
             const transform = await obs.getTransform();
+            const theme = await getCurrentTheme();
+            const presetName = getThemePresetName(theme);
 
-            state.widgetPresets.topright = transform;
+            state.widgetPresets[presetName] = transform;
             state.saveSettings();
 
-            client.say(channel, "Saved Top Right preset.");
+            client.say(channel, `Saved Top Right preset for ${theme}.`);
             return;
         }
 
@@ -30,13 +48,16 @@ module.exports = {
             return;
         }
 
-        const preset = state.widgetPresets.topright;
+        const theme = await getCurrentTheme();
+        const presetName = getThemePresetName(theme);
+        const preset = state.widgetPresets[presetName] || state.widgetPresets.topright;
 
         if (!preset) {
-            client.say(channel, "Top Right preset not set. Use !tr set");
+            client.say(channel, `Top Right preset not set for ${theme}. Use !tr set`);
             return;
         }
-
+        state.activeWidgetPosition = "topright";
+        state.saveSettings();
         await obs.setTransform(preset);
     }
 };

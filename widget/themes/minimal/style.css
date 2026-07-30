@@ -1,0 +1,280 @@
+.widget {
+    width: var(--widget-width, 400px);
+    height: 36px;
+
+    display: flex;
+    align-items: center;
+    position: relative;
+
+    padding: 0 10px;
+    gap: 14px;
+
+    background: #292828;
+    backdrop-filter: blur(12px);
+
+    border-radius: 28px;
+
+    box-sizing: border-box;
+    overflow: hidden;
+
+    font-family: Inter, "Segoe UI", Arial, sans-serif;
+
+    color: white;
+
+    opacity: 1;
+    transform: translateY(0);
+
+    transition:
+        opacity .4s ease,
+        transform .4s ease;
+}
+
+.cover,
+.canvas {
+    display: none !important;
+}
+
+.widget.hidden {
+    opacity: 0;
+    transform: translateY(20px);
+    pointer-events: none;
+}
+
+/* ===========================
+   TEXT
+   =========================== */
+
+.info {
+    flex: 1;
+    min-width: 0;
+    width: 100%;
+
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 8px;
+}
+
+/*
+    TITLE SCROLLER
+*/
+
+.title-wrapper {
+    min-width: 0;
+
+    overflow: hidden;
+    position: relative;
+}
+
+.title-container {
+    overflow: hidden;
+    white-space: nowrap;
+    text-align: left;
+}
+
+/* fades only appear while scrolling */
+.title-wrapper::before,
+.title-wrapper::after {
+    content: "";
+
+    position: absolute;
+    top: 0;
+
+    width: 20px;
+    height: 100%;
+
+    z-index: 5;
+
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity .25s ease;
+
+    background: #292828;
+}
+
+.title-wrapper.scrolling::before {
+    animation: fade-left var(--scroll-duration, 8s) linear infinite;
+}
+
+.title-wrapper.scrolling::after {
+    animation: fade-right var(--scroll-duration, 8s) linear infinite;
+}
+
+@keyframes fade-left {
+
+    0%,
+    10% {
+        opacity: 0;
+    }
+
+    15%,
+    85% {
+        opacity: 1;
+    }
+
+    100% {
+        opacity: 0;
+    }
+}
+
+@keyframes fade-right {
+
+    0%,
+    10% {
+        opacity: 0;
+    }
+
+    15%,
+    85% {
+        opacity: 1;
+    }
+
+    100% {
+        opacity: 0;
+    }
+}
+
+.artist-wrapper::before, .title-wrapper::before {
+    left: 0;
+
+    mask-image: linear-gradient(to right,
+            black,
+            transparent);
+}
+
+.artist-wrapper::after, .title-wrapper::after {
+    right: 0;
+
+    mask-image: linear-gradient(to left,
+            black,
+            transparent);
+}
+
+.title {
+    display: inline-block;
+
+    font-size: 15px;
+    font-weight: 600;
+    line-height: 60px;
+
+    color: #fff;
+
+    white-space: nowrap;
+
+    will-change: transform;
+}
+
+.title.scroll {
+    animation:
+        scroll-title var(--scroll-duration, 8s) linear infinite;
+}
+
+@keyframes scroll-title {
+
+    0%,
+    20% {
+        transform: translateX(0);
+    }
+
+    50%,
+    80% {
+        transform: translateX(calc(-1 * var(--scroll-distance)));
+    }
+
+    100% {
+        transform: translateX(0);
+    }
+}
+
+/* ===========================
+   ARTIST
+   =========================== */
+
+.artist-wrapper {
+    min-width: 0;
+    flex-shrink: 0;
+
+    overflow: hidden;
+    white-space: nowrap;
+    text-align: left;
+}
+
+.artist {
+    display: inline-block;
+
+    font-size: 14px;
+    font-weight: 600;
+
+    color: #9f9f9f;
+
+    white-space: nowrap;
+
+    will-change: transform;
+}
+
+.artist.scroll {
+    animation:
+        scroll-artist var(--scroll-duration, 8s) linear infinite;
+}
+
+@keyframes scroll-artist {
+
+    0%,
+    20% {
+        transform: translateX(0);
+    }
+
+    50%,
+    80% {
+        transform: translateX(calc(-1 * var(--artist-distance)));
+    }
+
+    100% {
+        transform: translateX(0);
+    }
+}
+
+/* ===========================
+   PROGRESS
+   =========================== */
+
+.progress-container {
+    flex-shrink: 0;
+
+    position: relative;
+
+    width: 100px;
+    height: 6px;
+
+    background: rgba(255, 255, 255, .15);
+
+    border-radius: 999px;
+
+    overflow: hidden;
+}
+
+.progress {
+    height: 100%;
+    width: 0%;
+
+    background: #fff;
+
+    border-radius: inherit;
+
+    transition: width 1s linear;
+}
+
+.play-icon {
+    width: 13px;
+    height: 13px;
+
+    flex-shrink: 0;
+    padding: 0 3px;
+}
+
+.dot {
+    width: 20px;
+    height: 20px;
+    flex-shrink: 0;
+    justify-self: center;
+}

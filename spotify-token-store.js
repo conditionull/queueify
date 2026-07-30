@@ -1,7 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const TOKEN_FILE = path.join(__dirname, 'spotify-token.json');
+const TOKEN_FILE = process.env.SPOTIFY_TOKEN_FILE || path.join(__dirname, 'spotify-token.json');
 
 function normalizeToken(raw) {
   if (!raw) return {};

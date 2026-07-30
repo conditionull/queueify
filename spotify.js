@@ -5,10 +5,6 @@ const { Vibrant } = require("node-vibrant/node");
 const { loadToken, saveToken } = require('./spotify-token-store');
 const { getCanvas } = require("./canvas");
 
-console.log("Canvas function:", getCanvas);
-
-let tokenData = loadToken();
-
 const paletteCache = new Map();
 const fallbackCache = new Map();
 
@@ -140,7 +136,9 @@ async function fetchWithToken(url, options = {}, retry = true) {
 }
 
 async function refreshAccessToken() {
-  if (!tokenData.refresh_token) {
+  const currentTokenData = loadToken();
+
+  if (!currentTokenData.refresh_token) {
     throw new Error('Missing Spotify refresh token. Run `node auth.js` first.');
   }
 
@@ -158,7 +156,7 @@ async function refreshAccessToken() {
     },
     body: new URLSearchParams({
       grant_type: 'refresh_token',
-      refresh_token: tokenData.refresh_token
+      refresh_token: currentTokenData.refresh_token
     })
   });
 
@@ -172,18 +170,25 @@ async function refreshAccessToken() {
     throw new Error(`Spotify token refresh response was incomplete: ${JSON.stringify(data)}`);
   }
 
-  tokenData.access_token = data.access_token;
-  tokenData.expires_at = Date.now() + data.expires_in * 1000;
-  if (data.refresh_token) tokenData.refresh_token = data.refresh_token;
-  saveToken(tokenData);
+  const updatedTokenData = {
+    ...currentTokenData,
+    access_token: data.access_token,
+    expires_at: Date.now() + data.expires_in * 1000,
+    ...(data.refresh_token ? { refresh_token: data.refresh_token } : {})
+  };
+
+  saveToken(updatedTokenData);
   console.log('Spotify token refreshed.');
-  return tokenData.access_token;
+  return updatedTokenData.access_token;
 }
 
 async function getValidToken() {
-  if (tokenData.access_token && Date.now() < tokenData.expires_at - 60000) {
-    return tokenData.access_token;
+  const currentTokenData = loadToken();
+
+  if (currentTokenData.access_token && Date.now() < currentTokenData.expires_at - 60000) {
+    return currentTokenData.access_token;
   }
+
   return await refreshAccessToken();
 }
 

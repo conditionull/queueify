@@ -1,3 +1,14 @@
+const obs = require("../services/obs");
+const state = require("../core/state");
+
+function getPresetName(theme, currentPosition) {
+    if (currentPosition === "bottomcenter") {
+        return `bottomcenter:${theme}`;
+    }
+
+    return `topright:${theme}`;
+}
+
 module.exports = {
     name: "theme",
     aliases: ["design"],
@@ -53,6 +64,20 @@ module.exports = {
             }
         );
 
+        try {
+            const currentTransform = await obs.getTransform();
+            const currentPosition = state.activeWidgetPosition || "topright";
+            const presetName = getPresetName(theme, currentPosition);
+            const preset = state.widgetPresets[presetName] || state.widgetPresets[currentPosition];
+
+            if (preset) {
+                await obs.setTransform(preset);
+            } else {
+                await obs.setTransform(currentTransform);
+            }
+        } catch (err) {
+            console.error("Failed to apply theme position preset:", err.message);
+        }
 
         client.say(channel, `Widget theme changed to ${theme}`);
     }

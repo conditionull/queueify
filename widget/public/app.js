@@ -1,23 +1,46 @@
+let THEME = "default";
+
+const themeLink = document.getElementById("theme")
+    || document.querySelector('link[rel="stylesheet"]');
+
+function applyTheme(theme) {
+    THEME = theme || "default";
+
+    if (themeLink) {
+        themeLink.href = `/themes/${THEME}/style.css`;
+    }
+}
+
+async function refreshThemeFromServer() {
+    try {
+        const res = await fetch("/api/widget/config");
+        if (!res.ok) return;
+
+        const config = await res.json();
+        if (config.theme) {
+            applyTheme(config.theme);
+        }
+    } catch (err) {
+        console.error("Failed to refresh theme config:", err);
+    }
+}
+
 const themeEvents = new EventSource("/api/widget/theme-events");
 
 themeEvents.onmessage = (event) => {
-    const data = JSON.parse(event.data);
+    try {
+        const { theme } = JSON.parse(event.data);
 
-    document.getElementById("theme").href =
-        `/themes/${data.theme}/style.css?t=${Date.now()}`;
+        if (theme && theme !== THEME) {
+            applyTheme(theme);
+            setTimeout(() => {
+                window.location.reload();
+            }, 250);
+        }
+    } catch (err) {
+        console.error("Theme change update failed:", err);
+    }
 };
-
-let THEME;
-
-async function loadConfig() {
-    const res = await fetch("/api/widget/config");
-    const config = await res.json();
-
-    THEME = config.theme;
-
-    document.getElementById("theme").href =
-        `/themes/${THEME}/style.css`;
-}
 
 let themeProperties;
 let hideTimeout;
@@ -201,30 +224,29 @@ async function updateSong() {
     const cover = document.querySelector(".cover");
     const canvas = document.querySelector(".canvas");
 
-    const mediaUrl = song.media?.url || song.cover;
+    const useCanvas =
+        themeProperties.media?.mode === "canvas" &&
+        song.media?.type === "video";
 
-    if (song.media?.type === "video") {
 
-        if (canvas.getAttribute("src") !== mediaUrl) {
-            canvas.src = mediaUrl;
-            canvas.load();
-
-            canvas.play().catch(err => {
-                console.error("Video playback failed:", err);
-            });
+    if (useCanvas) {
+        if (canvas) {
+            canvas.src = song.media.url;
+            canvas.style.display = "block";
         }
 
-        canvas.style.display = "block";
-        cover.style.display = "none";
-
+        if (cover) {
+            cover.style.display = "none";
+        }
     } else {
-
-        if (cover.src !== mediaUrl) {
-            cover.src = mediaUrl;
+        if (cover) {
+            cover.src = song.cover;
+            cover.style.display = "block";
         }
 
-        cover.style.display = "block";
-        canvas.style.display = "none";
+        if (canvas) {
+            canvas.style.display = "none";
+        }
     }
 
     requestAnimationFrame(() => {
@@ -256,8 +278,7 @@ async function updateSong() {
 
 
 async function init() {
-    await loadConfig();
-    
+    await refreshThemeFromServer();
     themeProperties = await loadThemeProperties();
 
     updateSong();
@@ -269,8 +290,15 @@ async function init() {
 }
 
 function updateProgress() {
-    if (!themeProperties.showProgress) return;
-    if (!currentSong || !currentSong.durationMs) return;
+
+    if (!themeProperties.showProgress) {
+        return;
+    }
+
+    if (!currentSong || !currentSong.durationMs) {
+        return;
+    }
+
 
     let progressMs = currentSong.progressMs;
 
@@ -280,6 +308,7 @@ function updateProgress() {
 
     const percent =
         (progressMs / currentSong.durationMs) * 100;
+
 
     document.querySelector(".progress").style.width =
         `${Math.min(percent, 100)}%`;

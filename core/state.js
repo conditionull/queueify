@@ -67,6 +67,7 @@ const state = {
     cooldownSeconds: settings.cooldownSeconds ?? DEFAULT_COOLDOWN_SECONDS,
     repeatBlockSeconds: settings.repeatBlockSeconds ?? DEFAULT_REPEAT_BLOCK_SECONDS,
     maxSongLength: settings.maxSongLength ?? DEFAULT_MAX_SONG_LENGTH,
+    activeWidgetPosition: settings.activeWidgetPosition ?? "topright",
     pendingQueue: loadJSON(PENDING_QUEUE_FILE, []).map(normalizePendingItem),
     recentRequests: loadJSON(RECENT_REQUESTS_FILE, []),
     activeTrack: null,
@@ -89,6 +90,7 @@ const state = {
             chatEnabled: this.chatEnabled,
             redeemsEnabled: this.redeemsEnabled,
             spotifyRewardId: this.spotifyRewardId,
+            activeWidgetPosition: this.activeWidgetPosition,
             widgetPresets: this.widgetPresets
         });
     },

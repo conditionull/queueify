@@ -89,6 +89,23 @@ app.post("/api/widget/theme", express.json(), (req, res) => {
 
 app.use(nocache());
 
+app.get("/", (req, res) => {
+    const theme = widgetConfig.theme || "default";
+
+    const htmlPath = path.join(
+        __dirname,
+        "themes",
+        theme,
+        "index.html"
+    );
+
+    if (!fs.existsSync(htmlPath)) {
+        return res.status(404).send("Theme HTML not found");
+    }
+
+    res.sendFile(htmlPath);
+});
+
 app.use(express.static(path.join(__dirname, "public")));
 
 app.use("/assets",

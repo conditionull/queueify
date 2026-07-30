@@ -2,6 +2,22 @@ const obs = require("../services/obs");
 const settings = require("../config/settings");
 const state = require("../core/state");
 
+async function getCurrentTheme() {
+    try {
+        const res = await fetch("http://localhost:3001/api/widget/config");
+        if (!res.ok) return "default";
+
+        const config = await res.json();
+        return config.theme || "default";
+    } catch (err) {
+        return "default";
+    }
+}
+
+function getThemePresetName(theme) {
+    return theme ? `bottomcenter:${theme}` : "bottomcenter";
+}
+
 module.exports = {
     name: "bottomcenter",
     aliases: ["bc"],
@@ -17,11 +33,13 @@ module.exports = {
             }
 
             const transform = await obs.getTransform();
+            const theme = await getCurrentTheme();
+            const presetName = getThemePresetName(theme);
 
-            state.widgetPresets.bottomcenter = transform;
+            state.widgetPresets[presetName] = transform;
             state.saveSettings();
 
-            client.say(channel, "Saved Bottom Center preset.");
+            client.say(channel, `Saved Bottom Center preset for ${theme}.`);
             return;
         }
 
@@ -30,13 +48,16 @@ module.exports = {
             return;
         }
 
-        const preset = state.widgetPresets.bottomcenter;
+        const theme = await getCurrentTheme();
+        const presetName = getThemePresetName(theme);
+        const preset = state.widgetPresets[presetName] || state.widgetPresets.bottomcenter;
 
         if (!preset) {
-            client.say(channel, "Bottom Center preset not set. Use !bc set");
+            client.say(channel, `Bottom Center preset not set for ${theme}. Use !bc set`);
             return;
         }
-
+        state.activeWidgetPosition = "bottomcenter";
+        state.saveSettings();
         await obs.setTransform(preset);
     }
 };
