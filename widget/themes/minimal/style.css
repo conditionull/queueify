@@ -1,26 +1,20 @@
 .widget {
     width: var(--widget-width, 400px);
     height: 36px;
-
     display: flex;
     align-items: center;
     position: relative;
-
     padding: 0 10px;
     gap: 14px;
 
     background: #292828;
     backdrop-filter: blur(12px);
-
     border-radius: 28px;
-
     box-sizing: border-box;
     overflow: hidden;
 
     font-family: Inter, "Segoe UI", Arial, sans-serif;
-
     color: white;
-
     opacity: 1;
     transform: translateY(0);
 
@@ -61,7 +55,6 @@
 
 .title-wrapper {
     min-width: 0;
-
     overflow: hidden;
     position: relative;
 }
@@ -74,21 +67,20 @@
 
 /* fades only appear while scrolling */
 .title-wrapper::before,
-.title-wrapper::after {
+.title-wrapper::after,
+.artist-wrapper::before,
+.artist-wrapper::after {
     content: "";
-
     position: absolute;
     top: 0;
 
     width: 20px;
     height: 100%;
-
     z-index: 5;
 
     pointer-events: none;
     opacity: 0;
     transition: opacity .25s ease;
-
     background: #292828;
 }
 
@@ -101,7 +93,6 @@
 }
 
 @keyframes fade-left {
-
     0%,
     10% {
         opacity: 0;
@@ -118,7 +109,6 @@
 }
 
 @keyframes fade-right {
-
     0%,
     10% {
         opacity: 0;
@@ -152,15 +142,12 @@
 
 .title {
     display: inline-block;
-
     font-size: 15px;
     font-weight: 600;
     line-height: 60px;
-
     color: #fff;
-
     white-space: nowrap;
-
+    padding-right: 5px;
     will-change: transform;
 }
 
@@ -170,7 +157,6 @@
 }
 
 @keyframes scroll-title {
-
     0%,
     20% {
         transform: translateX(0);
@@ -193,23 +179,28 @@
 .artist-wrapper {
     min-width: 0;
     flex-shrink: 0;
-
+    position: relative;
     overflow: hidden;
     white-space: nowrap;
     text-align: left;
 }
 
+.artist-wrapper.scrolling::before {
+    animation: fade-left var(--scroll-duration, 8s) linear infinite;
+}
+
+.artist-wrapper.scrolling::after {
+    animation: fade-right var(--scroll-duration, 8s) linear infinite;
+}
+
 .artist {
     display: inline-block;
-
     font-size: 14px;
     font-weight: 600;
-
     color: #9f9f9f;
-
     white-space: nowrap;
-
     will-change: transform;
+    padding-right: 5px;
 }
 
 .artist.scroll {
@@ -218,7 +209,6 @@
 }
 
 @keyframes scroll-artist {
-
     0%,
     20% {
         transform: translateX(0);
@@ -240,34 +230,25 @@
 
 .progress-container {
     flex-shrink: 0;
-
     position: relative;
-
     width: 100px;
     height: 6px;
-
     background: rgba(255, 255, 255, .15);
-
     border-radius: 999px;
-
     overflow: hidden;
 }
 
 .progress {
     height: 100%;
     width: 0%;
-
     background: #fff;
-
     border-radius: inherit;
-
     transition: width 1s linear;
 }
 
 .play-icon {
     width: 13px;
     height: 13px;
-
     flex-shrink: 0;
     padding: 0 3px;
 }

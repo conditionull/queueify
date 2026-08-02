@@ -1,6 +1,6 @@
 module.exports = {
     name: 'allow',
-    aliases: ['unban', 'undeny', 'whitelist', 'unblock'],
+    aliases: ['undeny', 'whitelist', 'unblock'],
     modOnly: true,
 
     execute({ client, channel, username, args, state }) {

@@ -94,64 +94,18 @@ async function loadThemeProperties() {
     }
 
     if (props.scroll?.speed) {
-        const scrollSpeed = props.scroll.speed;
+        // Keep the high-level duration available to CSS animations.
+        // More precise distances are computed per-song in `updateSong()`.
         const pauseDuration = props.scroll.pauseDuration || 0;
-        const totalDuration = scrollSpeed + pauseDuration + scrollSpeed;
+        // Default behaviour: treat `speed` as a nominal time value used
+        // as a baseline for total animation duration when distance is unknown.
+        const baseline = props.scroll.speed;
+        const totalDuration = baseline + pauseDuration + baseline;
 
         document.documentElement.style.setProperty(
             "--scroll-duration",
             `${totalDuration}s`
         );
-
-        // Calculate keyframe percentages
-        const scrollOutEnd = (scrollSpeed / totalDuration) * 100;
-        const pauseEnd = ((scrollSpeed + pauseDuration) / totalDuration) * 100;
-
-        // Generate dynamic keyframes
-        const keyframes = `
-            @keyframes scroll-title {
-                0% {
-                    transform: translateX(0);
-                }
-                15% {
-                    transform: translateX(0);
-                }
-                ${scrollOutEnd}% {
-                    transform: translateX(calc(-100% + 200px));
-                }
-                ${pauseEnd}% {
-                    transform: translateX(calc(-100% + 200px));
-                }
-                100% {
-                    transform: translateX(0);
-                }
-            }
-
-            @keyframes shadow-fade {
-                0% {
-                    opacity: 0;
-                }
-                15% {
-                    opacity: 0;
-                }
-                ${Math.max(scrollOutEnd - 5, 15)}% {
-                    opacity: 1;
-                }
-                ${pauseEnd}% {
-                    opacity: 1;
-                }
-                ${Math.min(pauseEnd + 5, 100)}% {
-                    opacity: 0;
-                }
-                100% {
-                    opacity: 0;
-                }
-            }
-        `;
-
-        const style = document.createElement("style");
-        style.textContent = keyframes;
-        document.head.appendChild(style);
     }
 
     return props;
@@ -254,23 +208,109 @@ async function updateSong() {
         const wrapper = title.closest(".title-wrapper");
         const container = title.closest(".title-container");
 
+        const titleShouldScroll = title.scrollWidth > container.clientWidth;
+        const scrollDistance = Math.max(
+            title.scrollWidth - container.clientWidth,
+            0
+        );
 
-        if (title.scrollWidth > container.clientWidth) {
+        document.documentElement.style.setProperty(
+            "--scroll-distance",
+            `${scrollDistance}px`
+        );
 
+        const artistEl = document.querySelector('.artist');
+        const artistWrapper = artistEl?.closest('.artist-wrapper');
+        let artistDistance = 0;
+        let artistShouldScroll = false;
+
+        if (artistEl && artistWrapper) {
+            const wrapperRect = artistWrapper.getBoundingClientRect();
+            const progressRect = document.querySelector('.progress-container')?.getBoundingClientRect();
+
+            let visibleWidth = artistWrapper.clientWidth;
+
+            if (progressRect && progressRect.left < wrapperRect.right) {
+                visibleWidth = Math.max(0, progressRect.left - wrapperRect.left);
+            }
+
+            artistDistance = Math.max(artistEl.scrollWidth - visibleWidth, 0);
+            artistShouldScroll = artistDistance > 0;
+        }
+
+        document.documentElement.style.setProperty(
+            "--artist-distance",
+            `${artistDistance}px`
+        );
+
+        const pxPerSecond = (themeProperties?.scroll?.speed) || 120;
+        const titleMoveSeconds = titleShouldScroll ? Math.max(scrollDistance / pxPerSecond, 0.5) : 0;
+        const artistMoveSeconds = artistShouldScroll ? Math.max(artistDistance / pxPerSecond, 0.5) : 0;
+        const pauseSeconds = (themeProperties?.scroll?.pauseDuration) || 1;
+        const titleDuration = titleShouldScroll ? pauseSeconds + titleMoveSeconds + pauseSeconds + titleMoveSeconds : 0;
+        const artistDuration = artistShouldScroll ? pauseSeconds + artistMoveSeconds + pauseSeconds + artistMoveSeconds : 0;
+        const totalDuration = Math.max(titleDuration, artistDuration, 8);
+
+        document.documentElement.style.setProperty(
+            "--scroll-duration",
+            `${totalDuration}s`
+        );
+
+        if (titleShouldScroll) {
             title.classList.add("scroll");
-
-            // wait until the title has sat still before fading edges
             setTimeout(() => {
                 wrapper.classList.add("scrolling");
-            }, 500);
-
-
+            }, 250);
         } else {
-
             title.classList.remove("scroll");
-
             wrapper.classList.remove("scrolling");
+        }
 
+        if (artistShouldScroll) {
+            artistEl.classList.add('scroll');
+            artistWrapper.classList.add('scrolling');
+        } else if (artistEl) {
+            artistEl.classList.remove('scroll');
+            artistWrapper?.classList.remove('scrolling');
+        }
+
+        const existing = document.getElementById('scroll-keyframes');
+        if (existing) existing.remove();
+
+        if (titleShouldScroll || artistShouldScroll) {
+            const tPause1End = pauseSeconds;
+            const tMove1End = tPause1End + Math.max(titleMoveSeconds, artistMoveSeconds);
+            const tPause2End = tMove1End + pauseSeconds;
+
+            const pctPause1End = (tPause1End / totalDuration) * 100;
+            const pctMove1End = (tMove1End / totalDuration) * 100;
+            const pctPause2End = (tPause2End / totalDuration) * 100;
+
+            const keyframes = `
+                @keyframes scroll-title {
+                    0% { transform: translateX(0); }
+                    ${pctPause1End}% { transform: translateX(0); }
+                    ${pctMove1End}% { transform: translateX(calc(-1 * var(--scroll-distance))); }
+                    ${pctPause2End}% { transform: translateX(calc(-1 * var(--scroll-distance))); }
+                    100% { transform: translateX(0); }
+                }
+
+                @keyframes scroll-artist {
+                    0% { transform: translateX(0); }
+                    ${pctPause1End}% { transform: translateX(0); }
+                    ${pctMove1End}% { transform: translateX(calc(-1 * var(--artist-distance))); }
+                    ${pctPause2End}% { transform: translateX(calc(-1 * var(--artist-distance))); }
+                    100% { transform: translateX(0); }
+                }
+            `;
+
+            const style = document.createElement('style');
+            style.id = 'scroll-keyframes';
+            style.textContent = keyframes;
+            document.head.appendChild(style);
+        } else {
+            document.documentElement.style.setProperty("--scroll-distance", `0px`);
+            document.documentElement.style.setProperty("--artist-distance", `0px`);
         }
     });
 }

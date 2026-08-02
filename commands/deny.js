@@ -1,6 +1,6 @@
 module.exports = {
     name: 'deny',
-    aliases: ['ban', 'block', 'blacklist'],
+    aliases: ['block', 'blacklist'],
     modOnly: true,
 
     execute({ client, channel, username, args, state }) {

@@ -6,13 +6,12 @@
     "showProgress": true,
     "updateInterval": 5000,
     "widgetWidth": "400px",
-    "artistWidth": "100px",
     
     "hideAfter": 5,
     
     "scroll": {
         "enabled": true,
-        "speed": 8,
-        "pauseDuration": 3
+        "speed": 30,
+        "pauseDuration": 7
     }
 }

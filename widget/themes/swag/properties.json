@@ -10,7 +10,7 @@
     
     "scroll": {
         "enabled": true,
-        "speed": 8,
-        "pauseDuration": 3
+        "speed": 70,
+        "pauseDuration": 7
     }
 }
