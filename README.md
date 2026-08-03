@@ -60,6 +60,12 @@ npm install
 
 Copy the contents of `.env.example` file to `.env` and fill in your credentials:
 
+<<<<<
+> [!NOTE]
+Users had confusion with this, so to reiterate: Rename the file `.env.example` to `.env`. Same thing applies to `config/settings.example.js`, rename it to `settings.js`
+
+\>>>>>
+
 ```sh
 cp .env.example .env
 ```
@@ -157,7 +163,7 @@ If you `don't want` the canvas video, then change "canvas" to "cover" in [proper
 > [!NOTE]
 If you encounter any issues, report an issue here on github and I'll respond asap
 
-### 7. OBS Widget Position Setup (optional but recommended for convenience)
+### 7. OBS Widget Position Setup (optional step)
 - (use case: Your mods and/or whitelisted users can move the widget from Twitch chat depending on the game you're playing or if blocking information)
 - Add whitelisted users in `queueify/config/settings.json` <br />
 
@@ -180,7 +186,7 @@ npm start
 ```
 
 > [!NOTE]
-if the OBS wdiegt doesn't show on startup, `Refresh` the source in OBS
+if the OBS widget does not show on startup, `Refresh` the source in OBS
 
 <br />
 
@@ -209,11 +215,14 @@ if the OBS wdiegt doesn't show on startup, `Refresh` the source in OBS
 | `!topright` or `!tr` | Mods + Whitelisted users | Move the spotify widget to the saved topright preset  |
 | `!bottomcenter set` or `!bc set` | Mods | Set the "bottomcenter" location. The location data will be saved in queue-settings.json|
 | `!bottomcenter` or `!bc` | Mods + Whitelisted users | Move the spotify widget to the saved  bottomcenter preset  |
+| `!theme <minimal,swag,default>` | Mods | Change widget themes --> e.g.: `!theme swag` |
 
 > [!NOTE]
 !bottomcenter and !topright command names don't really matter. Just treat them both as unique positions you can set for any position in OBS. e.g.: `!topright set` can be at the bottom left for the widgets location
 
 You can customize command aliases by editing the `aliases` array in each command file under the `commands/` directory, for example:
+
+Each widget theme has their own !bc and !tr position. So make sure to set unique positions for each theme (if you're using the positional commands)
 
 ```js
 aliases: ['q', 'sr', 'add'],
