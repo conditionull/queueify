@@ -5,8 +5,15 @@ const { Vibrant } = require("node-vibrant/node");
 const { loadToken, saveToken } = require('./spotify-token-store');
 const { getCanvas } = require("./canvas");
 
+const MAX_CACHE_SIZE = 100;
 const paletteCache = new Map();
 const fallbackCache = new Map();
+
+const currentTrackCache = {
+  expiresAt: 0,
+  value: null,
+  pending: null
+};
 
 const SPOTIFY_PATTERN = /https:\/\/open\.spotify\.com\/(?:intl-[^/]+\/)?track\/[a-zA-Z0-9]{22}(?:\?si=[a-zA-Z0-9]+)?/;
 
@@ -40,6 +47,13 @@ function getRandomFallbackVideo() {
   ];
 }
 
+function trimCache(cache, maxSize) {
+  while (cache.size > maxSize) {
+    const oldestKey = cache.keys().next().value;
+    cache.delete(oldestKey);
+  }
+}
+
 async function getMedia(track) {
   const canvas = await getCanvas(track.id);
 
@@ -64,6 +78,7 @@ async function getMedia(track) {
       fallbackKey,
       getRandomFallbackVideo()
     );
+    trimCache(fallbackCache, MAX_CACHE_SIZE);
   }
 
   return {
@@ -96,6 +111,7 @@ async function getPalette(trackId, imageUrl) {
     };
 
     paletteCache.set(trackId, colors);
+    trimCache(paletteCache, MAX_CACHE_SIZE);
 
     return colors;
 
@@ -111,28 +127,42 @@ function getTrackId(url) {
   return match[0].split('/track/')[1].split('?')[0];
 }
 
-async function fetchWithToken(url, options = {}, retry = true) {
-  let token = await getValidToken();
-  let response = await fetch(url, {
-    ...options,
-    headers: {
-      ...(options.headers || {}),
-      Authorization: `Bearer ${token}`
-    }
-  });
+const MAX_FETCH_RETRIES = 2;
+const FETCH_RETRY_DELAY_MS = 200;
 
-  if (response.status === 401 && retry) {
-    token = await refreshAccessToken();
-    response = await fetch(url, {
+function shouldRetryFetchError(err) {
+  if (!err) return false;
+  const code = err.code || err?.cause?.code;
+  return typeof code === 'string' && code.startsWith('UND_ERR');
+}
+
+async function fetchWithToken(url, options = {}, retry = true, attempt = 1) {
+  let token = await getValidToken();
+
+  try {
+    const response = await fetch(url, {
       ...options,
       headers: {
         ...(options.headers || {}),
         Authorization: `Bearer ${token}`
       }
     });
-  }
 
-  return response;
+    if (response.status === 401 && retry) {
+      token = await refreshAccessToken();
+      return fetchWithToken(url, options, false, attempt);
+    }
+
+    return response;
+  } catch (err) {
+    if (attempt <= MAX_FETCH_RETRIES && shouldRetryFetchError(err)) {
+      console.warn(`Spotify fetch error, retrying (${attempt}/${MAX_FETCH_RETRIES})...`, err.code || err.message);
+      await new Promise(resolve => setTimeout(resolve, FETCH_RETRY_DELAY_MS));
+      return fetchWithToken(url, options, retry, attempt + 1);
+    }
+
+    throw err;
+  }
 }
 
 async function refreshAccessToken() {
@@ -225,49 +255,67 @@ async function addToQueue(url, maxSongLengthSeconds) {
 }
 
 async function getCurrentTrack() {
-  try {
-    const response = await fetchWithToken(
-      "https://api.spotify.com/v1/me/player"
-    );
-
-    if (response.status === 204) {
-      return {
-        isPlaying: false
-      };
-    }
-
-    if (!response.ok) {
-      throw new Error(
-        `Spotify playback lookup failed with ${response.status}`
-      );
-    }
-
-    const data = await response.json();
-
-    if (!data.item || data.currently_playing_type !== "track") {
-      return {
-        isPlaying: false
-      };
-    }
-
-    const track = formatTrack(data.item);
-    const media = await getMedia(track);
-
-    return {
-      ...track,
-      media,
-      progressMs: data.progress_ms,
-      durationMs: data.item.duration_ms,
-      isPlaying: data.is_playing,
-      fetchedAt: Date.now(),
-      palette: await getPalette(track.id, track.cover)
-    };
-
-  } catch (err) {
-    console.error("Spotify active lookup failed:");
-    console.error(err);
-    return false;
+  const now = Date.now();
+  if (currentTrackCache.expiresAt > now && currentTrackCache.value) {
+    return currentTrackCache.value;
   }
+
+  if (currentTrackCache.pending) {
+    return currentTrackCache.pending;
+  }
+
+  currentTrackCache.pending = (async () => {
+    try {
+      const response = await fetchWithToken(
+        "https://api.spotify.com/v1/me/player"
+      );
+
+      if (response.status === 204) {
+        return {
+          isPlaying: false
+        };
+      }
+
+      if (!response.ok) {
+        throw new Error(
+          `Spotify playback lookup failed with ${response.status}`
+        );
+      }
+
+      const data = await response.json();
+
+      if (!data.item || data.currently_playing_type !== "track") {
+        return {
+          isPlaying: false
+        };
+      }
+
+      const track = formatTrack(data.item);
+      const media = await getMedia(track);
+
+      const result = {
+        ...track,
+        media,
+        progressMs: data.progress_ms,
+        durationMs: data.item.duration_ms,
+        isPlaying: data.is_playing,
+        fetchedAt: Date.now(),
+        palette: await getPalette(track.id, track.cover)
+      };
+
+      currentTrackCache.value = result;
+      currentTrackCache.expiresAt = Date.now() + 2000;
+      return result;
+    } catch (err) {
+      console.error("Spotify active lookup failed:");
+      console.error(err);
+      return false;
+    } finally {
+      currentTrackCache.pending = null;
+    }
+  })();
+
+  return currentTrackCache.pending;
 }
 
 async function getUserQueue() {

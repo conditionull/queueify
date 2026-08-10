@@ -77,24 +77,6 @@ async function queueSong({
         return;
     }
 
-    if (!state.queueEnabled) {
-        const msg = `@${username} you're not allowed to queue songs! Aware`;
-
-        if (isRedeem && redemptionId) {
-            const refunded = await refundRedeem(
-                redemptionId,
-                broadcasterId,
-                state.spotifyRewardId
-            );
-
-            client.say(channel, refunded ? `${msg} (points refunded)` : msg);
-        } else {
-            client.say(channel, msg);
-        }
-
-        return;
-    }
-
     const lastUsed = state.cooldowns.get(username);
     const cooldownMs = state.cooldownSeconds * 1000;
 

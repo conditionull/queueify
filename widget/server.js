@@ -1,38 +1,60 @@
 const express = require("express");
 const path = require("path");
 const nocache = require("nocache");
+const fs = require("fs");
+const fsPromises = require("fs/promises");
 const app = express();
 const { getCurrentTrack } = require("../spotify");
-const fs = require("fs");
 
-let widgetConfig = JSON.parse(
-    fs.readFileSync(
-        path.join(__dirname, "config.json"),
-        "utf8"
-    )
-);
-
+let widgetConfig = {};
+let widgetConfigLoaded = false;
+const MAX_THEME_CLIENTS = 50;
 const themeClients = [];
 
+async function loadWidgetConfig() {
+    if (widgetConfigLoaded) return;
 
-app.get("/api/widget/config", (req, res) => {
+    try {
+        const contents = await fsPromises.readFile(
+            path.join(__dirname, "config.json"),
+            "utf8"
+        );
+        widgetConfig = JSON.parse(contents);
+    } catch (err) {
+        console.error("Failed to load widget config:", err.message);
+        widgetConfig = {};
+    }
+
+    widgetConfigLoaded = true;
+}
+
+app.get("/api/widget/config", async (req, res) => {
+    await loadWidgetConfig();
     res.json(widgetConfig);
 });
 
-app.get("/api/widget/themes", (req, res) => {
+app.get("/api/widget/themes", async (req, res) => {
     const themesPath = path.join(__dirname, "themes");
 
-    const themes = fs.readdirSync(themesPath)
-        .filter(name => {
-            return fs.statSync(
-                path.join(themesPath, name)
-            ).isDirectory();
-        });
+    try {
+        const entries = await fsPromises.readdir(themesPath, { withFileTypes: true });
+        const themes = entries
+            .filter(entry => entry.isDirectory())
+            .map(entry => entry.name);
 
-    res.json(themes);
+        res.json(themes);
+    } catch (err) {
+        console.error("Failed to list widget themes:", err.message);
+        res.status(500).json({ error: "Unable to list themes" });
+    }
 });
 
 app.get("/api/widget/theme-events", (req, res) => {
+    if (themeClients.length >= MAX_THEME_CLIENTS) {
+        res.status(503).send("Too many event stream connections");
+        return;
+    }
+
     res.setHeader(
         "Content-Type",
         "text/event-stream"
@@ -48,9 +70,7 @@ app.get("/api/widget/theme-events", (req, res) => {
         "keep-alive"
     );
 
-
     themeClients.push(res);
-
 
     req.on("close", () => {
         const index = themeClients.indexOf(res);
@@ -69,15 +89,19 @@ function notifyThemeChange(theme) {
     }
 }
 
-
-app.post("/api/widget/theme", express.json(), (req, res) => {
+app.post("/api/widget/theme", express.json(), async (req, res) => {
     const { theme } = req.body;
     widgetConfig.theme = theme;
 
-    fs.writeFileSync(
-        path.join(__dirname, "config.json"),
-        JSON.stringify(widgetConfig, null, 4)
-    );
+    try {
+        await fsPromises.writeFile(
+            path.join(__dirname, "config.json"),
+            JSON.stringify(widgetConfig, null, 4)
+        );
+    } catch (err) {
+        console.error("Failed to save widget config:", err.message);
+        return res.status(500).json({ error: "Unable to save theme" });
+    }
 
     notifyThemeChange(theme);
 
@@ -117,40 +141,63 @@ app.use(
     express.static(path.join(__dirname, "themes"))
 );
 
+const widgetSongCache = {
+    expiresAt: 0,
+    value: null,
+    pending: null
+};
+
 app.get("/api/widget/song", async (req, res) => {
     try {
-        const track = await getCurrentTrack();
-
-        if (!track || !track.isPlaying) {
-            return res.json({
-                title: null,
-                artist: null,
-                cover: null,
-
-                durationMs: 0,
-                progressMs: 0,
-
-                isPlaying: false,
-                fetchedAt: Date.now()
-            });
+        const now = Date.now();
+        if (widgetSongCache.expiresAt > now && widgetSongCache.value) {
+            return res.json(widgetSongCache.value);
         }
 
-        res.json({
-            title: track.name,
-            artist: track.artists,
-            cover: track.cover,
+        if (widgetSongCache.pending) {
+            const cached = await widgetSongCache.pending;
+            return res.json(cached);
+        }
 
-            media: track.media,
+        widgetSongCache.pending = (async () => {
+            try {
+                const track = await getCurrentTrack();
 
-            durationMs: track.durationMs,
-            progressMs: track.progressMs,
+                let payload;
+                if (!track || !track.isPlaying) {
+                    payload = {
+                        title: null,
+                        artist: null,
+                        cover: null,
+                        durationMs: 0,
+                        progressMs: 0,
+                        isPlaying: false,
+                        fetchedAt: Date.now()
+                    };
+                } else {
+                    payload = {
+                        title: track.name,
+                        artist: track.artists,
+                        cover: track.cover,
+                        media: track.media,
+                        durationMs: track.durationMs,
+                        progressMs: track.progressMs,
+                        isPlaying: track.isPlaying,
+                        fetchedAt: track.fetchedAt,
+                        palette: track.palette
+                    };
+                }
 
-            isPlaying: track.isPlaying,
-            fetchedAt: track.fetchedAt,
+                widgetSongCache.value = payload;
+                widgetSongCache.expiresAt = Date.now() + 2000;
+                return payload;
+            } finally {
+                widgetSongCache.pending = null;
+            }
+        })();
 
-            palette: track.palette
-        });
-
+        const data = await widgetSongCache.pending;
+        res.json(data);
     } catch (err) {
         console.error("Widget API failed:", err);
 

@@ -1,4 +1,5 @@
 const fs = require('fs');
+const fsPromises = require('fs/promises');
 const path = require('path');
 const crypto = require('node:crypto');
 
@@ -12,6 +13,9 @@ const DEFAULT_COOLDOWN_SECONDS = 60;
 const DEFAULT_REPEAT_BLOCK_SECONDS = 600;
 const DEFAULT_MAX_SONG_LENGTH = 360;
 const PROGRESS_RESET_GRACE_MS = 5000;
+const MAX_WRITE_RETRY = 3;
+
+const pendingWrites = new Map();
 
 function loadJSON(file, fallback) {
     try {
@@ -24,8 +28,32 @@ function loadJSON(file, fallback) {
     return fallback;
 }
 
+function scheduleWrite(file, value, retries = 0) {
+    if (pendingWrites.has(file)) {
+        clearTimeout(pendingWrites.get(file).timer);
+    }
+
+    const timer = setTimeout(async () => {
+        pendingWrites.delete(file);
+        try {
+            await fsPromises.writeFile(file, JSON.stringify(value, null, 2));
+        } catch (err) {
+            console.error(`Failed to save ${path.basename(file)}:`, err.message);
+            if (retries < MAX_WRITE_RETRY) {
+                const retryDelay = 200;
+                console.warn(`Retrying write to ${path.basename(file)} in ${retryDelay}ms (${retries + 1}/${MAX_WRITE_RETRY})`);
+                setTimeout(() => scheduleWrite(file, value, retries + 1), retryDelay);
+            } else {
+                console.error(`Max retries exceeded for ${path.basename(file)}`);
+            }
+        }
+    }, 100);
+
+    pendingWrites.set(file, { timer, value });
+}
+
 function saveJSON(file, value) {
-    fs.writeFileSync(file, JSON.stringify(value, null, 2));
+    scheduleWrite(file, value);
 }
 
 function normalizePendingItem(item) {
@@ -40,15 +68,25 @@ function normalizePendingItem(item) {
 }
 
 function reconcilePendingQueue(pendingQueue, spotifyQueue) {
+    const positions = new Map();
+    spotifyQueue.forEach((spotifyItem, index) => {
+        const existing = positions.get(spotifyItem.id);
+        if (existing) {
+            existing.push(index);
+        } else {
+            positions.set(spotifyItem.id, [index]);
+        }
+    });
+
     const result = [];
     let searchStart = 0;
 
     for (const localItem of pendingQueue) {
-        const matchIndex = spotifyQueue.findIndex((spotifyItem, index) => {
-            return index >= searchStart && spotifyItem.id === localItem.id;
-        });
+        const indexes = positions.get(localItem.id);
+        if (!indexes) continue;
 
-        if (matchIndex === -1) continue;
+        const matchIndex = indexes.find(index => index >= searchStart);
+        if (matchIndex === undefined) continue;
 
         result.push(localItem);
         searchStart = matchIndex + 1;

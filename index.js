@@ -44,10 +44,13 @@ const client = new tmi.Client({
 });
 
 async function main() {
-  startWidgetServer();
+  await startWidgetServer();
 
   const { default: startCanvasApi } = await import("./Spotify-Canvas-API/index.js");
   startCanvasApi();
+
+  const { checkVersion } = require('./version-check');
+  await checkVersion();
 
   if (process.env.OBS_WEBSOCKET_IP) {
     try {
