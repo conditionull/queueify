@@ -158,7 +158,7 @@ async function queueSong({
         return;
     }
 
-    const result = await addToQueue(url, state.maxSongLength);
+    const result = await addToQueue(url, state.maxSongLength, state.allowExplicit);
     const status = typeof result === "string" ? result : result.status;
 
     setTimeout(async () => {
@@ -169,6 +169,20 @@ async function queueSong({
             client.say(channel, `@${username} song added to queue!! DinoDance (${state.pendingQueue.length} in queue)`);
         } else if (status === "toolong") {
             const msg = `@${username} song is too long, max ${state.maxSongLength}s`;
+
+            if (isRedeem && redemptionId) {
+                const refunded = await refundRedeem(
+                    redemptionId,
+                    broadcasterId,
+                    state.spotifyRewardId
+                );
+
+                client.say(channel, refunded ? `${msg} (points refunded)` : msg);
+            } else {
+                client.say(channel, msg);
+            }
+        } else if (status === "explicit") {
+            const msg = `@${username} no explicit songs allowed`;
 
             if (isRedeem && redemptionId) {
                 const refunded = await refundRedeem(

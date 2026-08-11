@@ -102,6 +102,7 @@ const state = {
     queueEnabled: loadJSON(QUEUE_STATE_FILE, { enabled: true }).enabled ?? true,
     chatEnabled: loadJSON(QUEUE_SETTINGS_FILE, { chatEnabled: true }).chatEnabled ?? true,
     redeemsEnabled: loadJSON(QUEUE_SETTINGS_FILE, { redeemsEnabled: true }).redeemsEnabled ?? true,
+    allowExplicit: settings.allowExplicit ?? true,
     cooldownSeconds: settings.cooldownSeconds ?? DEFAULT_COOLDOWN_SECONDS,
     repeatBlockSeconds: settings.repeatBlockSeconds ?? DEFAULT_REPEAT_BLOCK_SECONDS,
     maxSongLength: settings.maxSongLength ?? DEFAULT_MAX_SONG_LENGTH,
@@ -127,6 +128,7 @@ const state = {
             maxSongLength: this.maxSongLength,
             chatEnabled: this.chatEnabled,
             redeemsEnabled: this.redeemsEnabled,
+            allowExplicit: this.allowExplicit,
             spotifyRewardId: this.spotifyRewardId,
             activeWidgetPosition: this.activeWidgetPosition,
             widgetPresets: this.widgetPresets

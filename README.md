@@ -19,22 +19,25 @@ Adding songs to playback queue requires Spotify Premium
 > **Comprehensive list of all commands at the bottom!!**
 
 ### Features
-- Displays an on-screen spotify widget so your viewers know what song is currently playing! (`Set this up with a browser source, more information below`)
-- Supports Twitch Channel Point Redemptions as an alternative way to queue songs
-- Lists the current queue with `!q`
-- Auto-refunds channel point redemptions when:
-    - user is on cooldown (queue delay)
-    - same-song repeat block triggers
-    - song is too long (maxSongLength)
-- Uses Twitch EventSub WebSocket for real-time redemption handling
-- Command to completely disable/enable the channel reward redemption (hides it from redemption list in chat `!rewardoff` and `!rewardon`)
-- View the currently playing song with `!np`
-- Prevents duplicate spam with per-user cooldowns and repeat-song blocking (a user can't queue the same song for [x] amount of time)
-- Configurable max song duration limit `!duration <seconds>`
-- Supports mod controls for opening/closing the queue, cooldowns, song duration, and blacklist management `view commands at bottom`
-- Persists queue state, deny list, cooldown settings, repeat delay, and pending attribution in JSON files
-- Automatically manages Spotify authentication tokens (access + refresh)
 
+- On-screen Spotify widget that displays the currently playing song to viewers. (`Set this up with a browser source in OBS; see instructions below.`)
+- Twitch Channel Point Redemptions as an alternative way to queue songs
+- View the current queue with `!q`
+- Automatic refunds for Channel Point Redemptions when:
+  - The user is on cooldown
+  - The same-song repeat block is active
+  - The song exceeds the configured maximum length
+  - And other various requirements set by the admin
+- Real-time Channel Point Redemption handling through Twitch EventSub WebSocket
+- Local tracks are supported by the OBS widget
+- Enable or disable Channel Point song requests with `!rewardon` | `!rewardoff`
+- View the currently playing song with `!np`
+- Per-user cooldowns and repeat-song blocking to prevent queue spam
+- Configurable maximum song duration with `!duration <seconds>`
+- Explicit song filtering to allow or prevent explicit songs from being queued `!explicit on` | `!explicit off`
+- Moderator controls for managing the queue, cooldowns, song duration, and blacklist. (`See commands below.`)
+- Persistent queue state, deny list, cooldown settings, repeat delay, and pending attribution stored in JSON files
+- Automatic management of Spotify access and refresh tokens
 
 <br />
 
@@ -216,6 +219,8 @@ if the OBS widget does not show on startup, `Refresh` the source in OBS
 | `!bottomcenter set` or `!bc set` | Mods | Set the "bottomcenter" location. The location data will be saved in queue-settings.json|
 | `!bottomcenter` or `!bc` | Mods + Whitelisted users | Move the spotify widget to the saved  bottomcenter preset  |
 | `!theme <minimal,swag,default>` | Mods | Change widget themes --> e.g.: `!theme swag` |
+| `!explicit on` or `!explicit off` | Mods | Allow or prevent explicit songs from being queued |
+
 
 > [!NOTE]
 !bottomcenter and !topright command names don't really matter. Just treat them both as unique positions you can set for any position in OBS. e.g.: `!topright set` can be at the bottom left for the widgets location

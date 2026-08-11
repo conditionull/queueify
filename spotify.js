@@ -222,7 +222,7 @@ async function getValidToken() {
   return await refreshAccessToken();
 }
 
-async function addToQueue(url, maxSongLengthSeconds) {
+async function addToQueue(url, maxSongLengthSeconds, allowExplicit = true) {
   try {
     if (!url) return 'noinput';
 
@@ -236,6 +236,7 @@ async function addToQueue(url, maxSongLengthSeconds) {
     if (!trackRes.ok) return 'failed';
 
     const trackData = await trackRes.json();
+    if (trackData.explicit && !allowExplicit) return 'explicit';
     if (trackData.duration_ms > maxSongLengthSeconds * 1000) return 'toolong';
 
     const queueRes = await fetchWithToken(`https://api.spotify.com/v1/me/player/queue?uri=${encodeURIComponent(uri)}`, {
