@@ -7,7 +7,15 @@ const app = express();
 const CLIENT_ID = process.env.SPOTIFY_CLIENT_ID;
 const CLIENT_SECRET = process.env.SPOTIFY_CLIENT_SECRET;
 const REDIRECT_URI = process.env.SPOTIFY_REDIRECT_URI || 'http://127.0.0.1:8000/callback';
-const PORT = new URL(REDIRECT_URI).port || 8000;
+const redirectUrl = new URL(REDIRECT_URI);
+const isLocalDevelopmentRedirect = redirectUrl.protocol === 'http:' && redirectUrl.hostname === '127.0.0.1';
+
+if (redirectUrl.protocol !== 'https:' && !isLocalDevelopmentRedirect) {
+  console.error('SPOTIFY_REDIRECT_URI must use HTTPS, except for http://127.0.0.1 during local development.');
+  process.exit(1);
+}
+
+const PORT = redirectUrl.port || 8000;
 const SCOPES = 'user-modify-playback-state user-read-currently-playing user-read-playback-state';
 
 if (!CLIENT_ID || !CLIENT_SECRET) {

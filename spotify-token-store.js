@@ -34,7 +34,9 @@ function saveToken(token) {
   const tmpFile = `${TOKEN_FILE}.tmp`;
 
   fs.writeFileSync(tmpFile, JSON.stringify(normalized, null, 2));
+  fs.chmodSync(tmpFile, 0o600);
   fs.renameSync(tmpFile, TOKEN_FILE);
+  fs.chmodSync(TOKEN_FILE, 0o600);
 }
 
 module.exports = {

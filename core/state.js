@@ -96,9 +96,13 @@ function reconcilePendingQueue(pendingQueue, spotifyQueue) {
 }
 
 const settings = loadJSON(QUEUE_SETTINGS_FILE, {});
+const blacklistData = loadJSON(BLACKLIST_FILE, []);
+const legacyUsers = Array.isArray(blacklistData) ? blacklistData : blacklistData.users;
 
 const state = {
-    blacklist: new Set(loadJSON(BLACKLIST_FILE, [])),
+    blacklist: new Set(legacyUsers || []),
+    blockedArtists: new Set(Array.isArray(blacklistData) ? [] : blacklistData.artists || []),
+    blockedSongs: new Set(Array.isArray(blacklistData) ? [] : blacklistData.songs || []),
     queueEnabled: loadJSON(QUEUE_STATE_FILE, { enabled: true }).enabled ?? true,
     chatEnabled: loadJSON(QUEUE_SETTINGS_FILE, { chatEnabled: true }).chatEnabled ?? true,
     redeemsEnabled: loadJSON(QUEUE_SETTINGS_FILE, { redeemsEnabled: true }).redeemsEnabled ?? true,
@@ -114,7 +118,11 @@ const state = {
     widgetPresets: settings.widgetPresets ?? {},
 
     saveBlacklist() {
-        saveJSON(BLACKLIST_FILE, [...this.blacklist]);
+        saveJSON(BLACKLIST_FILE, {
+            users: [...this.blacklist],
+            artists: [...this.blockedArtists],
+            songs: [...this.blockedSongs]
+        });
     },
 
     saveQueueState() {

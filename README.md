@@ -167,7 +167,7 @@ If you `don't want` the canvas video, then change "canvas" to "cover" in [proper
 If you encounter any issues, report an issue here on github and I'll respond asap
 
 ### 7. OBS Widget Position Setup (optional step)
-- (use case: Your mods and/or whitelisted users can move the widget from Twitch chat depending on the game you're playing or if blocking information)
+- Use case: Your mods and/or whitelisted users can move the widget from Twitch chat depending on the game you're playing or if blocking information
 - Add whitelisted users in `queueify/config/settings.json` <br />
 
 The `!topright set` and `!bottomcenter set` commands require an OBS WebSocket connection.
@@ -210,6 +210,10 @@ if the OBS widget does not show on startup, `Refresh` the source in OBS
 | `!repeatdelay <seconds>` | Mods | Change the same-user same-song block window |
 | `!deny <username>` | Mods | Block a user from queuing |
 | `!allow <username>` | Mods | Unblock a user |
+| `!blockartist <artist_name>` | Mods | Block songs by an artist, including featured artists |
+| `!blocksong <spotify_url>` | Mods | Block a specific Spotify song |
+| `!unblockartist <artist_name>` | Mods | Unblock an artist |
+| `!unblocksong <spotify_url>` | Mods | Unblock a specific Spotify song |
 | `!rewardoff` | Mods | Disable channel reward |
 | `!rewardon` | Mods | Enable channel reward |
 | `!chatoff` | Mods | Disable chat queueing |
@@ -227,11 +231,11 @@ if the OBS widget does not show on startup, `Refresh` the source in OBS
 
 You can customize command aliases by editing the `aliases` array in each command file under the `commands/` directory, for example:
 
-Each widget theme has their own !bc and !tr position. So make sure to set unique positions for each theme (if you're using the positional commands)
-
 ```js
 aliases: ['q', 'sr', 'add'],
 ```
+
+Each widget theme has their own !bc and !tr position. So make sure to set unique positions for each theme (if you're using the positional commands)
 
 `queue-settings.json` will generate once you set a value for the following commands: `delay`, `duration`, or `repeatdelay`. Otherwise, the default values will be used.
 
@@ -243,9 +247,9 @@ Thanks [Paxsenix0](https://github.com/Paxsenix0) for creating the [Spotify Canva
 
 
 ### Credit
-~ You don't need to credit me, feel free to use it however you want!<br />
-~ Maybe star this repo if you enjoyed using it :>
-~ My twitch channel: [sadrobotsdontcry](https://www.twitch.tv/sadrobotsdontcry)
+- You don't need to credit me, feel free to use it however you want!<br />
+- Maybe star this repo if you enjoyed using it :>
+- My twitch channel: [sadrobotsdontcry](https://www.twitch.tv/sadrobotsdontcry)
 
 ### License
 This project is licensed under the [MIT License](LICENSE).

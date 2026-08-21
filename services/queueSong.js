@@ -1,4 +1,4 @@
-const { addToQueue, getTrackId } = require("../spotify.js");
+const { addToQueue, getTrackId, getTrack } = require("../spotify.js");
 const syncQueue = require("./syncQueue.js")
 const CLIENT_ID = process.env.TWITCH_CLIENT_ID;
 const ACCESS_TOKEN = process.env.TWITCH_ACCESS_TOKEN;
@@ -33,6 +33,15 @@ async function refundRedeem(redemptionId, broadcasterId, rewardId) {
     }
 }
 
+async function rejectRequest({ client, channel, username, message, isRedeem, redemptionId, broadcasterId, state }) {
+    if (isRedeem && redemptionId) {
+        const refunded = await refundRedeem(redemptionId, broadcasterId, state.spotifyRewardId);
+        client.say(channel, refunded ? `${message} (points refunded)` : message);
+    } else {
+        client.say(channel, message);
+    }
+}
+
 async function queueSong({
     client,
     channel,
@@ -49,11 +58,7 @@ async function queueSong({
         client.say(channel, `@${username} couldn't check the Spotify queue. umm`);
 
         if (isRedeem && redemptionId) {
-            await refundRedeem(
-                redemptionId,
-                broadcasterId,
-                state.spotifyRewardId
-            );
+            await refundRedeem(redemptionId, broadcasterId, state.spotifyRewardId);
         }
 
         return;
@@ -62,17 +67,7 @@ async function queueSong({
     if (!state.queueEnabled) {
         const msg = `@${username} the queue is currently closed Sadge`;
 
-        if (isRedeem && redemptionId) {
-            const refunded = await refundRedeem(
-                redemptionId,
-                broadcasterId,
-                state.spotifyRewardId
-            );
-
-            client.say(channel, refunded ? `${msg} (points refunded)` : msg);
-        } else {
-            client.say(channel, msg);
-        }
+        await rejectRequest({ client, channel, username, message: msg, isRedeem, redemptionId, broadcasterId, state });
 
         return;
     }
@@ -87,21 +82,7 @@ async function queueSong({
             const seconds = Math.ceil(remaining / 1000);
             const msg = `@${username} wait ${seconds}s before queueing again`;
 
-            if (isRedeem && redemptionId) {
-                const refunded = await refundRedeem(
-                    redemptionId,
-                    broadcasterId,
-                    state.spotifyRewardId
-                );
-
-                if (refunded) {
-                    client.say(channel, `${msg} (points refunded)`);
-                } else {
-                    client.say(channel, msg);
-                }
-            } else {
-                client.say(channel, msg);
-            }
+            await rejectRequest({ client, channel, username, message: msg, isRedeem, redemptionId, broadcasterId, state });
 
             return;
         }
@@ -111,18 +92,56 @@ async function queueSong({
 
     if (!trackId) {
         const msg = `@${username} invalid song URL, try: https://open.spotify.com/track/<id>`;
-        if (isRedeem && redemptionId) {
-            const refunded = await refundRedeem(
-                redemptionId,
-                broadcasterId,
-                state.spotifyRewardId
-            );
+        await rejectRequest({ client, channel, username, message: msg, isRedeem, redemptionId, broadcasterId, state });
 
-            client.say(channel, refunded ? `${msg} (points refunded)` : msg);
-        } else {
-            client.say(channel, msg);
-        }
+        return;
+    }
 
+    const track = await getTrack(url);
+
+    if (!track) {
+        await rejectRequest({
+            client,
+            channel,
+            username,
+            message: `@${username} couldn't find that Spotify song`,
+            isRedeem,
+            redemptionId,
+            broadcasterId,
+            state
+        });
+        return;
+    }
+
+    const blockedArtist = track.artists?.find(artist =>
+        state.blockedArtists.has(artist.name.trim().toLowerCase())
+    );
+
+    if (blockedArtist) {
+        await rejectRequest({
+            client,
+            channel,
+            username,
+            message: `@${username} the artist ${blockedArtist.name} is blocked`,
+            isRedeem,
+            redemptionId,
+            broadcasterId,
+            state
+        });
+        return;
+    }
+
+    if (state.blockedSongs.has(track.id)) {
+        await rejectRequest({
+            client,
+            channel,
+            username,
+            message: `@${username} that song is blocked`,
+            isRedeem,
+            redemptionId,
+            broadcasterId,
+            state
+        });
         return;
     }
 
@@ -158,7 +177,7 @@ async function queueSong({
         return;
     }
 
-    const result = await addToQueue(url, state.maxSongLength, state.allowExplicit);
+    const result = await addToQueue(url, state.maxSongLength, state.allowExplicit, track);
     const status = typeof result === "string" ? result : result.status;
 
     setTimeout(async () => {
@@ -196,7 +215,20 @@ async function queueSong({
                 client.say(channel, msg);
             }
         } else if (status === "failed") {
-            client.say(channel, `@${username} couldn't add to queue - is Spotify playing?`);
+            if (result.message) {
+                console.error(`Failed to add song for @${username}:`, result.message);
+            }
+
+            await rejectRequest({
+                client,
+                channel,
+                username,
+                message: `@${username} couldn't add that song to the queue right now.`,
+                isRedeem,
+                redemptionId,
+                broadcasterId,
+                state
+            });
         }
     }, 1000);
 }

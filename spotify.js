@@ -129,6 +129,46 @@ function getTrackId(url) {
 
 const MAX_FETCH_RETRIES = 2;
 const FETCH_RETRY_DELAY_MS = 200;
+const MAX_RATE_LIMIT_RETRIES = 3;
+
+class SpotifyApiError extends Error {
+  constructor(status, message) {
+    super(message);
+    this.name = 'SpotifyApiError';
+    this.status = status;
+  }
+}
+
+async function getApiError(response) {
+  try {
+    const data = await response.json();
+    return data?.error?.message || data?.message || `Spotify API request failed with status ${response.status}`;
+  } catch {
+    return `Spotify API request failed with status ${response.status}`;
+  }
+}
+
+function getRetryDelay(response, attempt) {
+  const retryAfter = Number(response.headers?.get?.('Retry-After'));
+  if (Number.isFinite(retryAfter) && retryAfter >= 0) {
+    return retryAfter * 1000;
+  }
+
+  return FETCH_RETRY_DELAY_MS * 2 ** (attempt - 1);
+}
+
+async function fetchWithRateLimitRetry(url, options, attempt = 1) {
+  const response = await fetch(url, options);
+
+  if (response.status === 429 && attempt <= MAX_RATE_LIMIT_RETRIES) {
+    const delay = getRetryDelay(response, attempt);
+    console.warn(`Spotify rate limit reached, retrying in ${delay}ms (${attempt}/${MAX_RATE_LIMIT_RETRIES})...`);
+    await new Promise(resolve => setTimeout(resolve, delay));
+    return fetchWithRateLimitRetry(url, options, attempt + 1);
+  }
+
+  return response;
+}
 
 function shouldRetryFetchError(err) {
   if (!err) return false;
@@ -151,6 +191,17 @@ async function fetchWithToken(url, options = {}, retry = true, attempt = 1) {
     if (response.status === 401 && retry) {
       token = await refreshAccessToken();
       return fetchWithToken(url, options, false, attempt);
+    }
+
+    if (response.status === 429 && attempt <= MAX_RATE_LIMIT_RETRIES) {
+      const delay = getRetryDelay(response, attempt);
+      console.warn(`Spotify rate limit reached, retrying in ${delay}ms (${attempt}/${MAX_RATE_LIMIT_RETRIES})...`);
+      await new Promise(resolve => setTimeout(resolve, delay));
+      return fetchWithToken(url, options, retry, attempt + 1);
+    }
+
+    if (!response.ok) {
+      throw new SpotifyApiError(response.status, await getApiError(response));
     }
 
     return response;
@@ -176,7 +227,7 @@ async function refreshAccessToken() {
     throw new Error('Missing SPOTIFY_CLIENT_ID or SPOTIFY_CLIENT_SECRET in .env');
   }
 
-  const response = await fetch('https://accounts.spotify.com/api/token', {
+  const response = await fetchWithRateLimitRetry('https://accounts.spotify.com/api/token', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/x-www-form-urlencoded',
@@ -190,10 +241,14 @@ async function refreshAccessToken() {
     })
   });
 
-  const data = await response.json();
+  const data = await response.json().catch(() => ({}));
 
   if (!response.ok) {
-    throw new Error(`Spotify token refresh failed: ${JSON.stringify(data)}`);
+    if (response.status === 400 && data.error === 'invalid_grant') {
+      throw new Error('Spotify refresh token expired or was revoked. Run `node auth.js` to authorize again.');
+    }
+
+    throw new Error(data.error_description || data.error || `Spotify token refresh failed with status ${response.status}`);
   }
 
   if (!data.access_token || !data.expires_in) {
@@ -222,7 +277,29 @@ async function getValidToken() {
   return await refreshAccessToken();
 }
 
-async function addToQueue(url, maxSongLengthSeconds, allowExplicit = true) {
+async function addToQueue(url, maxSongLengthSeconds, allowExplicit = true, trackData = null) {
+  return addTrackToQueue(url, maxSongLengthSeconds, allowExplicit, trackData);
+}
+
+async function getTrack(url) {
+  try {
+    if (!url) return 'noinput';
+
+    const trackId = getTrackId(url);
+    if (!trackId) return 'invalid';
+
+    const trackRes = await fetchWithToken(`https://api.spotify.com/v1/tracks/${trackId}`);
+
+    if (!trackRes.ok) return null;
+
+    return await trackRes.json();
+  } catch (err) {
+    console.error('Spotify track lookup failed:', err.message, err.status ? `(HTTP ${err.status})` : '');
+    return null;
+  }
+}
+
+async function addTrackToQueue(url, maxSongLengthSeconds, allowExplicit = true, trackData = null) {
   try {
     if (!url) return 'noinput';
 
@@ -230,12 +307,9 @@ async function addToQueue(url, maxSongLengthSeconds, allowExplicit = true) {
     if (!trackId) return 'invalid';
 
     const uri = `spotify:track:${trackId}`;
+    trackData ??= await getTrack(url);
+    if (!trackData) return 'failed';
 
-    const trackRes = await fetchWithToken(`https://api.spotify.com/v1/tracks/${trackId}`);
-
-    if (!trackRes.ok) return 'failed';
-
-    const trackData = await trackRes.json();
     if (trackData.explicit && !allowExplicit) return 'explicit';
     if (trackData.duration_ms > maxSongLengthSeconds * 1000) return 'toolong';
 
@@ -250,8 +324,8 @@ async function addToQueue(url, maxSongLengthSeconds, allowExplicit = true) {
       track: formatTrack(trackData)
     };
   } catch (err) {
-    console.error('Spotify queue failed:', err.message);
-    return 'failed';
+    console.error('Spotify queue failed:', err.message, err.status ? `(HTTP ${err.status})` : '');
+    return { status: 'failed', message: err.message };
   }
 }
 
@@ -278,9 +352,7 @@ async function getCurrentTrack() {
       }
 
       if (!response.ok) {
-        throw new Error(
-          `Spotify playback lookup failed with ${response.status}`
-        );
+        throw new SpotifyApiError(response.status, await getApiError(response));
       }
 
       const data = await response.json();
@@ -308,8 +380,7 @@ async function getCurrentTrack() {
       currentTrackCache.expiresAt = Date.now() + 2000;
       return result;
     } catch (err) {
-      console.error("Spotify active lookup failed:");
-      console.error(err);
+      console.error("Spotify active lookup failed:", err.message, err.status ? `(HTTP ${err.status})` : '');
       return false;
     } finally {
       currentTrackCache.pending = null;
@@ -323,7 +394,9 @@ async function getUserQueue() {
   try {
     const response = await fetchWithToken('https://api.spotify.com/v1/me/player/queue');
 
-    if (!response.ok) throw new Error(`Spotify queue lookup failed with ${response.status}`);
+    if (!response.ok) {
+      throw new SpotifyApiError(response.status, await getApiError(response));
+    }
 
     const data = await response.json();
     return {
@@ -333,9 +406,9 @@ async function getUserQueue() {
         .map(formatTrack)
     };
   } catch (err) {
-    console.error('Spotify queue lookup failed:', err.message);
+    console.error('Spotify queue lookup failed:', err.message, err.status ? `(HTTP ${err.status})` : '');
     return false;
   }
 }
 
-module.exports = { addToQueue, getCurrentTrack, getUserQueue, getTrackId };
+module.exports = { addToQueue, getCurrentTrack, getUserQueue, getTrackId, getTrack };
