@@ -1,3 +1,5 @@
+const { sayMessage } = require('../services/messages');
+
 module.exports = {
     name: 'allow',
     aliases: ['undeny', 'whitelist', 'unblock'],
@@ -7,13 +9,13 @@ module.exports = {
         const target = args[0]?.toLowerCase();
 
         if (!target) {
-            client.say(channel, 'usage: !allow <username>');
+            sayMessage(client, channel, 'moderation.usageAllow');
             return;
         }
 
         state.blacklist.delete(target);
         state.saveBlacklist();
 
-        client.say(channel, `@${target} can queue songs again smileCat`);
+        sayMessage(client, channel, 'moderation.allowed', { username: target });
     }
 };

@@ -47,6 +47,13 @@ Adding songs to playback queue requires Spotify Premium
 - [OBS Studio](https://obsproject.com/download) (Streamlabs OBS etc. will prob work, didn't test it)
 - [Spotify Premium](https://www.spotify.com/premium/) account (required for adding songs to playback queue)
 
+### Edit Twitch Chat Messages
+
+All messages sent to Twitch chat can be edited in [config/messages.json](config/messages.json). Messages are grouped by purpose, such as `queue`, `moderation`, `settings`, `playback`, and `widget`, so each entry describes the response it controls.
+
+Values that change at runtime use placeholders such as `{{username}}`, `{{artist}}`, `{{duration}}`, or `{{count}}`. Keep the placeholder names in place when editing those messages.
+
+Valid changes are reloaded automatically while the bot is running. A restart is not required. If the file is missing, temporarily incomplete, or invalid JSON, Queueify keeps using the last valid messages and logs a warning instead of interrupting the bot.
 
 ## Setup
 

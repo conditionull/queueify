@@ -1,5 +1,6 @@
 const obs = require("../services/obs");
 const state = require("../core/state");
+const { sayMessage } = require('../services/messages');
 
 function getPresetName(theme, currentPosition) {
     if (currentPosition === "bottomcenter") {
@@ -23,7 +24,7 @@ module.exports = {
             );
 
             const themes = await res.json();
-            client.say(channel, `Available themes: ${themes.join(", ")}`);
+            sayMessage(client, channel, 'widget.availableThemes', { themes: themes.join(', ') });
 
             return;
         }
@@ -35,10 +36,10 @@ module.exports = {
         const themes = await themesRes.json();
 
         if (!themes.includes(theme)) {
-            client.say(
-                channel,
-                `Unknown theme "${theme}". Available: ${themes.join(", ")}`
-            );
+            sayMessage(client, channel, 'widget.unknownTheme', {
+                theme,
+                themes: themes.join(', ')
+            });
 
             return;
         }
@@ -47,7 +48,7 @@ module.exports = {
         const config = await configRes.json();
 
         if (config.theme === theme) {
-            client.say(channel, `Widget theme is already set to ${theme}`);
+            sayMessage(client, channel, 'widget.themeAlreadySet', { theme });
             return;
         }
 
@@ -79,6 +80,6 @@ module.exports = {
             console.error("Failed to apply theme position preset:", err.message);
         }
 
-        client.say(channel, `Widget theme changed to ${theme}`);
+        sayMessage(client, channel, 'widget.themeChanged', { theme });
     }
 };

@@ -1,4 +1,5 @@
 const formatTime = require('../helpers/formatTime');
+const { sayMessage } = require('../services/messages');
 
 module.exports = {
     name: 'duration',
@@ -7,18 +8,12 @@ module.exports = {
 
     async execute({ client, channel, username, args, state, isMod }) {
         if (!args[0]) {
-            client.say(
-                channel,
-                `Current max song length: ${formatTime(state.maxSongLength)}`
-            );
+            sayMessage(client, channel, 'settings.currentDuration', { duration: formatTime(state.maxSongLength) });
             return;
         }
 
         if (!isMod) {
-            client.say(
-                channel,
-                `@${username} you don't have permission to change this value`
-            );
+            sayMessage(client, channel, 'settings.permissionToChange', { username });
             return;
         }
 
@@ -26,19 +21,16 @@ module.exports = {
 
         if (
             isNaN(newMaxLength) || newMaxLength <= 0) {
-            client.say(
-                channel,
-                `@${username} please provide a valid duration in seconds (must be > 0)`
-            );
+            sayMessage(client, channel, 'settings.invalidDuration', { username });
             return;
         }
 
         state.maxSongLength = newMaxLength;
         state.saveSettings();
 
-        client.say(
-            channel,
-            `@${username} the maximum song length has been set to ${formatTime(newMaxLength)}`
-        );
+        sayMessage(client, channel, 'settings.durationUpdated', {
+            username,
+            duration: formatTime(newMaxLength)
+        });
     }
 };

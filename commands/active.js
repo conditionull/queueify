@@ -1,4 +1,5 @@
 const { getCurrentTrack } = require('../spotify');
+const { sayMessage } = require('../services/messages');
 
 module.exports = {
     name: 'active',
@@ -8,15 +9,18 @@ module.exports = {
         const currentTrack = await getCurrentTrack();
 
         if (currentTrack === false) {
-            client.say(channel, "Couldn't check the current Spotify song. Is Spotify running?");
+            sayMessage(client, channel, 'playback.currentLookupFailed');
             return;
         }
 
         if (!currentTrack) {
-            client.say(channel, 'No Spotify track is currently playing.');
+            sayMessage(client, channel, 'playback.nothingPlaying');
             return;
         }
 
-        client.say(channel, `Current song: ${currentTrack.name} - ${currentTrack.artists}`);
+        sayMessage(client, channel, 'playback.currentSong', {
+            name: currentTrack.name,
+            artists: currentTrack.artists
+        });
     }
 };

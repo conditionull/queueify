@@ -1,3 +1,5 @@
+const { sayMessage } = require('../services/messages');
+
 module.exports = {
     name: 'chaton',
     aliases: ['enablechat'],
@@ -5,13 +7,13 @@ module.exports = {
 
     execute({ client, channel, state }) {
         if (state.chatEnabled) {
-            client.say(channel, 'Chat queue is already enabled');
+            sayMessage(client, channel, 'settings.chatAlreadyEnabled');
             return;
         }
 
         state.chatEnabled = true;
         state.saveSettings();
 
-        client.say(channel, 'Chat song requests enabled');
+        sayMessage(client, channel, 'settings.chatEnabled');
     }
 };

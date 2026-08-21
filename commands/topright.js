@@ -1,6 +1,7 @@
 const obs = require("../services/obs");
 const settings = require("../config/settings");
 const state = require("../core/state");
+const { sayMessage } = require('../services/messages');
 
 async function getCurrentTheme() {
     try {
@@ -28,7 +29,7 @@ module.exports = {
 
         if (args[0] === "set") {
             if (!isMod) {
-                client.say(channel, `@${username} only mods can save presets.`);
+                sayMessage(client, channel, 'widget.topOnlyMods', { username });
                 return;
             }
 
@@ -39,12 +40,12 @@ module.exports = {
             state.widgetPresets[presetName] = transform;
             state.saveSettings();
 
-            client.say(channel, `Saved Top Right preset for ${theme}.`);
+            sayMessage(client, channel, 'widget.topSaved', { theme });
             return;
         }
 
         if (!isMod && !isAllowedUser) {
-            client.say(channel, `@${username} you lack permission to use this command.`);
+            sayMessage(client, channel, 'widget.topPermission', { username });
             return;
         }
 
@@ -53,7 +54,7 @@ module.exports = {
         const preset = state.widgetPresets[presetName] || state.widgetPresets.topright;
 
         if (!preset) {
-            client.say(channel, `Top Right preset not set for ${theme}. Use !tr set`);
+            sayMessage(client, channel, 'widget.topMissing', { theme });
             return;
         }
         state.activeWidgetPosition = "topright";

@@ -1,0 +1,123 @@
+const fs = require('fs');
+const path = require('path');
+
+const MESSAGES_FILE = path.join(__dirname, '../config/messages.json');
+const RELOAD_DELAY_MS = 100;
+
+const defaultMessages = {
+    general: {
+        permissionDenied: '@{{username}} you don\'t have permission to use this command. wuh',
+        commandFailed: '@{{username}} command failed. umm'
+    },
+    queue: {
+        chatDisabledRedeemEnabled: '@{{username}} Chat requests are disabled. Use the channel point redeem instead :)',
+        chatAndRedeemDisabled: '@{{username}} Both chat and channel point redeems are disabled Sadge',
+        spotifyQueueCheckFailed: 'Couldn\'t check the Spotify queue. umm',
+        empty: 'No queued songs are currently pending Aware',
+        item: '{{position}}. {{name}} (@{{queuedBy}})',
+        itemList: '{{items}}',
+        closed: '@{{username}} the queue is currently closed Sadge',
+        cooldown: '@{{username}} wait {{seconds}}s before queueing again',
+        invalidUrl: '@{{username}} invalid song URL, try: https://open.spotify.com/track/<id>',
+        notFound: '@{{username}} couldn\'t find that Spotify song',
+        blockedArtist: '@{{username}} the artist {{artist}} is blocked',
+        blockedSong: '@{{username}} that song is blocked',
+        recent: '@{{username}} you queued that song recently. Try again in {{seconds}}s{{refundSuffix}}',
+        added: '@{{username}} song added to queue!! DinoDance ({{count}} in queue)',
+        tooLong: '@{{username}} song is too long, max {{maxSeconds}}s{{refundSuffix}}',
+        explicit: '@{{username}} no explicit songs allowed{{refundSuffix}}',
+        addFailed: '@{{username}} couldn\'t add that song to the queue right now.'
+    },
+    moderation: {
+        usageAllow: 'usage: !allow <username>', allowed: '@{{username}} can queue songs again smileCat',
+        usageDeny: 'usage: !deny <username>', denied: '@{{username}} can no longer queue songs D: wuh',
+        usageBlockArtist: 'usage: !blockartist <artist_name>', blockedArtist: 'artist blocked: {{artist}}',
+        usageBlockSong: 'usage: !blocksong <spotify_track_url>', blockedSong: 'song blocked',
+        usageUnblockArtist: 'usage: !unblockartist <artist_name>', artistNotBlocked: 'artist was not blocked: {{artist}}',
+        artistUnblocked: 'artist unblocked: {{artist}}', usageUnblockSong: 'usage: !unblocksong <spotify_track_url>', songUnblocked: 'song unblocked'
+    },
+    settings: {
+        queueAlreadyClosed: 'Queue is already closed', queueClosed: 'Song queue is now closed! DinoDance',
+        queueAlreadyOpen: 'Queue is already open', queueOpened: 'Song queue is now open! DinoDance',
+        chatAlreadyDisabled: 'Chat queue is already disabled', chatDisabled: 'Chat song requests disabled',
+        chatAlreadyEnabled: 'Chat queue is already enabled', chatEnabled: 'Chat song requests enabled',
+        currentDelay: 'You can queue a song every {{delay}}', invalidDelay: 'usage: !delay <seconds> (0-3600)',
+        delayUpdated: 'Queue delay set to {{delay}}', currentDuration: 'Current max song length: {{duration}}',
+        invalidDuration: '@{{username}} please provide a valid duration in seconds (must be > 0)',
+        durationUpdated: '@{{username}} the maximum song length has been set to {{duration}}',
+        permissionToChange: '@{{username}} you don\'t have permission to change this value',
+        explicitAlreadyAllowed: 'Explicit songs are already allowed', explicitAllowed: 'Explicit songs are now allowed',
+        explicitAlreadyBlocked: 'Explicit songs are already blocked', explicitBlocked: 'Explicit songs are now blocked',
+        explicitUsage: 'Usage: !explicit on | !explicit off', currentRepeatDelay: 'Current same-song repeat block is {{delay}}',
+        invalidRepeatDelay: 'usage: !repeatdelay <seconds> (0-86400)', repeatDelayUpdated: 'Same-song queue delay set to {{delay}}'
+    },
+    playback: {
+        currentLookupFailed: 'Couldn\'t check the current Spotify song. Is Spotify running?',
+        nothingPlaying: 'No Spotify track is currently playing.', currentSong: 'Current song: {{name}} - {{artists}}'
+    },
+    widget: {
+        bottomOnlyMods: '@{{username}} only mods can save presets.', bottomSaved: 'Saved Bottom Center preset for {{theme}}.',
+        bottomPermission: '@{{username}} you lack permission to use this command.', bottomMissing: 'Bottom Center preset not set for {{theme}}. Use !bc set',
+        topOnlyMods: '@{{username}} only mods can save presets.', topSaved: 'Saved Top Right preset for {{theme}}.',
+        topPermission: '@{{username}} you lack permission to use this command.', topMissing: 'Top Right preset not set for {{theme}}. Use !tr set',
+        availableThemes: 'Available themes: {{themes}}', unknownTheme: 'Unknown theme "{{theme}}". Available: {{themes}}',
+        themeAlreadySet: 'Widget theme is already set to {{theme}}', themeChanged: 'Widget theme changed to {{theme}}',
+        position: 'Position: X={{x}}, Y={{y}}'
+    }
+};
+
+let activeMessages = structuredClone(defaultMessages);
+let reloadTimer;
+
+function getNestedValue(source, key) {
+    return key.split('.').reduce((value, part) => value?.[part], source);
+}
+
+function loadMessages() {
+    try {
+        const parsed = JSON.parse(fs.readFileSync(MESSAGES_FILE, 'utf8'));
+        activeMessages = { ...structuredClone(defaultMessages), ...parsed };
+        for (const [category, defaults] of Object.entries(defaultMessages)) {
+            activeMessages[category] = { ...defaults, ...(parsed[category] || {}) };
+        }
+    } catch (err) {
+        console.warn(`Failed to load ${path.basename(MESSAGES_FILE)}; keeping previous messages:`, err.message);
+    }
+}
+
+function formatMessage(template, values = {}) {
+    return template.replace(/{{\s*([\w.]+)\s*}}/g, (token, key) => {
+        if (!(key in values)) {
+            console.warn(`Missing value for message placeholder ${token}`);
+            return '';
+        }
+        return String(values[key]);
+    });
+}
+
+function message(key, values = {}) {
+    const template = getNestedValue(activeMessages, key) ?? getNestedValue(defaultMessages, key);
+    if (typeof template !== 'string') {
+        console.warn(`Unknown chat message key: ${key}`);
+        return '';
+    }
+    return formatMessage(template, values);
+}
+
+function sayMessage(client, channel, key, values = {}) {
+    client.say(channel, message(key, values));
+}
+
+function watchMessages() {
+    const watcher = fs.watchFile(MESSAGES_FILE, { interval: 500 }, () => {
+        clearTimeout(reloadTimer);
+        reloadTimer = setTimeout(loadMessages, RELOAD_DELAY_MS);
+    });
+
+    watcher.unref?.();
+}
+
+loadMessages();
+watchMessages();
+
+module.exports = { message, sayMessage };

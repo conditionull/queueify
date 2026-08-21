@@ -1,3 +1,5 @@
+const { sayMessage } = require('../services/messages');
+
 module.exports = {
     name: 'chatoff',
     aliases: ['disablechat'],
@@ -5,13 +7,13 @@ module.exports = {
 
     execute({ client, channel, state }) {
         if (!state.chatEnabled) {
-            client.say(channel, 'Chat queue is already disabled');
+            sayMessage(client, channel, 'settings.chatAlreadyDisabled');
             return;
         }
 
         state.chatEnabled = false;
         state.saveSettings();
 
-        client.say(channel, 'Chat song requests disabled');
+        sayMessage(client, channel, 'settings.chatDisabled');
     }
 };

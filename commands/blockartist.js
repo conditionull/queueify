@@ -1,3 +1,5 @@
+const { sayMessage } = require('../services/messages');
+
 module.exports = {
     name: 'blockartist',
     aliases: ['denyartist'],
@@ -7,12 +9,12 @@ module.exports = {
         const artist = args.join(' ').trim().toLowerCase();
 
         if (!artist) {
-            client.say(channel, 'usage: !blockartist <artist_name>');
+            sayMessage(client, channel, 'moderation.usageBlockArtist');
             return;
         }
 
         state.blockedArtists.add(artist);
         state.saveBlacklist();
-        client.say(channel, `artist blocked: ${artist}`);
+        sayMessage(client, channel, 'moderation.blockedArtist', { artist });
     }
 };

@@ -1,3 +1,5 @@
+const { sayMessage } = require('../services/messages');
+
 module.exports = {
     name: 'qon',
     aliases: ['queueon', 'openqueue'],
@@ -5,13 +7,13 @@ module.exports = {
 
     execute({ client, channel, username, state }) {
         if (state.queueEnabled) {
-            client.say(channel, 'Queue is already open');
+            sayMessage(client, channel, 'settings.queueAlreadyOpen');
             return;
         }
 
         state.queueEnabled = true;
         state.saveQueueState();
 
-        client.say(channel, 'Song queue is now open! DinoDance');
+        sayMessage(client, channel, 'settings.queueOpened');
     }
 };

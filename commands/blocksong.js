@@ -1,4 +1,5 @@
 const { getTrackId } = require('../spotify');
+const { sayMessage } = require('../services/messages');
 
 module.exports = {
     name: 'blocksong',
@@ -10,12 +11,12 @@ module.exports = {
         const trackId = getTrackId(url);
 
         if (!trackId) {
-            client.say(channel, 'usage: !blocksong <spotify_track_url>');
+            sayMessage(client, channel, 'moderation.usageBlockSong');
             return;
         }
 
         state.blockedSongs.add(trackId);
         state.saveBlacklist();
-        client.say(channel, 'song blocked');
+        sayMessage(client, channel, 'moderation.blockedSong');
     }
 };

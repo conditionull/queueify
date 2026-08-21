@@ -1,3 +1,5 @@
+const { sayMessage } = require('../services/messages');
+
 module.exports = {
     name: 'unblockartist',
     aliases: ['allowartist'],
@@ -7,18 +9,18 @@ module.exports = {
         const artist = args.join(' ').trim().toLowerCase();
 
         if (!artist) {
-            client.say(channel, 'usage: !unblockartist <artist_name>');
+            sayMessage(client, channel, 'moderation.usageUnblockArtist');
             return;
         }
 
         const wasBlocked = state.blockedArtists.delete(artist);
 
         if (!wasBlocked) {
-            client.say(channel, `artist was not blocked: ${artist}`);
+            sayMessage(client, channel, 'moderation.artistNotBlocked', { artist });
             return;
         }
 
         state.saveBlacklist();
-        client.say(channel, `artist unblocked: ${artist}`);
+        sayMessage(client, channel, 'moderation.artistUnblocked', { artist });
     }
 };

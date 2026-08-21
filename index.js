@@ -8,6 +8,7 @@ const startEventSub = require("./eventsub");
 const startWidgetServer = require("./widget/server");
 
 const obs = require("./services/obs");
+const { sayMessage } = require('./services/messages');
 
 const commands = new Map();
 
@@ -91,7 +92,7 @@ client.on('message', async (channel, tags, message, self) => {
   if (!handler) return;
 
   if (handler.modOnly && !isMod) {
-    client.say(channel, `@${username} you don't have permission to use this command. wuh`);
+    sayMessage(client, channel, 'general.permissionDenied', { username });
     return;
   }
 
@@ -111,7 +112,7 @@ client.on('message', async (channel, tags, message, self) => {
     await handler.execute(context);
   } catch (err) {
     console.error(`Command ${command} failed:`, err);
-    client.say(channel, `@${username} command failed. umm`);
+    sayMessage(client, channel, 'general.commandFailed', { username });
   }
 });
 

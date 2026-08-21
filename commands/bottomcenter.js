@@ -1,6 +1,7 @@
 const obs = require("../services/obs");
 const settings = require("../config/settings");
 const state = require("../core/state");
+const { sayMessage } = require('../services/messages');
 
 async function getCurrentTheme() {
     try {
@@ -28,7 +29,7 @@ module.exports = {
 
         if (args[0] === "set") {
             if (!isMod) {
-                client.say(channel, `@${username} only mods can save presets.`);
+                sayMessage(client, channel, 'widget.bottomOnlyMods', { username });
                 return;
             }
 
@@ -39,12 +40,12 @@ module.exports = {
             state.widgetPresets[presetName] = transform;
             state.saveSettings();
 
-            client.say(channel, `Saved Bottom Center preset for ${theme}.`);
+            sayMessage(client, channel, 'widget.bottomSaved', { theme });
             return;
         }
 
         if (!isMod && !isAllowedUser) {
-            client.say(channel, `@${username} you lack permission to use this command.`);
+            sayMessage(client, channel, 'widget.bottomPermission', { username });
             return;
         }
 
@@ -53,7 +54,7 @@ module.exports = {
         const preset = state.widgetPresets[presetName] || state.widgetPresets.bottomcenter;
 
         if (!preset) {
-            client.say(channel, `Bottom Center preset not set for ${theme}. Use !bc set`);
+            sayMessage(client, channel, 'widget.bottomMissing', { theme });
             return;
         }
         state.activeWidgetPosition = "bottomcenter";

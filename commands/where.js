@@ -1,4 +1,5 @@
 const obs = require("../services/obs");
+const { sayMessage } = require('../services/messages');
 
 // Get the current position of the spotify widget source from OBS, use the provided x,y coords
 module.exports = {
@@ -8,9 +9,9 @@ module.exports = {
     async execute({ client, channel }) {
         const transform = await obs.getTransform();
 
-        client.say(
-            channel,
-            `Position: X=${Math.round(transform.positionX)}, Y=${Math.round(transform.positionY)}`
-        );
+        sayMessage(client, channel, 'widget.position', {
+            x: Math.round(transform.positionX),
+            y: Math.round(transform.positionY)
+        });
     }
 };

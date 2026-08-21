@@ -1,3 +1,5 @@
+const { sayMessage } = require('../services/messages');
+
 module.exports = {
     name: 'qoff',
     aliases: ['queueoff', 'closequeue'],
@@ -5,13 +7,13 @@ module.exports = {
 
     execute({ client, channel, username, state }) {
         if (!state.queueEnabled) {
-            client.say(channel, 'Queue is already closed');
+            sayMessage(client, channel, 'settings.queueAlreadyClosed');
             return;
         }
 
         state.queueEnabled = false;
         state.saveQueueState();
 
-        client.say(channel, 'Song queue is now closed! DinoDance');
+        sayMessage(client, channel, 'settings.queueClosed');
     }
 };

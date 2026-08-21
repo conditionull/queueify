@@ -1,3 +1,5 @@
+const { sayMessage } = require('../services/messages');
+
 module.exports = {
     name: 'explicit',
     aliases: ['explicit'],
@@ -8,28 +10,28 @@ module.exports = {
 
         if (action === 'on') {
             if (state.allowExplicit) {
-                client.say(channel, 'Explicit songs are already allowed');
+                sayMessage(client, channel, 'settings.explicitAlreadyAllowed');
                 return;
             }
 
             state.allowExplicit = true;
             state.saveSettings();
-            client.say(channel, 'Explicit songs are now allowed');
+            sayMessage(client, channel, 'settings.explicitAllowed');
             return;
         }
 
         if (action === 'off') {
             if (!state.allowExplicit) {
-                client.say(channel, 'Explicit songs are already blocked');
+                sayMessage(client, channel, 'settings.explicitAlreadyBlocked');
                 return;
             }
 
             state.allowExplicit = false;
             state.saveSettings();
-            client.say(channel, 'Explicit songs are now blocked');
+            sayMessage(client, channel, 'settings.explicitBlocked');
             return;
         }
 
-        client.say(channel, 'Usage: !explicit on | !explicit off');
+        sayMessage(client, channel, 'settings.explicitUsage');
     }
 };

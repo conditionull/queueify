@@ -1,17 +1,24 @@
 const queueSong = require("../services/queueSong");
 const syncQueue = require("../services/syncQueue");
+const { sayMessage, message } = require('../services/messages');
 
 function cleanArg(arg) {
     return arg.replace(/[\u034F\u061C\u115F\u1160\u17B4\u17B5\u180E\u200B-\u200F\u202A-\u202E\u2060-\u206F\uFEFF]/g, '');
 }
 
 function formatQueueItem(item, index) {
-    return `${index + 1}. ${item.name} (@${item.queuedBy})`;
+    return message('queue.item', {
+        position: index + 1,
+        name: item.name,
+        queuedBy: item.queuedBy
+    });
 }
 
 function sendQueueList(client, channel, queueItems) {
     for (let i = 0; i < queueItems.length; i += 5) {
-        client.say(channel, queueItems.slice(i, i + 5).map(formatQueueItem).join(' | '));
+        sayMessage(client, channel, 'queue.itemList', {
+            items: queueItems.slice(i, i + 5).map(formatQueueItem).join(' | ')
+        });
     }
 }
 
@@ -27,7 +34,9 @@ module.exports = {
                 ? "Chat requests are disabled. Use the channel point redeem instead :)"
                 : "Both chat and channel point redeems are disabled Sadge";
 
-            client.say(channel, `@${username} ${status}`);
+            sayMessage(client, channel, state.redeemsEnabled
+                ? 'queue.chatDisabledRedeemEnabled'
+                : 'queue.chatAndRedeemDisabled', { username });
             return;
         }
 
@@ -35,14 +44,14 @@ module.exports = {
             const synced = await syncQueue(state);
 
             if (!synced) {
-                client.say(channel, "Couldn't check the Spotify queue. umm");
+                sayMessage(client, channel, 'queue.spotifyQueueCheckFailed');
                 return;
             }
 
             const visibleQueue = state.pendingQueue.slice(0, 10);
 
             if (visibleQueue.length === 0) {
-                client.say(channel, 'No queued songs are currently pending Aware');
+                sayMessage(client, channel, 'queue.empty');
                 return;
             }
 

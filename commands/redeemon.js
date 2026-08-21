@@ -1,4 +1,5 @@
 const setRewardEnabled = require("../services/setRewardEnabled");
+const { sayMessage } = require('../services/messages');
 
 module.exports = {
     name: 'redeemon',
@@ -15,6 +16,6 @@ module.exports = {
         state.redeemsEnabled = true;
         state.saveSettings();
 
-        client.say(channel, "Spotify redeems are now enabled YIPPIE");
+        sayMessage(client, channel, 'settings.redeemsEnabled');
     }
 };

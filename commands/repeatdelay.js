@@ -1,4 +1,5 @@
 const formatTime = require('../helpers/formatTime');
+const { sayMessage } = require('../services/messages');
 
 module.exports = {
     name: 'repeatdelay',
@@ -7,13 +8,13 @@ module.exports = {
 
     execute({ client, channel, args, state }) {
         if (!args[0]) {
-            client.say(channel, `Current same-song repeat block is ${formatTime(state.repeatBlockSeconds)}`);
+            sayMessage(client, channel, 'settings.currentRepeatDelay', { delay: formatTime(state.repeatBlockSeconds) });
             return;
         }
 
         const seconds = Number(args[0]);
         if (!Number.isInteger(seconds) || seconds < 0 || seconds > 86400) {
-            client.say(channel, 'usage: !repeatdelay <seconds> (0-86400)');
+            sayMessage(client, channel, 'settings.invalidRepeatDelay');
             return;
         }
 
@@ -21,6 +22,6 @@ module.exports = {
         state.pruneRecentRequests();
         state.saveSettings();
 
-        client.say(channel, `Same-song queue delay set to ${formatTime(state.repeatBlockSeconds)}`);
+        sayMessage(client, channel, 'settings.repeatDelayUpdated', { delay: formatTime(state.repeatBlockSeconds) });
     }
 };

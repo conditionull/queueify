@@ -1,4 +1,5 @@
 const formatTime = require('../helpers/formatTime');
+const { sayMessage } = require('../services/messages');
 
 module.exports = {
     name: 'delay',
@@ -7,27 +8,24 @@ module.exports = {
 
     execute({ client, channel, args, state, username, isMod }) {
         if (!args[0]) {
-            client.say(channel, `You can queue a song every ${formatTime(state.cooldownSeconds)}`);
+            sayMessage(client, channel, 'settings.currentDelay', { delay: formatTime(state.cooldownSeconds) });
             return;
         }
 
         if (!isMod) {
-            client.say(
-                channel,
-                `@${username} you don't have permission to change this value`
-            );
+            sayMessage(client, channel, 'settings.permissionToChange', { username });
             return;
         }
 
         const seconds = Number(args[0]);
         if (!Number.isInteger(seconds) || seconds < 0 || seconds > 3600) {
-            client.say(channel, 'usage: !delay <seconds> (0-3600)');
+            sayMessage(client, channel, 'settings.invalidDelay');
             return;
         }
 
         state.cooldownSeconds = seconds;
         state.saveSettings();
 
-        client.say(channel, `Queue delay set to ${formatTime(state.cooldownSeconds)}`);
+        sayMessage(client, channel, 'settings.delayUpdated', { delay: formatTime(state.cooldownSeconds) });
     }
 };
