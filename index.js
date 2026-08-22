@@ -9,6 +9,7 @@ const startWidgetServer = require("./widget/server");
 
 const obs = require("./services/obs");
 const { sayMessage } = require('./services/messages');
+const aliases = require('./services/aliases');
 
 const commands = new Map();
 
@@ -16,20 +17,33 @@ const commandFiles = fs
   .readdirSync(path.join(__dirname, 'commands'))
   .filter(f => f.endsWith('.js'));
 
-for (const file of commandFiles) {
-  const command = require(`./commands/${file}`);
+const loadedCommands = commandFiles
+  .map(file => require(`./commands/${file}`))
+  .filter(command => {
+    if (!command.name || !command.execute) {
+      console.warn(`Invalid command file: ${command.name || '(unknown)'}`);
+      return false;
+    }
+    return true;
+  });
 
-  if (!command.name || !command.execute) {
-    console.warn(`Invalid command file: ${file}`);
-    continue;
-  }
+function buildCommandMap() {
+  commands.clear();
 
-  const commandNames = [command.name, ...(command.aliases || [])];
+  for (const command of loadedCommands) {
+    const commandNames = [command.name, ...aliases.getAliases(command.name)];
 
-  for (const name of commandNames) {
-    commands.set(name.toLowerCase(), command);
+    for (const name of commandNames) {
+      commands.set(name.toLowerCase(), command);
+    }
   }
 }
+
+aliases.setDefaultAliases(
+  Object.fromEntries(loadedCommands.map(command => [command.name, command.aliases || []]))
+);
+aliases.onReload(buildCommandMap);
+buildCommandMap();
 
 const BROADCASTER = process.env.TWITCH_BROADCASTER_USERNAME?.toLowerCase();
 
