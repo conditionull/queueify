@@ -1,8 +1,5 @@
 import axios from "axios";
 import * as OTPAuth from "otpauth";
-import dotenv from "dotenv";
-
-dotenv.config();
 
 const SP_DC = process.env.SP_DC;
 const SECRETS_URL = "https://raw.githubusercontent.com/xyloflake/spot-secrets-go/refs/heads/main/secrets/secretDict.json";
@@ -36,7 +33,7 @@ async function updateTOTPSecrets() {
       return; // Don't fetch too frequently
     }
 
-    console.log('Fetching updated TOTP secrets...');
+    // console.log('Fetching updated TOTP secrets...');
     const secrets = await fetchSecretsFromGitHub();
     const newestVersion = findNewestVersion(secrets);
     

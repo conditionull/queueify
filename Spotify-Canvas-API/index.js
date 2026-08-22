@@ -3,7 +3,7 @@ import axios from 'axios';
 import canvasRoutes from './routes/canvasRoutes.js';
 import dotenv from 'dotenv';
 
-dotenv.config();
+dotenv.config({ quiet: true });
 const app = express();
 app.use('/api/canvas', canvasRoutes);
 
