@@ -7,7 +7,7 @@ I tried to make this README as comprehensive as possible; please let me know if 
 ### ✦・゜゜・✧ &nbsp;&nbsp;&nbsp; [Queueify OBS Widget Preview ](https://imgur.com/OpbsxM2) &nbsp;&nbsp;&nbsp; ✧・゜゜・✦
 <br />
 
-### OBS Widget Preview (ignore white edges)
+### OBS Widget Theme Previews
 <img src="assets/swag_theme5.png" />
 <img src="assets/default_theme2.png" />
 <img src="assets/minimal_theme.png" />
@@ -54,6 +54,12 @@ All messages sent to Twitch chat can be edited in [config/messages.json](config/
 Values that change at runtime use placeholders such as `{{username}}`, `{{artist}}`, `{{duration}}`, or `{{count}}`. Keep the placeholder names in place when editing those messages.
 
 Valid changes are reloaded automatically while the bot is running. A restart is not required. If the file is missing, temporarily incomplete, or invalid JSON, Queueify keeps using the last valid messages and logs a warning instead of interrupting the bot.
+
+### Edit Command Aliases
+
+All command aliases can be edited in [config/aliases.json](config/aliases.json), keyed by each command's canonical name (e.g. `queue`, `active`, `deny`).
+
+Valid changes are reloaded automatically while the bot is running. A restart is not required. If the file is missing, temporarily incomplete, or invalid JSON, Queueify falls back to the aliases hard-coded in each command file under `commands/`.
 
 ## Setup
 
@@ -234,19 +240,18 @@ if the OBS widget does not show on startup, `Refresh` the source in OBS
 
 
 > [!NOTE]
-!bottomcenter and !topright command names don't really matter. Just treat them both as unique positions you can set for any position in OBS. e.g.: `!topright set` can be at the bottom left for the widgets location
+!bottomcenter and !topright command names don't really matter. Just treat them both as unique positions you can set for any position in OBS. e.g.: `!topright set` can be at the bottom left for the widgets locatio
 
-You can customize command aliases by editing the `aliases` array in each command file under the `commands/` directory, for example:
-
-```js
-aliases: ['q', 'sr', 'add'],
-```
+<details>
+  <summary>[ Click to view additional details about queueify functionality ]</summary>
 
 Each widget theme has their own !bc and !tr position. So make sure to set unique positions for each theme (if you're using the positional commands)
 
 `queue-settings.json` will generate once you set a value for the following commands: `delay`, `duration`, or `repeatdelay`. Otherwise, the default values will be used.
 
-Queue open/closed state persists across restarts in `queue-state.json`. The queue deny list persists in `queue-blacklist.json`. Queue delay, maxSongLength, and repeat delay persist in `queue-settings.json`. Pending queued songs (viewed with `!queue`) persist in `queue-pending.json`, which is reconciled against Spotify's real queue. So if by chance, the streamer has the same song YOU queued in their OWN generated queue, the queued song won't be removed from the queue even if it ended. 
+Queue open/closed state persists across restarts in `queue-state.json`. The queue deny list persists in `queue-blacklist.json`. Queue delay, maxSongLength, and repeat delay persist in `queue-settings.json`. Pending queued songs (viewed with `!queue`) persist in `queue-pending.json`, which is reconciled against Spotify's real queue. So if by chance, the streamer has the same song YOU queued in their OWN generated queue, the queued song won't be removed from the queue even if it ended.
+
+</details>
 
 <br />
 

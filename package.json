@@ -1,12 +1,13 @@
 {
   "name": "queueify",
-  "version": "38.0.0",
+  "version": "38.1.0",
   "description": "",
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
     "reward": "node reward.js",
-    "test": "node --test"
+    "test": "node --test",
+    "screenshot": "node scripts/export-widget-screenshot.js"
   },
   "keywords": [],
   "author": "",
@@ -22,5 +23,8 @@
     "otpauth": "latest",
     "tmi.js": "^1.8.5",
     "ws": "^8.21.0"
+  },
+  "devDependencies": {
+    "playwright": "^1.62.1"
   }
 }
