@@ -17,7 +17,7 @@ function formatQueueItem(item, index) {
 function sendQueueList(client, channel, queueItems) {
     for (let i = 0; i < queueItems.length; i += 5) {
         sayMessage(client, channel, 'queue.itemList', {
-            items: queueItems.slice(i, i + 5).map(formatQueueItem).join(' | ')
+            items: queueItems.slice(i, i + 5).map((item, index) => formatQueueItem(item, i + index)).join(' | ')
         });
     }
 }
@@ -30,10 +30,6 @@ module.exports = {
         const cleanedArgs = args.map(cleanArg).filter(arg => arg.trim());
 
         if (cleanedArgs.length > 0 && !state.chatEnabled) {
-            const status = state.redeemsEnabled
-                ? "Chat requests are disabled. Use the channel point redeem instead :)"
-                : "Both chat and channel point redeems are disabled Sadge";
-
             sayMessage(client, channel, state.redeemsEnabled
                 ? 'queue.chatDisabledRedeemEnabled'
                 : 'queue.chatAndRedeemDisabled', { username });

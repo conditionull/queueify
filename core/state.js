@@ -1,7 +1,6 @@
 const fs = require('fs');
 const fsPromises = require('fs/promises');
 const path = require('path');
-const crypto = require('node:crypto');
 
 const BLACKLIST_FILE = path.join(__dirname, '../queue-blacklist.json');
 const QUEUE_STATE_FILE = path.join(__dirname, '../queue-state.json');
@@ -68,28 +67,23 @@ function normalizePendingItem(item) {
 }
 
 function reconcilePendingQueue(pendingQueue, spotifyQueue) {
-    const positions = new Map();
-    spotifyQueue.forEach((spotifyItem, index) => {
-        const existing = positions.get(spotifyItem.id);
-        if (existing) {
-            existing.push(index);
-        } else {
-            positions.set(spotifyItem.id, [index]);
+    const remainingCounts = new Map();
+    for (const spotifyItem of spotifyQueue) {
+        remainingCounts.set(spotifyItem.id, (remainingCounts.get(spotifyItem.id) || 0) + 1);
+    }
+
+    const result = [...pendingQueue];
+
+    while (result.length > 0) {
+        const remaining = remainingCounts.get(result[0].id);
+
+        if (!remaining) {
+            result.shift();
+            continue;
         }
-    });
 
-    const result = [];
-    let searchStart = 0;
-
-    for (const localItem of pendingQueue) {
-        const indexes = positions.get(localItem.id);
-        if (!indexes) continue;
-
-        const matchIndex = indexes.find(index => index >= searchStart);
-        if (matchIndex === undefined) continue;
-
-        result.push(localItem);
-        searchStart = matchIndex + 1;
+        remainingCounts.set(result[0].id, remaining - 1);
+        break;
     }
 
     return result;
