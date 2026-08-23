@@ -93,7 +93,8 @@ async function createReward(broadcasterId) {
 
         await syncThemeTakeoverReward({
             broadcasterId,
-            rewardId: reward.id
+            rewardId: reward.id,
+            enabled: state.themeTakeoverEnabled
         });
 
         console.log('Reward:', reward.title);

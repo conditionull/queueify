@@ -15,16 +15,16 @@ function getCurrentWidgetTheme() {
     }
 }
 
-async function syncThemeTakeoverReward({ broadcasterId, rewardId, theme }) {
+async function syncThemeTakeoverReward({ broadcasterId, rewardId, theme, enabled = true }) {
     if (!broadcasterId || !rewardId) {
         return false;
     }
 
     const currentTheme = theme || getCurrentWidgetTheme();
-    const enabled = isThemeTakeoverTheme(currentTheme);
+    const rewardEnabled = enabled && isThemeTakeoverTheme(currentTheme);
 
-    await setRewardEnabled(broadcasterId, rewardId, enabled);
-    return enabled;
+    await setRewardEnabled(broadcasterId, rewardId, rewardEnabled);
+    return rewardEnabled;
 }
 
 module.exports = { syncThemeTakeoverReward };

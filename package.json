@@ -1,6 +1,6 @@
 {
   "name": "queueify",
-  "version": "39.0.1",
+  "version": "39.1.1",
   "description": "",
   "main": "index.js",
   "scripts": {

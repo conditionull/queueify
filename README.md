@@ -167,7 +167,7 @@ npm run theme-takeover-reward
 
 Viewers enter `default` or `swag` in the reward's input field to temporarily take over the OBS widget theme. `minimal` is intentionally unavailable because its compact dimensions can be misframed in an existing OBS browser source. 
 
-If minimal the set theme by the broadacster, then the reward with **automatically** disable itself. If not minimal the reward wil **automatically** re-enable.
+If `minimal` is the broadcaster's selected theme, the reward is automatically disabled. It becomes available again after switching to `default` or `swag`, unless the feature was disabled with `!themeoff`.
 
 A takeover lasts one hour by default; moderators can view or change the duration with `!themeduration` or `!themeduration <seconds>` (60-86400). Changing the duration **automatically updates** the Twitch reward prompt. A later redemption replaces the current takeover and starts a new duration; the `!theme <theme>` command **overrides** any theme set by a redeem. Invalid theme input or an unavailable widget server is refunded.
 
@@ -241,6 +241,8 @@ if the OBS widget does not show on startup, `Refresh` the source in OBS
 | `!repeatdelay <seconds>` | Mods | Change the same-user same-song block window |
 | `!themeduration` | Mods | Show the Theme Takeover duration |
 | `!themeduration <seconds>` | Mods | Change the Theme Takeover duration (60-86400) |
+| `!themeon` | Mods | Enable the Theme Takeover reward feature |
+| `!themeoff` | Mods | Disable the Theme Takeover reward feature |
 | `!deny <username>` | Mods | Block a user from queuing |
 | `!allow <username>` | Mods | Unblock a user |
 | `!blockartist <artist_name>` | Mods | Block songs by an artist, including featured artists |

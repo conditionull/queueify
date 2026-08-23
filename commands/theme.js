@@ -70,7 +70,8 @@ module.exports = {
             await syncThemeTakeoverReward({
                 broadcasterId: state.broadcasterId,
                 rewardId: state.themeTakeoverRewardId,
-                theme
+                theme,
+                enabled: state.themeTakeoverEnabled
             });
         } catch (err) {
             console.error('Failed to update Theme Takeover reward availability:', err.message);

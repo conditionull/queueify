@@ -18,6 +18,8 @@
   "repeatdelay": ["repeat", "songdelay"],
   "theme": ["design"],
   "themeduration": ["themetime", "takeovertime"],
+  "themeoff": ["themerewardoff", "disabletheme"],
+  "themeon": ["themerewardon", "enabletheme"],
   "topright": ["tr"],
   "unblockartist": ["allowartist"],
   "unblocksong": ["allowsong"],

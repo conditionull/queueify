@@ -144,7 +144,8 @@ module.exports = function startEventSub(client) {
 
                         await syncThemeTakeoverReward({
                             broadcasterId,
-                            rewardId: themeTakeover.id
+                            rewardId: themeTakeover.id,
+                            enabled: state.themeTakeoverEnabled
                         });
                         await createSubscription(sessionId, broadcasterId, themeTakeover.id);
                     }

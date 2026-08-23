@@ -34,3 +34,13 @@ test('enables Theme Takeover for a compatible widget theme', async () => {
     }), true);
     assert.deepStrictEqual(calls, [['broadcaster', 'reward', true]]);
 });
+
+test('keeps Theme Takeover disabled when the broadcaster turns it off', async () => {
+    const calls = [];
+    const syncThemeTakeoverReward = loadSyncThemeTakeoverReward(async (...args) => calls.push(args));
+
+    assert.strictEqual(await syncThemeTakeoverReward({
+        broadcasterId: 'broadcaster', rewardId: 'reward', theme: 'swag', enabled: false
+    }), false);
+    assert.deepStrictEqual(calls, [['broadcaster', 'reward', false]]);
+});

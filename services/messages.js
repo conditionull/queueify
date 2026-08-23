@@ -53,7 +53,13 @@ const defaultMessages = {
         invalidRepeatDelay: 'usage: !repeatdelay <seconds> (0-86400)', repeatDelayUpdated: 'Same-song queue delay set to {{delay}}',
         currentThemeTakeoverDuration: 'Theme takeover duration: {{duration}}',
         invalidThemeTakeoverDuration: 'usage: !themeduration <seconds> (60-86400)',
-        themeTakeoverDurationUpdated: 'Theme takeover duration set to {{duration}}'
+        themeTakeoverDurationUpdated: 'Theme takeover duration set to {{duration}}',
+        themeTakeoverNotConfigured: 'Theme Takeover reward is not configured',
+        themeTakeoverAlreadyDisabled: 'Theme Takeover reward feature is already disabled',
+        themeTakeoverDisabled: 'Theme Takeover reward feature disabled',
+        themeTakeoverAlreadyEnabled: 'Theme Takeover reward feature is already enabled',
+        themeTakeoverEnabled: 'Theme Takeover reward feature enabled',
+        themeTakeoverEnabledMinimal: 'Theme Takeover is enabled but unavailable until the widget theme is default or swag'
     },
     playback: {
         currentLookupFailed: 'Couldn\'t check the current Spotify song. Is Spotify running?',
