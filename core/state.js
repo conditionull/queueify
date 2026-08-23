@@ -104,7 +104,9 @@ const state = {
     cooldownSeconds: settings.cooldownSeconds ?? DEFAULT_COOLDOWN_SECONDS,
     repeatBlockSeconds: settings.repeatBlockSeconds ?? DEFAULT_REPEAT_BLOCK_SECONDS,
     maxSongLength: settings.maxSongLength ?? DEFAULT_MAX_SONG_LENGTH,
+    themeTakeoverDurationSeconds: settings.themeTakeoverDurationSeconds ?? 3600,
     activeWidgetPosition: settings.activeWidgetPosition ?? "topright",
+    themeTakeoverRewardId: settings.themeTakeoverRewardId ?? null,
     pendingQueue: loadJSON(PENDING_QUEUE_FILE, []).map(normalizePendingItem),
     recentRequests: loadJSON(RECENT_REQUESTS_FILE, []),
     activeTrack: null,
@@ -128,10 +130,12 @@ const state = {
             cooldownSeconds: this.cooldownSeconds,
             repeatBlockSeconds: this.repeatBlockSeconds,
             maxSongLength: this.maxSongLength,
+            themeTakeoverDurationSeconds: this.themeTakeoverDurationSeconds,
             chatEnabled: this.chatEnabled,
             redeemsEnabled: this.redeemsEnabled,
             allowExplicit: this.allowExplicit,
             spotifyRewardId: this.spotifyRewardId,
+            themeTakeoverRewardId: this.themeTakeoverRewardId,
             activeWidgetPosition: this.activeWidgetPosition,
             widgetPresets: this.widgetPresets
         });

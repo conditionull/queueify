@@ -1,11 +1,13 @@
 const state = require("./core/state")
 const WebSocket = require("ws");
 const queueSong = require("./services/queueSong");
+const themeTakeoverReward = require('./services/themeTakeoverReward');
 
 const CLIENT_ID = process.env.TWITCH_CLIENT_ID;
 const ACCESS_TOKEN = process.env.TWITCH_ACCESS_TOKEN;
 const USERNAME = process.env.TWITCH_BROADCASTER_USERNAME;
 const REWARD_NAME = process.env.SPOTIFY_REWARD_NAME;
+const THEME_TAKEOVER_REWARD_NAME = process.env.THEME_TAKEOVER_REWARD_NAME;
 
 async function twitchGet(endpoint) {
     const res = await fetch(`https://api.twitch.tv/helix/${endpoint}`, {
@@ -31,13 +33,13 @@ async function getBroadcasterId() {
     return data.data[0].id;
 }
 
-async function findReward(broadcasterId) {
+async function findReward(broadcasterId, rewardName) {
     const data = await twitchGet(
         `channel_points/custom_rewards?broadcaster_id=${broadcasterId}`
     );
 
     return data.data.find(
-        r => r.title.toLowerCase() === REWARD_NAME.toLowerCase()
+        r => r.title.toLowerCase() === rewardName.toLowerCase()
     );
 }
 
@@ -105,7 +107,7 @@ module.exports = function startEventSub(client) {
                     changed = true;
                 }
 
-                const reward = await findReward(broadcasterId);
+                const reward = await findReward(broadcasterId, REWARD_NAME);
 
                 if (!reward) {
                     throw new Error(
@@ -125,6 +127,23 @@ module.exports = function startEventSub(client) {
                 }
 
                 await createSubscription(sessionId, broadcasterId, reward.id);
+
+                if (THEME_TAKEOVER_REWARD_NAME) {
+                    const themeTakeover = await findReward(broadcasterId, THEME_TAKEOVER_REWARD_NAME);
+
+                    if (!themeTakeover) {
+                        console.warn(`Theme takeover reward "${THEME_TAKEOVER_REWARD_NAME}" not found. Run "npm run theme-takeover-reward" to enable it.`);
+                    } else {
+                        console.log('Theme takeover reward:', themeTakeover.title, themeTakeover.id);
+
+                        if (state.themeTakeoverRewardId !== themeTakeover.id) {
+                            state.themeTakeoverRewardId = themeTakeover.id;
+                            state.saveSettings();
+                        }
+
+                        await createSubscription(sessionId, broadcasterId, themeTakeover.id);
+                    }
+                }
             } catch (err) {
                 console.error("Setup failed:");
                 console.error(err.message);
@@ -145,16 +164,29 @@ module.exports = function startEventSub(client) {
                     return;
                 }
 
-                await queueSong({
-                    client,
-                    channel: process.env.TWITCH_BROADCASTER_USERNAME,
-                    username: event.user_name,
-                    url: event.user_input,
-                    state,
-                    isRedeem: true,
-                    redemptionId: event.id,
-                    broadcasterId: state.broadcasterId
-                });
+                if (event.reward.id === state.spotifyRewardId) {
+                    await queueSong({
+                        client,
+                        channel: process.env.TWITCH_BROADCASTER_USERNAME,
+                        username: event.user_name,
+                        url: event.user_input,
+                        state,
+                        isRedeem: true,
+                        redemptionId: event.id,
+                        broadcasterId: state.broadcasterId
+                    });
+                } else if (event.reward.id === state.themeTakeoverRewardId) {
+                    await themeTakeoverReward({
+                        client,
+                        channel: process.env.TWITCH_BROADCASTER_USERNAME,
+                        username: event.user_name,
+                        theme: event.user_input,
+                        durationSeconds: state.themeTakeoverDurationSeconds,
+                        redemptionId: event.id,
+                        broadcasterId: state.broadcasterId,
+                        rewardId: state.themeTakeoverRewardId
+                    });
+                }
             }
         }
     });

@@ -17,8 +17,8 @@ async function refreshThemeFromServer() {
         if (!res.ok) return;
 
         const config = await res.json();
-        if (config.theme) {
-            applyTheme(config.theme);
+        if (config.effectiveTheme || config.theme) {
+            applyTheme(config.effectiveTheme || config.theme);
         }
     } catch (err) {
         console.error("Failed to refresh theme config:", err);

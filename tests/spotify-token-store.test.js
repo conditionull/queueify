@@ -102,3 +102,73 @@ test('addToQueue refreshes an expired token before making Spotify API calls', as
     delete process.env.SPOTIFY_CLIENT_SECRET;
   }
 });
+
+test('skipToNext sends an authenticated playback skip request', async () => {
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'queueify-token-'));
+  const tokenFile = path.join(tempDir, 'spotify-token.json');
+
+  fs.writeFileSync(tokenFile, JSON.stringify({
+    access_token: 'valid-token',
+    refresh_token: 'refresh-token',
+    expires_at: Date.now() + 3_600_000
+  }));
+
+  process.env.SPOTIFY_TOKEN_FILE = tokenFile;
+  delete require.cache[require.resolve(tokenStorePath)];
+  delete require.cache[require.resolve(spotifyPath)];
+
+  const spotify = require(spotifyPath);
+  const originalFetch = global.fetch;
+  const requests = [];
+
+  global.fetch = async (url, options = {}) => {
+    requests.push({ url, options });
+    return { ok: true, status: 204 };
+  };
+
+  try {
+    assert.strictEqual(await spotify.skipToNext(), true);
+    assert.deepStrictEqual(requests, [{
+      url: 'https://api.spotify.com/v1/me/player/next',
+      options: {
+        method: 'POST',
+        headers: { Authorization: 'Bearer valid-token' }
+      }
+    }]);
+  } finally {
+    global.fetch = originalFetch;
+    delete process.env.SPOTIFY_TOKEN_FILE;
+  }
+});
+
+test('skipToNext returns false when Spotify rejects the playback command', async () => {
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'queueify-token-'));
+  const tokenFile = path.join(tempDir, 'spotify-token.json');
+
+  fs.writeFileSync(tokenFile, JSON.stringify({
+    access_token: 'valid-token',
+    refresh_token: 'refresh-token',
+    expires_at: Date.now() + 3_600_000
+  }));
+
+  process.env.SPOTIFY_TOKEN_FILE = tokenFile;
+  delete require.cache[require.resolve(tokenStorePath)];
+  delete require.cache[require.resolve(spotifyPath)];
+
+  const spotify = require(spotifyPath);
+  const originalFetch = global.fetch;
+
+  global.fetch = async () => ({
+    ok: false,
+    status: 404,
+    json: async () => ({ error: { message: 'No active device found' } })
+  });
+
+  try {
+    assert.strictEqual(await spotify.skipToNext(), false);
+  } finally {
+    global.fetch = originalFetch;
+    delete process.env.SPOTIFY_TOKEN_FILE;
+  }
+});
+

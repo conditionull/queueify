@@ -10,6 +10,12 @@ let widgetConfig = {};
 let widgetConfigLoaded = false;
 const MAX_THEME_CLIENTS = 50;
 const themeClients = [];
+let themeTakeover = null;
+let themeTakeoverTimer;
+
+function getActiveTheme() {
+    return themeTakeover?.theme || widgetConfig.theme || 'default';
+}
 
 async function loadWidgetConfig() {
     if (widgetConfigLoaded) return;
@@ -30,7 +36,11 @@ async function loadWidgetConfig() {
 
 app.get("/api/widget/config", async (req, res) => {
     await loadWidgetConfig();
-    res.json(widgetConfig);
+    res.json({
+        ...widgetConfig,
+        effectiveTheme: getActiveTheme(),
+        themeTakeoverExpiresAt: themeTakeover?.expiresAt || null
+    });
 });
 
 app.get("/api/widget/themes", async (req, res) => {
@@ -89,6 +99,12 @@ function notifyThemeChange(theme) {
     }
 }
 
+function clearThemeTakeover() {
+    clearTimeout(themeTakeoverTimer);
+    themeTakeover = null;
+    notifyThemeChange(getActiveTheme());
+}
+
 app.post("/api/widget/theme", express.json(), async (req, res) => {
     const { theme } = req.body;
     widgetConfig.theme = theme;
@@ -111,10 +127,40 @@ app.post("/api/widget/theme", express.json(), async (req, res) => {
     });
 });
 
+app.post('/api/widget/theme-takeover', express.json(), async (req, res) => {
+    const { theme, durationSeconds } = req.body;
+    const duration = Number(durationSeconds);
+
+    if (typeof theme !== 'string' || !Number.isInteger(duration) || duration < 60 || duration > 86400) {
+        return res.status(400).json({ error: 'Invalid theme takeover request' });
+    }
+
+    const themesPath = path.join(__dirname, 'themes');
+    const htmlPath = path.join(themesPath, theme, 'index.html');
+
+    if (!fs.existsSync(htmlPath)) {
+        return res.status(400).json({ error: 'Unknown widget theme' });
+    }
+
+    clearTimeout(themeTakeoverTimer);
+    themeTakeover = {
+        theme,
+        expiresAt: Date.now() + duration * 1000
+    };
+    themeTakeoverTimer = setTimeout(clearThemeTakeover, duration * 1000);
+    themeTakeoverTimer.unref?.();
+    notifyThemeChange(theme);
+
+    res.json({
+        theme,
+        expiresAt: themeTakeover.expiresAt
+    });
+});
+
 app.use(nocache());
 
 app.get("/", (req, res) => {
-    const theme = widgetConfig.theme || "default";
+    const theme = getActiveTheme();
 
     const htmlPath = path.join(
         __dirname,

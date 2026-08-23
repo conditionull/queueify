@@ -35,7 +35,7 @@ Adding songs to playback queue requires Spotify Premium
 - Per-user cooldowns and repeat-song blocking to prevent queue spam
 - Configurable maximum song duration with `!duration <seconds>`
 - Explicit song filtering to allow or prevent explicit songs from being queued `!explicit on` | `!explicit off`
-- Moderator controls for managing the queue, cooldowns, song duration, and blacklist. (`See commands below.`)
+- Moderator controls for playback, the queue, cooldowns, song duration, and blacklist. (`See commands below.`)
 - Persistent queue state, deny list, cooldown settings, repeat delay, and pending attribution stored in JSON files
 - Automatic management of Spotify access and refresh tokens
 
@@ -98,6 +98,7 @@ SPOTIFY_CLIENT_ID=
 SPOTIFY_CLIENT_SECRET=
 SPOTIFY_REDIRECT_URI=http://127.0.0.1:8000/callback
 SPOTIFY_REWARD_NAME=Spotify Queue # this can be anything
+THEME_TAKEOVER_REWARD_NAME= # optional; enables the Theme Takeover reward
 
 OBS_WEBSOCKET_PASSWORD=
 OBS_WEBSOCKET_PORT=4455
@@ -156,6 +157,18 @@ node reward.js
 
 You can now mess with the rewards name, color, icon, description text, etc. in your twitch dashboard. If you recreate the reward manually with the same name, functionality will break. Use the command above instead^
 
+### Optional: Theme Takeover Reward
+
+Set `THEME_TAKEOVER_REWARD_NAME` in `.env`, then create the optional 20,000-point reward:
+
+```sh
+npm run theme-takeover-reward
+```
+
+Viewers enter `default`, `minimal`, or `swag` to temporarily take over the OBS widget theme. A takeover lasts one hour by default; moderators can view or change the duration with `!themeduration` or `!themeduration <seconds>` (60-86400). Changing the duration **automatically updates** the Twitch reward prompt. A later redemption replaces the current takeover and starts a new duration. Invalid theme input or an unavailable widget server is refunded.
+
+Just like the other reward, you can modify the price in your Creator Dashboard after creating the reward with the bot.
+
 ### 5. Spotify Canvas Setup
 
 Queueify includes support for Spotify Canvas videos in the widget.
@@ -213,6 +226,7 @@ if the OBS widget does not show on startup, `Refresh` the source in OBS
 | `!q <spotify_url>` | Everyone | Queue a Spotify track (defaults: `360sec` max song length, and `60sec` queue cooldown) |
 | `!q` | Everyone | Show up to 10 queued songs |
 | `!active` or `!np` | Everyone | Displays the currently playing song |
+| `!skip` | Mods | Skips to the next Spotify track (requires Spotify Premium) |
 | `!qon` | Mods | Open the queue |
 | `!qoff` | Mods | Close the queue |
 | `!delay` | Mods | Show the current queue cooldown |
@@ -221,6 +235,8 @@ if the OBS widget does not show on startup, `Refresh` the source in OBS
 | `!duration` | Everyone | View the max duration for a queuable song |
 | `!duration <seconds>` | Mods | Change the max duration a song can be when queued |
 | `!repeatdelay <seconds>` | Mods | Change the same-user same-song block window |
+| `!themeduration` | Mods | Show the Theme Takeover duration |
+| `!themeduration <seconds>` | Mods | Change the Theme Takeover duration (60-86400) |
 | `!deny <username>` | Mods | Block a user from queuing |
 | `!allow <username>` | Mods | Unblock a user |
 | `!blockartist <artist_name>` | Mods | Block songs by an artist, including featured artists |

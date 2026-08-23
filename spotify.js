@@ -280,6 +280,18 @@ async function addToQueue(url, maxSongLengthSeconds, allowExplicit = true, track
   return addTrackToQueue(url, maxSongLengthSeconds, allowExplicit, trackData);
 }
 
+async function skipToNext() {
+  try {
+    await fetchWithToken('https://api.spotify.com/v1/me/player/next', {
+      method: 'POST'
+    });
+    return true;
+  } catch (err) {
+    console.error('Spotify skip failed:', err.message, err.status ? `(HTTP ${err.status})` : '');
+    return false;
+  }
+}
+
 async function getTrack(url) {
   try {
     if (!url) return 'noinput';
@@ -410,4 +422,4 @@ async function getUserQueue() {
   }
 }
 
-module.exports = { addToQueue, getCurrentTrack, getUserQueue, getTrackId, getTrack };
+module.exports = { addToQueue, skipToNext, getCurrentTrack, getUserQueue, getTrackId, getTrack };

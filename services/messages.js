@@ -4,6 +4,7 @@ const path = require('path');
 const MESSAGES_FILE = path.join(__dirname, '../config/messages.json');
 const RELOAD_DELAY_MS = 100;
 
+// Only edit config/messages.json to change messages. This file acts as a fallback for invalid or missing messages in config/messages.json
 const defaultMessages = {
     general: {
         permissionDenied: '@{{username}} you don\'t have permission to use this command. wuh',
@@ -49,11 +50,21 @@ const defaultMessages = {
         explicitAlreadyAllowed: 'Explicit songs are already allowed', explicitAllowed: 'Explicit songs are now allowed',
         explicitAlreadyBlocked: 'Explicit songs are already blocked', explicitBlocked: 'Explicit songs are now blocked',
         explicitUsage: 'Usage: !explicit on | !explicit off', currentRepeatDelay: 'Current same-song repeat block is {{delay}}',
-        invalidRepeatDelay: 'usage: !repeatdelay <seconds> (0-86400)', repeatDelayUpdated: 'Same-song queue delay set to {{delay}}'
+        invalidRepeatDelay: 'usage: !repeatdelay <seconds> (0-86400)', repeatDelayUpdated: 'Same-song queue delay set to {{delay}}',
+        currentThemeTakeoverDuration: 'Theme takeover duration: {{duration}}',
+        invalidThemeTakeoverDuration: 'usage: !themeduration <seconds> (60-86400)',
+        themeTakeoverDurationUpdated: 'Theme takeover duration set to {{duration}}'
     },
     playback: {
         currentLookupFailed: 'Couldn\'t check the current Spotify song. Is Spotify running?',
-        nothingPlaying: 'No Spotify track is currently playing.', currentSong: 'Current song: {{name}} - {{artists}}'
+        nothingPlaying: 'No Spotify track is currently playing.', currentSong: 'Current song: {{name}} - {{artists}} DinoDance',
+        skipped: 'Skipped to the next track! DinoDance',
+        skipFailed: 'Couldn\'t skip the Spotify track; check that Spotify is playing on an active device.'
+    },
+    reward: {
+        themeTakeoverMissingTheme: '@{{username}} choose a widget theme: default, minimal, or swag{{refundSuffix}}',
+        themeTakeoverFailed: '@{{username}} couldn\'t start that widget theme takeover{{refundSuffix}}',
+        themeTakeoverStarted: '@{{username}} activated the {{theme}} widget theme for {{minutes}} minutes!'
     },
     widget: {
         bottomOnlyMods: '@{{username}} only mods can save presets.', bottomSaved: 'Saved Bottom Center preset for {{theme}}.',

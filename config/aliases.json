@@ -17,6 +17,7 @@
   "redeemon": ["rewardon", "redeemson", "enableredeems", "rewardson", "enablerewards"],
   "repeatdelay": ["repeat", "songdelay"],
   "theme": ["design"],
+  "themeduration": ["themetime", "takeovertime"],
   "topright": ["tr"],
   "unblockartist": ["allowartist"],
   "unblocksong": ["allowsong"],

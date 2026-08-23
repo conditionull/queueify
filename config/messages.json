@@ -62,12 +62,22 @@
     "explicitUsage": "Usage: !explicit on | !explicit off",
     "currentRepeatDelay": "Current same-song repeat block is {{delay}}",
     "invalidRepeatDelay": "usage: !repeatdelay <seconds> (0-86400)",
-    "repeatDelayUpdated": "Same-song queue delay set to {{delay}}"
+    "repeatDelayUpdated": "Same-song queue delay set to {{delay}}",
+    "currentThemeTakeoverDuration": "Theme takeover duration: {{duration}}",
+    "invalidThemeTakeoverDuration": "usage: !themeduration <seconds> (60-86400)",
+    "themeTakeoverDurationUpdated": "Theme takeover duration set to {{duration}}"
   },
   "playback": {
     "currentLookupFailed": "Couldn't check the current Spotify song. Is Spotify running?",
     "nothingPlaying": "No Spotify track is currently playing.",
-    "currentSong": "Current song: {{name}} - {{artists}}"
+    "currentSong": "Current song: {{name}} - {{artists}} DinoDance",
+    "skipped": "Skipped to the next track! DinoDance",
+    "skipFailed": "Couldn't skip the Spotify track. Check that Spotify is playing on an active device."
+  },
+  "reward": {
+    "themeTakeoverMissingTheme": "@{{username}} choose a widget theme: default, minimal, or swag{{refundSuffix}}",
+    "themeTakeoverFailed": "@{{username}} couldn't start that widget theme takeover{{refundSuffix}}",
+    "themeTakeoverStarted": "@{{username}} activated the {{theme}} widget theme for {{minutes}} minutes!"
   },
   "widget": {
     "bottomOnlyMods": "@{{username}} only mods can save presets.",
