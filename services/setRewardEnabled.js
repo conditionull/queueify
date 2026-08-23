@@ -22,7 +22,7 @@ async function setRewardEnabled(broadcasterId, rewardId, enabled) {
             data?.message?.includes("Client-Id header must match the client ID used to create the custom reward")
         ) {
             throw new Error(
-                `Unable to ${enabled ? "enable" : "disable"} the Spotify reward.
+                `Unable to ${enabled ? "enable" : "disable"} the custom reward.
 
                 This usually means the reward was not created by this bot.
 

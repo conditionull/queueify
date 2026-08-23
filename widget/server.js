@@ -154,6 +154,13 @@ app.post('/api/widget/theme-takeover', express.json(), async (req, res) => {
         });
     }
 
+    if (getActiveTheme() === theme) {
+        return res.status(400).json({
+            code: 'THEME_ALREADY_ACTIVE',
+            theme
+        });
+    }
+
     clearTimeout(themeTakeoverTimer);
     themeTakeover = {
         theme,

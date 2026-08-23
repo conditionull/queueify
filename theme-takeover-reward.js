@@ -2,6 +2,7 @@ require('dotenv').config({ quiet: true });
 
 const state = require('./core/state');
 const { buildThemeTakeoverPrompt } = require('./services/updateThemeTakeoverReward');
+const { syncThemeTakeoverReward } = require('./services/syncThemeTakeoverReward');
 
 const CLIENT_ID = process.env.TWITCH_CLIENT_ID;
 const ACCESS_TOKEN = process.env.TWITCH_ACCESS_TOKEN;
@@ -88,6 +89,12 @@ async function createReward(broadcasterId) {
             changed = true;
         }
         if (changed) state.saveSettings();
+        if (changed) state.saveSettings();
+
+        await syncThemeTakeoverReward({
+            broadcasterId,
+            rewardId: reward.id
+        });
 
         console.log('Reward:', reward.title);
         console.log('ID:', reward.id);

@@ -65,6 +65,7 @@ const defaultMessages = {
         themeTakeoverMissingTheme: '@{{username}} choose a widget theme: default or swag{{refundSuffix}}',
         themeTakeoverInvalidTheme: '@{{username}} Theme Takeover supports default or swag only{{refundSuffix}}',
         themeTakeoverBaseThemeUnsupported: '@{{username}} Theme Takeover is unavailable while the widget uses {{theme}}{{refundSuffix}}',
+        themeTakeoverAlreadyActive: '@{{username}} the widget is already using {{theme}}{{refundSuffix}}',
         themeTakeoverFailed: '@{{username}} couldn\'t start that widget theme takeover{{refundSuffix}}',
         themeTakeoverStarted: '@{{username}} activated the {{theme}} widget theme for {{minutes}} minutes!'
     },

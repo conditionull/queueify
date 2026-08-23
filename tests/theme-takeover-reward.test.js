@@ -101,3 +101,19 @@ test('explains when the current widget theme prevents a takeover', async () => {
         values: { username: 'viewer', theme: 'minimal', refundSuffix: ' (points refunded)' }
     }]);
 });
+
+test('refunds when the requested theme is already active', async () => {
+    const error = new Error('THEME_ALREADY_ACTIVE');
+    error.code = 'THEME_ALREADY_ACTIVE';
+    error.theme = 'swag';
+    const { handler, sent, refunds } = createHandler({ error });
+
+    await handler(rewardContext('swag'));
+
+    assert.deepStrictEqual(refunds, [['redemption', 'broadcaster', 'reward']]);
+    assert.deepStrictEqual(sent, [{
+        channel: '#channel',
+        key: 'reward.themeTakeoverAlreadyActive',
+        values: { username: 'viewer', theme: 'swag', refundSuffix: ' (points refunded)' }
+    }]);
+});

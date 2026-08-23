@@ -80,12 +80,15 @@ function createThemeTakeoverReward(dependencies) {
         } catch (err) {
             console.error('Theme takeover reward failed:', err.message);
             const baseThemeUnsupported = err.code === 'BASE_THEME_UNSUPPORTED';
+            const themeAlreadyActive = err.code === 'THEME_ALREADY_ACTIVE';
             await reject({
                 client, channel, username, redemptionId, broadcasterId, rewardId,
                 key: baseThemeUnsupported
                     ? 'reward.themeTakeoverBaseThemeUnsupported'
+                    : themeAlreadyActive
+                        ? 'reward.themeTakeoverAlreadyActive'
                     : 'reward.themeTakeoverFailed',
-                values: baseThemeUnsupported ? { theme: err.theme } : {}
+                values: baseThemeUnsupported || themeAlreadyActive ? { theme: err.theme } : {}
             });
         }
     }

@@ -165,9 +165,11 @@ Set `THEME_TAKEOVER_REWARD_NAME` in `.env`, then create the optional 20,000-poin
 npm run theme-takeover-reward
 ```
 
-Viewers enter `default` or `swag` to temporarily take over the OBS widget theme. The broadcaster's saved theme must also be `default` or `swag`; change it with `!theme` before enabling this reward. `minimal` is intentionally unavailable because its compact dimensions can be misframed in an existing OBS browser source. 
+Viewers enter `default` or `swag` in the reward's input field to temporarily take over the OBS widget theme. `minimal` is intentionally unavailable because its compact dimensions can be misframed in an existing OBS browser source. 
 
-A takeover lasts one hour by default; moderators can view or change the duration with `!themeduration` or `!themeduration <seconds>` (60-86400). Changing the duration **automatically updates** the Twitch reward prompt. A later redemption replaces the current takeover and starts a new duration; the `!theme <theme>` command cancels it immediately. Invalid theme input or an unavailable widget server is refunded.
+If minimal the set theme by the broadacster, then the reward with **automatically** disable itself. If not minimal the reward wil **automatically** re-enable.
+
+A takeover lasts one hour by default; moderators can view or change the duration with `!themeduration` or `!themeduration <seconds>` (60-86400). Changing the duration **automatically updates** the Twitch reward prompt. A later redemption replaces the current takeover and starts a new duration; the `!theme <theme>` command **overrides** any theme set by a redeem. Invalid theme input or an unavailable widget server is refunded.
 
 Just like the other reward, you can modify the price in your Creator Dashboard after creating the reward with the bot.
 

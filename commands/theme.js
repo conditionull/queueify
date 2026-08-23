@@ -1,6 +1,7 @@
 const obs = require("../services/obs");
 const state = require("../core/state");
 const { sayMessage } = require('../services/messages');
+const { syncThemeTakeoverReward } = require('../services/syncThemeTakeoverReward');
 
 function getPresetName(theme, currentPosition) {
     if (currentPosition === "bottomcenter") {
@@ -47,7 +48,7 @@ module.exports = {
         const configRes = await fetch("http://localhost:3001/api/widget/config");
         const config = await configRes.json();
 
-        if (config.theme === theme) {
+        if (config.theme === theme && config.effectiveTheme === theme) {
             sayMessage(client, channel, 'widget.themeAlreadySet', { theme });
             return;
         }
@@ -64,6 +65,16 @@ module.exports = {
                 })
             }
         );
+
+        try {
+            await syncThemeTakeoverReward({
+                broadcasterId: state.broadcasterId,
+                rewardId: state.themeTakeoverRewardId,
+                theme
+            });
+        } catch (err) {
+            console.error('Failed to update Theme Takeover reward availability:', err.message);
+        }
 
         try {
             const currentTransform = await obs.getTransform();

@@ -2,6 +2,7 @@ const state = require("./core/state")
 const WebSocket = require("ws");
 const queueSong = require("./services/queueSong");
 const themeTakeoverReward = require('./services/themeTakeoverReward');
+const { syncThemeTakeoverReward } = require('./services/syncThemeTakeoverReward');
 
 const CLIENT_ID = process.env.TWITCH_CLIENT_ID;
 const ACCESS_TOKEN = process.env.TWITCH_ACCESS_TOKEN;
@@ -141,6 +142,10 @@ module.exports = function startEventSub(client) {
                             state.saveSettings();
                         }
 
+                        await syncThemeTakeoverReward({
+                            broadcasterId,
+                            rewardId: themeTakeover.id
+                        });
                         await createSubscription(sessionId, broadcasterId, themeTakeover.id);
                     }
                 }
