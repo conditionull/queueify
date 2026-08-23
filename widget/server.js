@@ -5,6 +5,7 @@ const fs = require("fs");
 const fsPromises = require("fs/promises");
 const app = express();
 const { getCurrentTrack } = require("../spotify");
+const { isThemeTakeoverTheme } = require('../services/themeTakeoverThemes');
 
 let widgetConfig = {};
 let widgetConfigLoaded = false;
@@ -119,6 +120,8 @@ app.post("/api/widget/theme", express.json(), async (req, res) => {
         return res.status(500).json({ error: "Unable to save theme" });
     }
 
+    clearTimeout(themeTakeoverTimer);
+    themeTakeover = null;
     notifyThemeChange(theme);
 
     res.json({
@@ -135,11 +138,20 @@ app.post('/api/widget/theme-takeover', express.json(), async (req, res) => {
         return res.status(400).json({ error: 'Invalid theme takeover request' });
     }
 
+    await loadWidgetConfig();
+
     const themesPath = path.join(__dirname, 'themes');
     const htmlPath = path.join(themesPath, theme, 'index.html');
 
-    if (!fs.existsSync(htmlPath)) {
-        return res.status(400).json({ error: 'Unknown widget theme' });
+    if (!isThemeTakeoverTheme(theme) || !fs.existsSync(htmlPath)) {
+        return res.status(400).json({ error: 'Theme is not available for takeovers' });
+    }
+
+    if (!isThemeTakeoverTheme(widgetConfig.theme || 'default')) {
+        return res.status(400).json({
+            code: 'BASE_THEME_UNSUPPORTED',
+            theme: widgetConfig.theme || 'default'
+        });
     }
 
     clearTimeout(themeTakeoverTimer);

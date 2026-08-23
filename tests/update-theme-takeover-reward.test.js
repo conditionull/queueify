@@ -9,7 +9,7 @@ const {
 test('builds the Theme Takeover prompt from a default one-hour duration', () => {
     assert.strictEqual(
         buildThemeTakeoverPrompt(3600),
-        'Choose a widget theme: default, minimal, or swag. Your change will last 60 minutes unless this reward is redeemed again.'
+        'Choose a widget theme: default or swag. Your change will last 60 minutes unless this reward is redeemed again.'
     );
 });
 
@@ -36,7 +36,7 @@ test('updates the existing Theme Takeover reward prompt', async () => {
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
-                    prompt: 'Choose a widget theme: default, minimal, or swag. Your change will last 90 seconds unless this reward is redeemed again.'
+                    prompt: 'Choose a widget theme: default or swag. Your change will last 90 seconds unless this reward is redeemed again.'
                 })
             }
         }]);

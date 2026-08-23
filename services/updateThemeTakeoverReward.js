@@ -1,9 +1,11 @@
+const { THEME_TAKEOVER_THEMES } = require('./themeTakeoverThemes');
+
 function buildThemeTakeoverPrompt(durationSeconds) {
     const duration = durationSeconds % 60 === 0
         ? `${durationSeconds / 60} minute${durationSeconds === 60 ? '' : 's'}`
         : `${durationSeconds} seconds`;
 
-    return `Choose a widget theme: default, minimal, or swag. Your change will last ${duration} unless this reward is redeemed again.`;
+    return `Choose a widget theme: ${THEME_TAKEOVER_THEMES.join(' or ')}. Your change will last ${duration} unless this reward is redeemed again.`;
 }
 
 async function updateThemeTakeoverReward(broadcasterId, rewardId, durationSeconds) {

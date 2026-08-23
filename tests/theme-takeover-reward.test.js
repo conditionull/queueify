@@ -3,13 +3,14 @@ const test = require('node:test');
 
 const { createThemeTakeoverReward } = require('../services/themeTakeoverReward');
 
-function createHandler({ result = { theme: 'swag' } } = {}) {
+function createHandler({ result = { theme: 'swag' }, error = null } = {}) {
     const sent = [];
     const refunds = [];
     const activations = [];
     const handler = createThemeTakeoverReward({
         activateThemeTakeover: async (...args) => {
             activations.push(args);
+            if (error) throw error;
             return result;
         },
         refundRedeem: async (...args) => {
@@ -61,12 +62,42 @@ test('starts a lowercased theme takeover for the configured duration', async () 
 test('refunds a theme takeover reward when the widget rejects the theme', async () => {
     const { handler, sent, refunds } = createHandler({ result: null });
 
-    await handler(rewardContext('missing-theme'));
+    await handler(rewardContext('swag'));
 
     assert.deepStrictEqual(refunds, [['redemption', 'broadcaster', 'reward']]);
     assert.deepStrictEqual(sent, [{
         channel: '#channel',
         key: 'reward.themeTakeoverFailed',
         values: { username: 'viewer', refundSuffix: ' (points refunded)' }
+    }]);
+});
+
+test('refunds a theme takeover reward for the compact minimal theme', async () => {
+    const { handler, sent, refunds, activations } = createHandler();
+
+    await handler(rewardContext('minimal'));
+
+    assert.deepStrictEqual(activations, []);
+    assert.deepStrictEqual(refunds, [['redemption', 'broadcaster', 'reward']]);
+    assert.deepStrictEqual(sent, [{
+        channel: '#channel',
+        key: 'reward.themeTakeoverInvalidTheme',
+        values: { username: 'viewer', refundSuffix: ' (points refunded)' }
+    }]);
+});
+
+test('explains when the current widget theme prevents a takeover', async () => {
+    const error = new Error('BASE_THEME_UNSUPPORTED');
+    error.code = 'BASE_THEME_UNSUPPORTED';
+    error.theme = 'minimal';
+    const { handler, sent, refunds } = createHandler({ error });
+
+    await handler(rewardContext('swag'));
+
+    assert.deepStrictEqual(refunds, [['redemption', 'broadcaster', 'reward']]);
+    assert.deepStrictEqual(sent, [{
+        channel: '#channel',
+        key: 'reward.themeTakeoverBaseThemeUnsupported',
+        values: { username: 'viewer', theme: 'minimal', refundSuffix: ' (points refunded)' }
     }]);
 });
