@@ -159,7 +159,10 @@ You can now mess with the rewards name, color, icon, description text, etc. in y
 
 ### Optional: Theme Takeover Reward
 
-Set `THEME_TAKEOVER_REWARD_NAME` in `.env`, then create the optional 20,000-point reward:
+> [!NOTE]
+This optional feature lets viewers use channel points to temporarily change the current wdiget theme
+
+Set `THEME_TAKEOVER_REWARD_NAME` in `.env`, then create the reward:
 
 ```sh
 npm run theme-takeover-reward

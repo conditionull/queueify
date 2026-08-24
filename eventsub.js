@@ -165,12 +165,12 @@ module.exports = function startEventSub(client) {
             ) {
                 console.log("Redemption:", event.user_name, event.user_input);
 
-                if (!state.redeemsEnabled) {
-                    console.log("Redeem ignored (currently disabled)");
-                    return;
-                }
-
                 if (event.reward.id === state.spotifyRewardId) {
+                    if (!state.redeemsEnabled) {
+                        console.log("Redeem ignored (currently disabled)");
+                        return;
+                    }
+
                     await queueSong({
                         client,
                         channel: process.env.TWITCH_BROADCASTER_USERNAME,
@@ -182,6 +182,11 @@ module.exports = function startEventSub(client) {
                         broadcasterId: state.broadcasterId
                     });
                 } else if (event.reward.id === state.themeTakeoverRewardId) {
+                    if (!state.themeTakeoverEnabled) {
+                        console.log("Theme Takeover redeem ignored (currently disabled)");
+                        return;
+                    }
+
                     await themeTakeoverReward({
                         client,
                         channel: process.env.TWITCH_BROADCASTER_USERNAME,
