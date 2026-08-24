@@ -1,6 +1,7 @@
 const state = require("./core/state")
 const WebSocket = require("ws");
 const queueSong = require("./services/queueSong");
+const refundRedeem = require('./services/refundRedeem');
 const themeTakeoverReward = require('./services/themeTakeoverReward');
 const { syncThemeTakeoverReward } = require('./services/syncThemeTakeoverReward');
 
@@ -168,6 +169,11 @@ module.exports = function startEventSub(client) {
                 if (event.reward.id === state.spotifyRewardId) {
                     if (!state.redeemsEnabled) {
                         console.log("Redeem ignored (currently disabled)");
+                        await refundRedeem(
+                            event.id,
+                            state.broadcasterId,
+                            state.spotifyRewardId
+                        );
                         return;
                     }
 
@@ -184,6 +190,11 @@ module.exports = function startEventSub(client) {
                 } else if (event.reward.id === state.themeTakeoverRewardId) {
                     if (!state.themeTakeoverEnabled) {
                         console.log("Theme Takeover redeem ignored (currently disabled)");
+                        await refundRedeem(
+                            event.id,
+                            state.broadcasterId,
+                            state.themeTakeoverRewardId
+                        );
                         return;
                     }
 
