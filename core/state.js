@@ -67,26 +67,29 @@ function normalizePendingItem(item) {
 }
 
 function reconcilePendingQueue(pendingQueue, spotifyQueue) {
-    const remainingCounts = new Map();
-    for (const spotifyItem of spotifyQueue) {
-        remainingCounts.set(spotifyItem.id, (remainingCounts.get(spotifyItem.id) || 0) + 1);
-    }
+    for (let startIndex = 0; startIndex < pendingQueue.length; startIndex += 1) {
+        let spotifyIndex = 0;
+        let matchesQueue = true;
 
-    const result = [...pendingQueue];
+        for (let pendingIndex = startIndex; pendingIndex < pendingQueue.length; pendingIndex += 1) {
+            const matchingIndex = spotifyQueue.findIndex(
+                (spotifyItem, index) => index >= spotifyIndex && spotifyItem.id === pendingQueue[pendingIndex].id
+            );
 
-    while (result.length > 0) {
-        const remaining = remainingCounts.get(result[0].id);
+            if (matchingIndex === -1) {
+                matchesQueue = false;
+                break;
+            }
 
-        if (!remaining) {
-            result.shift();
-            continue;
+            spotifyIndex = matchingIndex + 1;
         }
 
-        remainingCounts.set(result[0].id, remaining - 1);
-        break;
+        if (matchesQueue) {
+            return pendingQueue.slice(startIndex);
+        }
     }
 
-    return result;
+    return [];
 }
 
 const settings = loadJSON(QUEUE_SETTINGS_FILE, {});
