@@ -1,0 +1,2680 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Queueify Theme Editor</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link id="font-menu-css" rel="stylesheet" href="">
+<link id="font-used-css" rel="stylesheet" href="">
+<style>
+  :root {
+    --bg: #0d0d11;
+    --card: #16161e;
+    --panel: #12121a;
+    --border: #272733;
+    --border-soft: #1f1f29;
+    --text: #ededf2;
+    --muted: #9494a8;
+    --faint: #6a6a7d;
+    --accent: #9147ff;
+    --accent-hover: #a970ff;
+    --green: #24d17e;
+    --amber: #f5a524;
+    --red: #f5566c;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background: radial-gradient(1100px 520px at 50% -12%, #1e1533 0%, var(--bg) 58%);
+    color: var(--text);
+    font: 14px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  a { color: var(--accent-hover); }
+
+  button {
+    font: inherit; font-weight: 600; font-size: 13.5px;
+    border: 0; border-radius: 8px; padding: 8px 14px;
+    background: var(--accent); color: #fff; cursor: pointer;
+    transition: background .15s, opacity .15s;
+  }
+  button:hover:not(:disabled) { background: var(--accent-hover); }
+  button:disabled { opacity: .4; cursor: default; }
+  button.ghost { background: #292937; }
+  button.ghost:hover:not(:disabled) { background: #343446; }
+  button.danger { background: #3a1620; color: #ff9dab; }
+  button.danger:hover:not(:disabled) { background: #4d1c2a; }
+
+  input, select {
+    width: 100%; font: inherit; font-size: 13px;
+    background: #08080c; color: var(--text);
+    border: 1px solid var(--border); border-radius: 7px;
+    padding: 6px 8px;
+  }
+  input:focus, select:focus { outline: none; border-color: var(--accent); }
+  input[type="range"] { padding: 0; border: 0; background: none; accent-color: var(--accent); }
+  input[type="color"] { padding: 2px; height: 30px; cursor: pointer; }
+  input[type="checkbox"] { width: auto; accent-color: var(--accent); }
+
+  /* The browser's own up/down arrows are tiny, ugly and hard to hit. A number
+     is a plain box you can type in, with steppers of our own either side. */
+  input[type="number"] { -moz-appearance: textfield; appearance: textfield; text-align: center; }
+  input[type="number"]::-webkit-outer-spin-button,
+  input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+
+  .stepper { display: flex; align-items: stretch; }
+  .stepper input { border-radius: 0; border-left: 0; border-right: 0; min-width: 0; }
+  .stepper button {
+    flex: none; width: 26px; padding: 0;
+    background: #16161e; color: var(--muted);
+    border: 1px solid var(--border); border-radius: 0;
+    font-size: 14px; line-height: 1; font-weight: 600;
+    transition: background .12s, color .12s;
+  }
+  .stepper button:first-child { border-radius: 7px 0 0 7px; border-right: 0; }
+  .stepper button:last-child { border-radius: 0 7px 7px 0; border-left: 0; }
+  .stepper button:hover:not(:disabled) { background: #24242f; color: var(--text); }
+  .stepper button:active:not(:disabled) { background: var(--accent); color: #fff; }
+  .stepper:focus-within > * { border-color: var(--accent); }
+
+  /* ---------------------------------------------------------- chrome */
+
+  .top {
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    padding: 12px 18px;
+    border-bottom: 1px solid var(--border);
+    background: rgba(13, 13, 17, .82);
+    backdrop-filter: blur(8px);
+    position: sticky; top: 0; z-index: 20;
+  }
+  .top h1 { margin: 0 14px 0 0; font-size: 16px; letter-spacing: -.01em; }
+  .back {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 7px 12px 7px 9px; margin-right: 4px;
+    border-radius: 8px; background: #292937; color: var(--text);
+    font-size: 13.5px; font-weight: 600; text-decoration: none;
+    transition: background .15s, transform .15s;
+  }
+  .back:hover { background: #343446; }
+  .back:active { transform: translateX(-2px); }
+  .back svg { width: 15px; height: 15px; }
+
+  /* The admin pages are the other half of this dashboard, so the way there
+     is a real button rather than another grey one nobody notices. */
+  .back.accent {
+    padding-left: 11px;
+    background: linear-gradient(180deg, #8a52ff, #6a26e0);
+    color: #fff;
+    box-shadow: 0 3px 14px rgba(122, 60, 240, .38);
+  }
+  .back.accent:hover { background: linear-gradient(180deg, #9866ff, #7833ec); }
+  .back.accent:active { transform: translateY(1px); }
+  /* Sharing is worth finding, so these two get a tint of their own rather
+     than disappearing into the row of grey buttons. */
+  button.share {
+    padding: 5px 10px; font-size: 12px;
+    background: #2c2540; color: #d8c8ff;
+    box-shadow: inset 0 0 0 1px rgba(145, 71, 255, .38);
+  }
+  button.share:hover:not(:disabled) { background: #3a2f57; color: #ece3ff; }
+
+  .top .spacer { flex: 1; }
+  .top button[hidden] { display: none; }
+  .top .field { display: flex; align-items: center; gap: 7px; }
+  .top label { color: var(--muted); font-size: 12.5px; white-space: nowrap; }
+  .top select, .top input { width: auto; min-width: 150px; }
+
+  .state {
+    display: inline-flex; align-items: center; gap: 7px;
+    font-size: 13.5px; font-weight: 600; color: var(--muted); min-width: 96px;
+  }
+  .state.dirty { color: var(--amber); }
+  .state.saved { color: var(--green); }
+
+  /* The same "we are live" pulse Twitch uses, because this theme is the one
+     your viewers are looking at right now. */
+  .live-dot {
+    width: 8px; height: 8px; flex: none; border-radius: 50%;
+    background: #b98cff;
+    animation: live-pulse 1.6s ease-out infinite;
+  }
+  @keyframes live-pulse {
+    0%   { box-shadow: 0 0 0 0 rgba(168, 116, 255, .65); }
+    70%  { box-shadow: 0 0 0 7px rgba(168, 116, 255, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(168, 116, 255, 0); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .live-dot { animation: none; }
+  }
+
+  .layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 310px;
+    gap: 0;
+    align-items: start;
+    min-height: calc(100vh - 59px);
+  }
+
+  /* ----------------------------------------------------------- stage */
+
+  .stage-wrap { padding: 26px 22px 40px; overflow: auto; }
+
+  .stage-tools {
+    display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+    margin-bottom: 16px; font-size: 12.5px; color: var(--muted);
+  }
+  .swatch {
+    width: 24px; height: 24px; border-radius: 6px; cursor: pointer;
+    border: 1px solid var(--border);
+  }
+  .swatch.active { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(145,71,255,.28); }
+
+  .stage {
+    position: relative;
+    display: inline-block;
+    padding: 44px;
+    border-radius: 14px;
+    border: 1px solid var(--border);
+  }
+  .stage.dark { background: #101014; }
+  .stage.light { background: #d7d7de; }
+  .stage.checker {
+    background-color: #202028;
+    background-image:
+      linear-gradient(45deg, #2c2c36 25%, transparent 25%),
+      linear-gradient(-45deg, #2c2c36 25%, transparent 25%),
+      linear-gradient(45deg, transparent 75%, #2c2c36 75%),
+      linear-gradient(-45deg, transparent 75%, #2c2c36 75%);
+    background-size: 22px 22px;
+    background-position: 0 0, 0 11px, 11px -11px, -11px 0px;
+  }
+
+  .artboard { position: relative; }
+
+  /* Hit areas sit above the widget so a click selects a module without the
+     preview DOM (images, video) swallowing the event. */
+  .hit {
+    position: absolute;
+    border: 1px solid transparent;
+    border-radius: 4px;
+    cursor: move;
+  }
+  .hit:hover { border-color: rgba(145,71,255,.5); }
+  .hit.selected { border-color: var(--accent); }
+  .hit.hidden-module { opacity: .35; border-style: dashed; }
+
+  .handle {
+    position: absolute;
+    width: 9px; height: 9px;
+    background: var(--accent); border: 1px solid #fff; border-radius: 2px;
+  }
+  .handle[data-dir="nw"] { left: -5px; top: -5px; cursor: nwse-resize; }
+  .handle[data-dir="ne"] { right: -5px; top: -5px; cursor: nesw-resize; }
+  .handle[data-dir="sw"] { left: -5px; bottom: -5px; cursor: nesw-resize; }
+  .handle[data-dir="se"] { right: -5px; bottom: -5px; cursor: nwse-resize; }
+  .handle[data-dir="n"] { left: 50%; top: -5px; margin-left: -4px; cursor: ns-resize; }
+  .handle[data-dir="s"] { left: 50%; bottom: -5px; margin-left: -4px; cursor: ns-resize; }
+  .handle[data-dir="w"] { left: -5px; top: 50%; margin-top: -4px; cursor: ew-resize; }
+
+  /* On a thin part the handles step outside the box, so the middle stays free
+     to grab. Every handle is still there. */
+  .handle.clear-top { top: -13px; }
+  .handle.clear-bottom { bottom: -13px; }
+  .handle.clear-left { left: -13px; }
+  .handle.clear-right { right: -13px; }
+  .handle[data-dir="e"] { right: -5px; top: 50%; margin-top: -4px; cursor: ew-resize; }
+
+  /* What a size was matched against, and what the match was. */
+  .match {
+    position: absolute; pointer-events: none; z-index: 4;
+    border: 1px dashed #ff41a6; border-radius: 3px;
+    background: rgba(255, 65, 166, .06);
+  }
+  .match-label {
+    position: absolute; pointer-events: none; z-index: 6;
+    background: #ff41a6; color: #1a0512;
+    font-size: 10.5px; font-weight: 700; letter-spacing: .01em;
+    padding: 2px 6px; border-radius: 4px; white-space: nowrap;
+  }
+
+  /* Equal gaps, shown while a part is being spaced to match another pair. */
+  .gap-mark {
+    position: absolute; pointer-events: none; z-index: 6;
+    background: rgba(255, 65, 166, .18);
+    border-left: 1px solid #ff41a6; border-right: 1px solid #ff41a6;
+    display: grid; place-items: center;
+  }
+  .gap-mark span {
+    background: #ff41a6; color: #1a0512;
+    font-size: 10px; font-weight: 700;
+    padding: 1px 4px; border-radius: 3px; line-height: 1.2;
+  }
+
+  .guide { position: absolute; background: #ff41a6; pointer-events: none; z-index: 5; }
+  .guide.v { width: 1px; top: -14px; bottom: -14px; }
+  .guide.h { height: 1px; left: -14px; right: -14px; }
+
+  .readout {
+    margin-top: 14px; font-size: 12px; color: var(--faint);
+    font-family: ui-monospace, Menlo, Consolas, monospace;
+  }
+
+  /* Dragging with snapping held off says so, so it is never a mystery why
+     things stopped lining up. */
+  .stage.freeform { box-shadow: 0 0 0 2px rgba(245,165,36,.45); }
+  .stage.freeform::after {
+    content: 'snapping off';
+    position: absolute; top: 8px; right: 12px;
+    font-size: 11px; font-weight: 700; letter-spacing: .04em;
+    color: #f5c47a; text-transform: uppercase;
+  }
+
+  /* Help sits under the canvas, in cards rather than a wall of small text. */
+  .help { max-width: 720px; margin-top: 18px; }
+  .help-lead {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 11px; padding: 14px 16px;
+    font-size: 14px; line-height: 1.6; color: var(--text);
+  }
+  .help-lead strong { color: #fff; }
+  .help-lead .keys {
+    display: inline-block; margin-top: 8px; font-size: 13px; color: var(--muted);
+  }
+
+  kbd {
+    font: inherit; font-size: 12px; font-weight: 600;
+    background: #08080c; border: 1px solid var(--border); border-bottom-width: 2px;
+    border-radius: 5px; padding: 1px 6px; color: var(--text);
+  }
+
+  .help-cards { display: grid; gap: 8px; margin-top: 10px; }
+  .help-card {
+    background: var(--card); border: 1px solid var(--border-soft); border-radius: 10px;
+  }
+  .help-card > summary {
+    cursor: pointer; list-style: none; padding: 11px 14px;
+    font-size: 13.5px; font-weight: 600; color: var(--text);
+    display: flex; align-items: center; gap: 8px;
+  }
+  .help-card > summary::-webkit-details-marker { display: none; }
+  .help-card > summary::after {
+    content: ''; margin-left: auto;
+    width: 7px; height: 7px; border-right: 2px solid var(--faint); border-bottom: 2px solid var(--faint);
+    transform: rotate(45deg) translate(-2px, -2px); transition: transform .2s;
+  }
+  .help-card[open] > summary::after { transform: rotate(-135deg) translate(-2px, -2px); }
+  .help-card[open] > summary { border-bottom: 1px solid var(--border-soft); }
+  .help-card:hover { border-color: var(--border); }
+  .help-body { padding: 12px 14px 14px; font-size: 13px; line-height: 1.65; color: var(--muted); }
+  .help-body p { margin: 0 0 9px; }
+  .help-body p:last-child { margin-bottom: 0; }
+  .help-body ul { margin: 0; padding-left: 18px; }
+  .help-body li { margin-bottom: 5px; }
+  .help-body strong { color: var(--text); }
+
+  /* ----------------------------------------------------------- panel */
+
+  .panel {
+    border-left: 1px solid var(--border);
+    background: var(--panel);
+    min-height: calc(100vh - 59px);
+    padding: 16px 16px 40px;
+  }
+
+  .panel-hint {
+    margin: 0 0 9px; font-size: 12px; color: var(--faint);
+  }
+
+  .modules { display: grid; gap: 6px; margin-bottom: 18px; }
+  .module-row {
+    display: flex; align-items: center; gap: 8px;
+    padding: 9px 10px 9px 8px; border-radius: 8px;
+    border: 1px solid var(--border); background: var(--card);
+    border-left: 3px solid #3a3a4a;
+    cursor: pointer;
+    transition: border-color .15s, background .15s, transform .12s;
+  }
+  .module-row:hover {
+    border-color: var(--accent-hover);
+    border-left-color: var(--accent-hover);
+    background: #1a1a24;
+    transform: translateX(2px);
+  }
+  .module-row.selected {
+    border-color: var(--accent); border-left-color: var(--accent);
+    background: #1b1526;
+  }
+  .module-row .name { flex: 1; font-size: 13px; font-weight: 600; }
+  .module-row .tag { font-size: 10.5px; color: var(--faint); text-transform: uppercase; letter-spacing: .06em; }
+  .module-row .eye {
+    background: none; border: 0; padding: 2px 4px; cursor: pointer;
+    color: var(--muted); font-size: 13px;
+  }
+  .module-row .go {
+    color: var(--faint); font-size: 15px; line-height: 1;
+    transition: transform .15s, color .15s;
+  }
+  .module-row:hover .go, .module-row.selected .go { color: var(--accent-hover); transform: translateX(2px); }
+
+  /* Sections fold, so the panel is a short list of headings rather than one
+     long wall of controls. */
+  .group { border-top: 1px solid var(--border); margin-top: 14px; }
+  .group > summary {
+    display: flex; align-items: center; gap: 8px;
+    padding: 13px 0 11px; cursor: pointer; list-style: none;
+    font-size: 14px; font-weight: 700; color: var(--text);
+  }
+  .group > summary::-webkit-details-marker { display: none; }
+  .group > summary::after {
+    content: ''; margin-left: auto;
+    width: 8px; height: 8px; border-right: 2px solid var(--faint); border-bottom: 2px solid var(--faint);
+    transform: rotate(45deg) translate(-2px, -2px);
+    transition: transform .2s;
+  }
+  .group[open] > summary::after { transform: rotate(-135deg) translate(-2px, -2px); }
+  .group > summary:hover { color: var(--accent-hover); }
+  .group > summary:hover::after { border-color: var(--accent-hover); }
+  .group .count { font-size: 11px; font-weight: 600; color: var(--faint); }
+  .group-body { padding-bottom: 6px; }
+
+  /* Hiding a part is a real design choice, so it looks like a switch rather
+     than a stray dot. */
+  .visibility {
+    display: flex; align-items: center; gap: 9px;
+    width: 100%; justify-content: flex-start;
+    background: #22222e; color: var(--text);
+    border: 1px solid var(--border); border-radius: 8px;
+    padding: 9px 11px; margin-bottom: 11px; font-size: 13px;
+  }
+  .visibility:hover:not(:disabled) { background: #2a2a38; border-color: var(--accent-hover); }
+  .visibility svg { width: 16px; height: 16px; flex: none; }
+  .visibility.is-hidden {
+    background: rgba(245,165,36,.1); border-color: rgba(245,165,36,.4); color: #f5c47a;
+  }
+  .visibility .why-hidden { margin-left: auto; font-size: 11px; opacity: .8; }
+
+  .module-row.is-hidden { opacity: .62; }
+  .module-row.is-hidden .name { text-decoration: line-through; text-decoration-color: var(--faint); }
+  .module-row .tag.hidden-tag {
+    color: #f5c47a; background: rgba(245,165,36,.14);
+    padding: 2px 6px; border-radius: 999px; letter-spacing: .04em;
+  }
+  .module-row .eye { display: grid; place-items: center; border-radius: 6px; }
+  .module-row .eye:hover { background: #2a2a38; color: var(--text); }
+  .module-row .eye svg { width: 15px; height: 15px; }
+
+  /* Short explanations under a control, for the settings whose names do not
+     say what they do. */
+  .prop .why {
+    display: block; margin-top: 4px;
+    font-size: 11.5px; line-height: 1.45; color: var(--faint);
+  }
+
+  .prop { margin-bottom: 9px; }
+  .prop > label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+  .prop.inline { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .prop.inline > label { margin: 0; }
+  .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .slider { display: grid; grid-template-columns: 1fr 52px; gap: 8px; align-items: center; }
+
+  .color { display: flex; gap: 6px; align-items: center; }
+  .color input[type="color"] { width: 40px; flex: none; }
+  .color input[type="color"].active { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(145,71,255,.28); }
+  .color .album.active { box-shadow: 0 0 0 2px rgba(145,71,255,.28); }
+  .color .albums { display: flex; gap: 4px; flex: 1; }
+  .color .album {
+    flex: 1; height: 26px; border-radius: 6px; cursor: pointer;
+    border: 1px solid var(--border); font-size: 10px; color: #fff;
+    display: grid; place-items: center; padding: 0;
+  }
+  .color .album.active { border-color: var(--accent); }
+
+  .note {
+    font-size: 12.5px; border-radius: 7px; padding: 8px 11px; margin-top: 10px;
+    background: rgba(245,165,36,.09); border: 1px solid rgba(245,165,36,.28); color: #f5c47a;
+  }
+  .note.bad  { background: rgba(245,86,108,.09); border-color: rgba(245,86,108,.28); color: #ff9dab; }
+  .note.good { background: rgba(36,209,126,.09); border-color: rgba(36,209,126,.28); color: #82e9ba; }
+
+  /* Messages appear under the buttons that caused them, not stretched across
+     the page where they read as unrelated. */
+  .toast-host {
+    position: fixed; top: 66px; right: 18px; z-index: 30;
+    width: min(340px, calc(100vw - 36px));
+    display: grid; gap: 8px;
+  }
+  .toast-host .note {
+    margin: 0;
+    background: #191922; border-color: var(--border);
+    box-shadow: 0 12px 30px rgba(0, 0, 0, .45);
+    animation: toast-in .18s ease-out;
+  }
+  .toast-host .note.good { background: #13261e; border-color: rgba(36,209,126,.4); }
+  .toast-host .note.bad { background: #2a1219; border-color: rgba(245,86,108,.45); }
+  .toast-host .note strong { display: block; margin-bottom: 2px; }
+  .toast-host .note { position: relative; padding-right: 26px; }
+  .note-close {
+    position: absolute; top: 4px; right: 5px;
+    background: none; border: 0; padding: 2px 5px;
+    color: inherit; opacity: .55; font-size: 15px; line-height: 1; cursor: pointer;
+  }
+  .note-close:hover { opacity: 1; background: none; }
+  @keyframes toast-in { from { opacity: 0; transform: translateY(-6px); } }
+
+  @media (prefers-reduced-motion: reduce) {
+    .toast-host .note { animation: none; }
+  }
+
+  .hint { font-size: 12px; color: var(--faint); line-height: 1.5; margin: 10px 0 0; }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; }
+  .mini {
+    padding: 5px 10px; font-size: 12px; background: #292937;
+  }
+  .mini:hover:not(:disabled) { background: #343446; }
+
+  .align-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-bottom: 9px; }
+
+  .presets { display: grid; gap: 8px; margin-bottom: 4px; }
+  .preset {
+    text-align: left; background: var(--card); color: var(--text);
+    border: 1px solid var(--border); padding: 10px 12px; border-radius: 9px;
+    font-weight: 600; font-size: 13px; cursor: pointer;
+  }
+  .preset:hover { border-color: var(--accent); background: #1b1526; }
+  .preset small { display: block; margin-top: 3px; font-weight: 400; color: var(--muted); font-size: 12px; }
+
+  .sheet {
+    position: fixed; inset: 0; z-index: 40;
+    background: rgba(6, 6, 10, .72); backdrop-filter: blur(3px);
+    display: grid; place-items: center; padding: 24px;
+  }
+  .sheet-card {
+    width: min(420px, 100%); background: var(--panel);
+    border: 1px solid var(--border); border-radius: 14px; padding: 20px;
+  }
+  .sheet-card h2 { margin: 0 0 4px; font-size: 17px; }
+  .sheet-card p { margin: 0 0 14px; color: var(--muted); font-size: 13px; }
+
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+
+<div class="top">
+  <a class="back" href="/" id="btn-back" title="Back to the dashboard">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"
+         stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <polyline points="15 18 9 12 15 6"></polyline>
+    </svg>
+    Dashboard
+  </a>
+  <a class="back accent" href="/admin.html" title="Queue settings, command aliases and every chat message">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1"
+         stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <circle cx="12" cy="12" r="3"></circle>
+      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+    </svg>
+    Admin Panel
+  </a>
+  <h1>Theme editor</h1>
+
+  <div class="field">
+    <label for="theme-open">Open</label>
+    <select id="theme-open" title="Open one of the themes you have made here. The theme on stream is marked live."></select>
+  </div>
+
+  <div class="field">
+    <label for="theme-label">Name</label>
+    <input id="theme-label" maxlength="60" placeholder="My theme" title="The name shown in the theme list and used by !theme in chat" />
+  </div>
+
+  <div class="spacer"></div>
+
+  <button id="btn-new" class="ghost" title="Start a new theme from scratch">New</button>
+  <button id="btn-presets" class="ghost" title="Pick one of the ready-made layouts to start from">Start from&hellip;</button>
+  <button id="btn-duplicate" class="ghost" title="Copy this theme so you can change it without touching the original">Duplicate</button>
+  <div class="state" id="state" title="Whether this theme has changes you have not saved yet">New theme</div>
+  <button id="btn-save" title="Write this theme to disk (Ctrl+S)">Save</button>
+  <button id="btn-activate" class="ghost" title="Show this theme on stream and reload it in OBS">Use on stream</button>
+  <button id="btn-delete" class="danger" title="Delete this theme for good">Delete</button>
+</div>
+
+<div class="layout">
+  <div class="stage-wrap">
+    <div class="stage-tools">
+      <span>Backdrop</span>
+      <div class="swatch active" data-backdrop="dark" style="background:#101014" title="Preview against a dark scene"></div>
+      <div class="swatch" data-backdrop="light" style="background:#d7d7de" title="Preview against a light scene"></div>
+      <div class="swatch" data-backdrop="checker" style="background:#2c2c36" title="Preview against a checkerboard, to judge transparency"></div>
+      <span style="margin-left:14px" id="preview-source">Preview</span>
+      <button class="ghost" id="btn-refresh-song" style="padding:5px 10px;font-size:12px" title="Pull the song playing right now into the preview">Refresh song</button>
+      <button class="ghost" id="btn-undo" style="padding:5px 10px;font-size:12px" title="Undo the last change (Ctrl+Z)">Undo</button>
+      <button class="ghost" id="btn-redo" style="padding:5px 10px;font-size:12px" title="Redo (Ctrl+Shift+Z)">Redo</button>
+
+      <span style="margin-left:14px">Zoom</span>
+      <select id="zoom" style="width:auto;padding:4px 6px;font-size:12px" title="Magnify the editing canvas. Does not change the theme.">
+        <option value="0.5">50%</option>
+        <option value="0.75">75%</option>
+        <option value="1" selected>100%</option>
+        <option value="1.5">150%</option>
+        <option value="2">200%</option>
+      </select>
+
+      <button class="ghost share" id="btn-export" title="Save this theme as a file you can share">Export</button>
+      <button class="ghost share" id="btn-import" title="Load a theme file someone shared with you">Import</button>
+      <input type="file" id="import-file" accept="application/json,.json" class="hidden" />
+    </div>
+
+    <div class="stage dark" id="stage">
+      <div class="artboard" id="artboard">
+        <style id="theme-style"></style>
+
+        <div class="widget" id="widget">
+          <img class="cover" id="cover" alt="" />
+          <video class="canvas" id="canvas" autoplay muted loop playsinline></video>
+
+          <div class="title-wrapper">
+            <div class="title-container">
+              <div class="title" id="title"></div>
+            </div>
+          </div>
+
+          <div class="artist-wrapper">
+            <div class="artist" id="artist"></div>
+          </div>
+
+          <div class="progress-container">
+            <div class="progress" id="progress"></div>
+          </div>
+        </div>
+
+        <div id="overlay"></div>
+      </div>
+    </div>
+
+    <div class="readout" id="readout"></div>
+    <div id="fit-warning"></div>
+    <div class="help">
+      <div class="help-lead">
+        <strong>Drag a part to move it, drag its handles to resize.</strong>
+        Pink marks show what you have lined up with. Hold <kbd>Ctrl</kbd> or <kbd>Shift</kbd>
+        while dragging to ignore snapping altogether.
+        <span class="keys">
+          <kbd>←</kbd><kbd>↑</kbd><kbd>↓</kbd><kbd>→</kbd> nudge by 1px &nbsp;·&nbsp;
+          <kbd>Shift</kbd> + arrows by 10px &nbsp;·&nbsp;
+          <kbd>Ctrl</kbd>+<kbd>Z</kbd> undo &nbsp;·&nbsp;
+          <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Z</kbd> redo
+        </span>
+      </div>
+
+      <div class="help-cards">
+        <details class="help-card">
+          <summary>What the pink marks mean</summary>
+          <div class="help-body">
+            <ul>
+              <li><strong>A pink line</strong> - an edge or center is lined up with the canvas or
+                another part.</li>
+              <li><strong>A dashed outline with a label</strong> - you have matched that part's
+                width or height exactly. The label says which part and what size.</li>
+              <li><strong>Two pink blocks with a number</strong> - the gap you are making matches a
+                gap you already have. Put the artist 10px under the title and the progress bar will
+                catch at 10px under the artist.</li>
+            </ul>
+            <p>None of it is compulsory: hold <kbd>Ctrl</kbd> or <kbd>Shift</kbd> while dragging
+              and everything moves freely. The canvas shows "snapping off" while you do.</p>
+          </div>
+        </details>
+
+        <details class="help-card">
+          <summary>Hiding parts, including the background</summary>
+          <div class="help-body">
+            <p>Every part has an eye in the list on the right, and a switch in its own settings.
+              Hiding is not deleting - the part keeps all its settings and comes back exactly as it
+              was.</p>
+            <p>The <strong>Canvas</strong> row has an eye too. Hiding it drops the background panel
+              and its border, so the art and text sit straight over your gameplay. Your colors are
+              kept for when you turn it back on.</p>
+          </div>
+        </details>
+
+        <details class="help-card">
+          <summary>Colors that follow the album art</summary>
+          <div class="help-body">
+            <p>The <strong>Vib</strong>, <strong>Dark</strong>, <strong>Light</strong> and
+              <strong>Mute</strong> swatches are not fixed colors - they are taken from the artwork
+              of whatever is playing, so the widget re-tints itself with every song.</p>
+            <p>Pick a color from the picker instead if you want it to stay put.</p>
+          </div>
+        </details>
+
+        <details class="help-card">
+          <summary>Sharing a theme, or using someone else's</summary>
+          <div class="help-body">
+            <p>A theme is one small file. <strong>Export</strong> writes it out, and you can send
+              it to anyone running Queueify.</p>
+            <p><strong>Import</strong> opens a file somebody sent you and drops it straight into
+              the editor. It arrives as a new theme, so nothing you already have is overwritten -
+              give it a name and save it.</p>
+            <p>Imported themes are checked the same way as everything else, so a file that has
+              been messed with cannot put anything odd into your widget.</p>
+          </div>
+        </details>
+
+        <details class="help-card">
+          <summary>Saving, and putting it on stream</summary>
+          <div class="help-body">
+            <p><strong>Save</strong> writes the theme to disk. <strong>Use on stream</strong> makes
+              it the live one and reloads the widget in OBS for you.</p>
+            <p>Saving a theme that is already live updates the stream straight away. If OBS cannot
+              be reached, the message says so in red and asks you to refresh the source yourself.</p>
+          </div>
+        </details>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="modules" id="modules"></div>
+    <div id="props"></div>
+  </div>
+</div>
+
+<div id="notes" class="toast-host"></div>
+
+<div class="sheet hidden" id="preset-sheet">
+  <div class="sheet-card">
+    <h2>Start from</h2>
+    <p>Pick a layout to begin with. Everything stays editable.</p>
+    <div class="presets" id="preset-list"></div>
+    <div class="row" style="margin-top:12px"><button class="ghost" id="btn-preset-cancel">Cancel</button></div>
+  </div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+
+const MODULE_LABELS = {
+  art: 'Album art / Canvas',
+  title: 'Song title',
+  artist: 'Artist',
+  progress: 'Progress bar'
+};
+
+const ALBUM_COLORS = [
+  ['var(--album-vibrant)', 'Vib'],
+  ['var(--album-dark)', 'Dark'],
+  ['var(--album-light)', 'Light'],
+  ['var(--album-muted)', 'Mute'],
+  ['transparent', 'None']
+];
+
+const SNAP = 6;
+
+const state = {
+  name: null,
+  model: null,
+  // The theme exactly as it was last saved, as text. Everything that asks
+  // "is there anything to save?" is answered by comparing against this.
+  baseline: null,
+  fonts: {},
+  selection: 'canvas',
+  dirty: false,
+  history: [],
+  future: [],
+  song: null,
+  themes: [],
+  active: null,
+  source: null,
+  obsReady: false,
+  fontCategories: {},
+  presets: [],
+  zoom: 1
+};
+
+/* -------------------------------------------------------------- helpers */
+
+const clone = value => JSON.parse(JSON.stringify(value));
+
+// Theme names and imported labels end up inside innerHTML, so they get escaped.
+function escapeHtml(text) {
+  return String(text).replace(/[&<>"']/g, character => (
+    { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[character]
+  ));
+}
+
+async function api(path, options) {
+  const res = await fetch(path, Object.assign({ headers: { 'Content-Type': 'application/json' } }, options));
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || data.message || 'Request failed');
+  return data;
+}
+
+/**
+ * Says whether OBS actually picked the change up. When it could not, that has
+ * to be loud: a stale overlay looks like the change did not save.
+ */
+function obsOutcome(result) {
+  if (result && result.applied) {
+    const resized = result.changed
+      ? ' The browser source was resized to ' + result.width + ' \u00d7 ' + result.height +
+        ' and the scene item was scaled to match' +
+        (result.presetsAdjusted ? ', along with ' + result.presetsAdjusted + ' saved preset(s)' : '') + '.'
+      : '';
+    return { text: ' The widget was reloaded in OBS.' + resized, bad: false };
+  }
+
+  if (result && result.reason === 'obs_not_configured') {
+    return {
+      text: '<br /><strong style="color:#ff9dab">Refresh the widget source in OBS to see it on stream.</strong>' +
+        ' (Connect OBS on the dashboard and Queueify will do that for you.)',
+      bad: true
+    };
+  }
+
+  return {
+    text: '<br /><strong style="color:#ff9dab">OBS could not be reloaded, so refresh the widget source in OBS yourself.</strong>',
+    bad: true
+  };
+}
+
+let noteTimer = null;
+
+/**
+ * A short-lived message next to the controls. Good news clears itself; a
+ * problem stays until something replaces it.
+ */
+function note(text, kind) {
+  const host = $('notes');
+  clearTimeout(noteTimer);
+
+  if (!text) {
+    host.innerHTML = '';
+    return;
+  }
+
+  host.innerHTML = '<div class="note ' + (kind || '') + '">' +
+    '<button class="note-close" title="Dismiss">&times;</button>' + text + '</div>';
+
+  host.querySelector('.note-close').addEventListener('click', () => { host.innerHTML = ''; });
+
+  // Everything clears itself except an error, which stays until it is dealt
+  // with or replaced.
+  if (kind !== 'bad') {
+    noteTimer = setTimeout(() => { host.innerHTML = ''; }, kind === 'good' ? 6000 : 9000);
+  }
+}
+
+function moduleOf(type) {
+  return state.model.modules.find(module => module.type === type);
+}
+
+function selected() {
+  return state.selection === 'canvas' ? null : moduleOf(state.selection);
+}
+
+function slugify(label) {
+  return String(label || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 31) || 'my-theme';
+}
+
+/**
+ * Whether there is anything to save is a question about the theme, not about
+ * what has been clicked.
+ *
+ * Selecting a part, or dragging one and putting it back, changes nothing - and
+ * undoing your way back to where you started really does leave nothing to
+ * save. So the answer is always the saved copy compared with this one.
+ */
+function markChanged() {
+  setDirty(state.baseline === null || JSON.stringify(state.model) !== state.baseline);
+}
+
+/** Remembers this model as the saved one, so nothing counts as unsaved. */
+function markSaved() {
+  state.baseline = JSON.stringify(state.model);
+  setDirty(false);
+}
+
+function setDirty(dirty) {
+  state.dirty = dirty;
+  const el = $('state');
+  el.className = 'state' + (dirty ? ' dirty' : state.name ? ' saved' : '');
+  const live = Boolean(state.name) && state.active === state.name;
+
+  if (!dirty && live) {
+    el.innerHTML = '<span class="live-dot"></span>Saved · live';
+  } else {
+    el.textContent = dirty ? 'Unsaved changes' : state.name ? 'Saved' : 'New theme';
+  }
+
+  // Nothing to press if this theme is already the one on stream.
+  $('btn-activate').hidden = live;
+  $('btn-activate').disabled = !state.name;
+}
+
+/**
+ * The one question worth asking twice: there are unsaved changes, and what
+ * comes next would throw them away.
+ */
+function askDiscard(action) {
+  return askConfirm(
+    'This theme has changes you have not saved. They will be lost.',
+    { title: action + '?', confirm: 'Discard changes', cancel: 'Keep editing', danger: true }
+  );
+}
+
+/* ------------------------------------------------------------- history */
+
+function pushHistory() {
+  state.history.push(clone(state.model));
+  if (state.history.length > 80) state.history.shift();
+  state.future.length = 0;
+}
+
+function undo() {
+  if (!state.history.length) return;
+  state.future.push(clone(state.model));
+  state.model = state.history.pop();
+  markChanged();
+  renderAll();
+}
+
+function redo() {
+  if (!state.future.length) return;
+  state.history.push(clone(state.model));
+  state.model = state.future.pop();
+  markChanged();
+  renderAll();
+}
+
+/* ------------------------------------------------------------ preview */
+
+let cssTimer = null;
+
+/**
+ * The stylesheet comes from the server's generator - the same function that
+ * writes style.css - so the preview cannot drift from the saved theme.
+ */
+function refreshCss() {
+  clearTimeout(cssTimer);
+  cssTimer = setTimeout(async () => {
+    try {
+      const { css } = await api('/api/themes-preview/css', {
+        method: 'POST',
+        body: JSON.stringify({ model: state.model })
+      });
+      $('theme-style').textContent = css;
+      clearInlineBoxes();
+      positionOverlay();
+      showScrolling();
+    } catch (err) {
+      note(err.message, 'bad');
+    }
+  }, 40);
+}
+
+function clearInlineBoxes() {
+  for (const el of [$('cover'), $('canvas'), document.querySelector('.title-wrapper'),
+                    document.querySelector('.artist-wrapper'), document.querySelector('.progress-container')]) {
+    if (!el) continue;
+    el.style.left = el.style.top = el.style.width = el.style.height = '';
+  }
+}
+
+const ELEMENTS = {
+  art: () => [$('cover'), $('canvas')],
+  title: () => [document.querySelector('.title-wrapper')],
+  artist: () => [document.querySelector('.artist-wrapper')],
+  progress: () => [document.querySelector('.progress-container')]
+};
+
+/** Immediate feedback while dragging; the server CSS catches up on release. */
+function applyLiveBox(type, box) {
+  for (const el of ELEMENTS[type]()) {
+    if (!el) continue;
+    el.style.left = box.x + 'px';
+    el.style.top = box.y + 'px';
+    el.style.width = box.w + 'px';
+    el.style.height = box.h + 'px';
+  }
+}
+
+function applySong(song) {
+  state.song = song;
+  $('preview-source').textContent = song.sample ? 'Preview (sample track)' : 'Preview (playing now)';
+
+  $('title').textContent = song.title || 'Song title';
+  $('artist').textContent = song.artist || 'Artist name';
+
+  const palette = song.palette || {};
+  const root = $('widget');
+  root.style.setProperty('--album-vibrant', palette.vibrant || '#1DB954');
+  root.style.setProperty('--album-dark', palette.darkMuted || '#141419');
+  root.style.setProperty('--album-light', palette.lightVibrant || '#ffffff');
+  root.style.setProperty('--album-muted', palette.muted || 'rgba(255,255,255,.7)');
+
+  const cover = $('cover');
+  cover.src = song.cover || placeholderArt(palette);
+  cover.style.display = 'block';
+  $('canvas').style.display = 'none';
+
+  const pct = song.durationMs ? Math.min(100, (song.progressMs / song.durationMs) * 100) : 38;
+  $('progress').style.width = pct + '%';
+
+  showScrolling();
+}
+
+/**
+ * Mirrors what the widget runtime does with long text, so the preview scrolls
+ * and fades exactly where the real thing would. Without this the editor was
+ * quietly nicer than OBS, and the fades looked broken because they never
+ * appeared here at all.
+ */
+function showScrolling() {
+  const measure = (textId, wrapperClass, variable) => {
+    const text = $(textId);
+    const wrapper = document.querySelector(wrapperClass);
+    if (!text || !wrapper) return;
+
+    const overflow = Math.max(text.scrollWidth - wrapper.clientWidth, 0);
+    const scrolls = overflow > 0;
+
+    document.documentElement.style.setProperty(variable, overflow + 'px');
+    text.classList.toggle('scroll', scrolls);
+    wrapper.classList.toggle('scrolling', scrolls);
+  };
+
+  // Measured after layout, or the widths are the ones from before this change.
+  requestAnimationFrame(() => {
+    measure('title', '.title-wrapper', '--scroll-distance');
+    measure('artist', '.artist-wrapper', '--artist-distance');
+  });
+}
+
+function placeholderArt(palette) {
+  const from = palette.vibrant || '#7c5cff';
+  const to = palette.darkMuted || '#171423';
+  const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="300" height="300">' +
+    '<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1">' +
+    '<stop offset="0" stop-color="' + from + '"/><stop offset="1" stop-color="' + to + '"/>' +
+    '</linearGradient></defs><rect width="300" height="300" fill="url(#g)"/></svg>';
+  return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+}
+
+async function loadSong() {
+  try {
+    applySong(await api('/api/themes-preview/song'));
+  } catch (err) {
+    applySong({ sample: true, title: 'Song title', artist: 'Artist name', palette: {} });
+  }
+}
+
+/* --------------------------------------------------------------- zoom */
+
+function applyZoom(zoom) {
+  state.zoom = zoom;
+  const artboard = $('artboard');
+  artboard.style.transform = zoom === 1 ? '' : `scale(${zoom})`;
+  artboard.style.transformOrigin = 'top left';
+
+  // The stage has to reserve the scaled footprint, or the panel below it
+  // overlaps a zoomed-in canvas.
+  const { width, height } = state.model.canvas;
+  artboard.style.width = width + 'px';
+  artboard.style.height = height + 'px';
+  $('stage').style.width = Math.round(width * zoom) + 88 + 'px';
+  $('stage').style.height = Math.round(height * zoom) + 88 + 'px';
+}
+
+/**
+ * Zoom is a habit, not part of the theme, so it is remembered here rather than
+ * saved with the design. A refresh used to leave the box saying 200% while the
+ * canvas quietly went back to 100%; now they always agree.
+ */
+const ZOOM_KEY = 'queueify.editor.zoom';
+const ZOOM_STEPS = [0.5, 0.75, 1, 1.5, 2];
+
+function rememberZoom(zoom) {
+  try {
+    localStorage.setItem(ZOOM_KEY, String(zoom));
+  } catch {
+    // A private window with storage turned off. Zoom just will not be kept.
+  }
+}
+
+/** The zoom to start on: what was left last time, else what the box says. */
+function startingZoom() {
+  let saved = null;
+  try {
+    saved = Number(localStorage.getItem(ZOOM_KEY));
+  } catch {
+    saved = null;
+  }
+
+  if (ZOOM_STEPS.includes(saved)) return saved;
+
+  const shown = Number($('zoom').value);
+  return ZOOM_STEPS.includes(shown) ? shown : 1;
+}
+
+$('zoom').addEventListener('change', event => {
+  const zoom = Number(event.target.value);
+  applyZoom(zoom);
+  rememberZoom(zoom);
+});
+
+/* ------------------------------------------------------------ overlay */
+
+function positionOverlay() {
+  const overlay = $('overlay');
+  overlay.innerHTML = '';
+
+  for (const module of state.model.modules) {
+    const hit = document.createElement('div');
+    hit.className = 'hit' + (state.selection === module.type ? ' selected' : '') +
+      (module.hidden ? ' hidden-module' : '');
+    hit.dataset.type = module.type;
+    hit.style.left = module.x + 'px';
+    hit.style.top = module.y + 'px';
+    hit.style.width = module.w + 'px';
+    hit.style.height = module.h + 'px';
+    hit.title = MODULE_LABELS[module.type];
+
+    if (state.selection === module.type) {
+      // All eight handles, always. On something thin - a 6px progress bar is
+      // shorter than the handles themselves - the ones along the thin axis are
+      // pushed clear of the box, so the middle is still free to grab and drag.
+      const THIN = 20;
+      const flat = module.h < THIN;
+      const narrow = module.w < THIN;
+
+      for (const dir of ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w']) {
+        const handle = document.createElement('div');
+        const clearances = [];
+
+        if (flat && dir.includes('n')) clearances.push('clear-top');
+        if (flat && dir.includes('s')) clearances.push('clear-bottom');
+        if (narrow && dir.includes('w')) clearances.push('clear-left');
+        if (narrow && dir.includes('e')) clearances.push('clear-right');
+
+        handle.className = ['handle', ...clearances].join(' ');
+        handle.dataset.dir = dir;
+        hit.appendChild(handle);
+      }
+    }
+
+    overlay.appendChild(hit);
+  }
+
+  const module = selected();
+  const canvasSize = `${state.model.canvas.width} × ${state.model.canvas.height}`;
+
+  $('readout').textContent = module
+    ? `${MODULE_LABELS[module.type]} · x ${module.x}  y ${module.y}  w ${module.w}  h ${module.h}`
+    : state.selection === 'canvas'
+      ? `Canvas · ${canvasSize}`
+      : `Nothing selected · canvas ${canvasSize}`;
+
+  checkFit();
+}
+
+/**
+ * OBS crops whatever falls outside the browser source, so a canvas larger than
+ * the source is the one mistake that looks fine here and wrong on stream.
+ */
+function checkFit() {
+  const host = $('fit-warning');
+  const source = state.source;
+
+  if (!source) {
+    host.innerHTML = '';
+    return;
+  }
+
+  const { width, height } = state.model.canvas;
+
+  if (width <= source.width && height <= source.height) {
+    host.innerHTML = '';
+    return;
+  }
+
+  // Two things have to match: this design and the browser source in OBS. Say
+  // which is which, and offer to change either one - "shrink it" on its own
+  // reads like a chore with no explanation.
+  host.innerHTML = '<div class="note">' +
+    '<strong>Your design is bigger than the window OBS shows it in.</strong><br />' +
+    'This design is ' + width + ' × ' + height + '. Your OBS browser source is only ' +
+    source.width + ' × ' + source.height + ', so the extra ' +
+    Math.max(0, width - source.width) + 'px across and ' +
+    Math.max(0, height - source.height) + 'px down get cut off on stream.' +
+    '<div class="row" style="margin-top:9px">' +
+    (state.obsReady
+      ? '<button class="mini" id="btn-grow">Make the OBS window ' + width + ' × ' + height + '</button>'
+      : '') +
+    '<button class="mini" id="btn-fit">Shrink the design to ' + source.width + ' × ' + source.height + '</button>' +
+    '</div>' +
+    (state.obsReady ? '' : '<span class="why">Connect OBS on the dashboard and this can resize the browser source for you.</span>') +
+    '</div>';
+
+  $('btn-fit').addEventListener('click', () => {
+    commit(() => {
+      state.model.canvas.width = source.width;
+      state.model.canvas.height = source.height;
+    });
+    renderProps();
+    note('Design shrunk to ' + source.width + ' × ' + source.height + ', so all of it shows on stream.', 'good');
+  });
+
+  const grow = $('btn-grow');
+  if (!grow) return;
+
+  grow.addEventListener('click', async () => {
+    grow.disabled = true;
+
+    try {
+      const result = await api('/api/widget/source-size', {
+        method: 'POST',
+        body: JSON.stringify({ width, height })
+      });
+
+      state.source = { width, height };
+      checkFit();
+
+      note('Your OBS browser source is now ' + result.width + ' × ' + result.height +
+        ' and the scene item was scaled to keep the same size on stream.' +
+        (result.presetsAdjusted ? ' Saved !tr / !bc presets were adjusted too.' : ''), 'good');
+    } catch (err) {
+      grow.disabled = false;
+      note(err.message, 'bad');
+    }
+  });
+}
+
+/* ------------------------------------------------------- drag / resize */
+
+let drag = null;
+
+$('overlay').addEventListener('pointerdown', event => {
+  const hit = event.target.closest('.hit');
+
+  // Clicking the empty space around the widget lets go of whatever was
+  // selected, so the outline and handles stop covering the design.
+  if (!hit) {
+    if (state.selection !== null) select(null);
+    return;
+  }
+
+  const type = hit.dataset.type;
+  if (state.selection !== type) select(type);
+
+  const module = moduleOf(type);
+
+  drag = {
+    type,
+    // Pushed on the first movement, not here: a click that goes nowhere
+    // should not fill the undo stack with copies of the same theme.
+    pushed: false,
+    dir: event.target.classList.contains('handle') ? event.target.dataset.dir : null,
+    startX: event.clientX,
+    startY: event.clientY,
+    origin: { x: module.x, y: module.y, w: module.w, h: module.h }
+  };
+
+  // Capture on the overlay, not the hit: selecting rebuilds the overlay's
+  // children, so `event.target` may already be detached by now.
+  $('overlay').setPointerCapture(event.pointerId);
+  event.preventDefault();
+});
+
+// The overlay only covers the design itself. Clicking the space around it -
+// the backdrop the theme is being previewed against - drops the selection as
+// well, so the outline and handles get out of the way.
+$('stage').addEventListener('pointerdown', event => {
+  if (event.target === $('stage') || event.target === $('artboard')) {
+    if (state.selection !== null) select(null);
+  }
+});
+
+window.addEventListener('pointermove', event => {
+  if (!drag) return;
+
+  // Holding Ctrl or Shift turns snapping off for as long as it is held, for
+  // the times when "nearly there" is exactly where you want it.
+  const freeform = event.ctrlKey || event.shiftKey || event.metaKey;
+
+  const dx = (event.clientX - drag.startX) / state.zoom;
+  const dy = (event.clientY - drag.startY) / state.zoom;
+
+  if (!drag.pushed) {
+    pushHistory();
+    drag.pushed = true;
+  }
+  const module = moduleOf(drag.type);
+  const box = { ...drag.origin };
+  let matches = [];
+  let spacings = [];
+
+  if (!drag.dir) {
+    box.x = drag.origin.x + dx;
+    box.y = drag.origin.y + dy;
+
+    // Repeat a spacing that already exists before falling back to edges.
+    if (!freeform) spacings = snapToMatchingGaps(box, drag.type);
+  } else {
+    if (drag.dir.includes('e')) box.w = Math.max(4, drag.origin.w + dx);
+    if (drag.dir.includes('s')) box.h = Math.max(2, drag.origin.h + dy);
+    if (drag.dir.includes('w')) box.w = Math.max(4, drag.origin.w - dx);
+    if (drag.dir.includes('n')) box.h = Math.max(2, drag.origin.h - dy);
+
+    // Match another part's width or height before anything else, the way
+    // Figma does - it is the thing people reach for most while resizing.
+    if (!freeform) matches = snapToMatchingSize(box, drag.type);
+
+    // Dragging a left or top handle moves the box as it resizes, so the
+    // opposite edge has to stay put after any snapping.
+    if (drag.dir.includes('w')) box.x = drag.origin.x + (drag.origin.w - box.w);
+    if (drag.dir.includes('n')) box.y = drag.origin.y + (drag.origin.h - box.h);
+  }
+
+  const snapped = freeform
+    ? { ...box, guides: [] }
+    : snap(box, drag.type, !drag.dir, matches, spacings);
+
+  $('stage').classList.toggle('freeform', freeform);
+  Object.assign(module, {
+    x: Math.round(snapped.x), y: Math.round(snapped.y),
+    w: Math.round(snapped.w), h: Math.round(snapped.h)
+  });
+
+  applyLiveBox(drag.type, module);
+  positionOverlay();
+  drawGuides(snapped.guides, matches, spacings.length ? { spacings, box: { ...module } } : null);
+});
+
+window.addEventListener('pointerup', () => {
+  if (!drag) return;
+  drag = null;
+  $('stage').classList.remove('freeform');
+  drawGuides([]);
+  markChanged();
+  refreshCss();
+  renderProps();
+});
+
+/**
+ * Snaps a box being moved so its gap to a neighbour matches a gap that already
+ * exists between two other parts.
+ *
+ * If the artist sits 10px under the title, dragging the progress bar down
+ * should catch at 10px below the artist - that is what makes a stack look
+ * deliberate rather than nearly-right. Returns the pairs to draw, so the two
+ * equal gaps can be shown while it holds.
+ */
+function snapToMatchingGaps(box, type) {
+  const parts = state.model.modules
+    .filter(module => module.type !== type && !module.hidden)
+    .map(module => ({ type: module.type, x: module.x, y: module.y, w: module.w, h: module.h }));
+
+  if (parts.length < 2) return [];
+
+  const spacings = [];
+
+  const axisRun = (axis) => {
+    const start = axis === 'y' ? 'y' : 'x';
+    const size = axis === 'y' ? 'h' : 'w';
+
+    const sorted = [...parts].sort((a, b) => a[start] - b[start]);
+    const gaps = [];
+
+    for (let index = 0; index < sorted.length - 1; index++) {
+      const before = sorted[index];
+      const after = sorted[index + 1];
+      const gap = Math.round(after[start] - (before[start] + before[size]));
+
+      // Only gaps that are real space, not overlaps.
+      if (gap > 0) gaps.push({ gap, before, after });
+    }
+
+    if (!gaps.length) return null;
+
+    // Where the dragged box could sit to repeat one of those gaps.
+    const candidates = [];
+
+    for (const { gap, before, after } of gaps) {
+      for (const part of parts) {
+        candidates.push({
+          value: part[start] + part[size] + gap,
+          gap,
+          neighbour: part,
+          side: 'after',
+          pair: { before, after }
+        });
+        candidates.push({
+          value: part[start] - gap - box[size],
+          gap,
+          neighbour: part,
+          side: 'before',
+          pair: { before, after }
+        });
+      }
+    }
+
+    const nearest = candidates
+      .filter(candidate => Math.abs(candidate.value - box[start]) <= SNAP)
+      .sort((a, b) => Math.abs(a.value - box[start]) - Math.abs(b.value - box[start]))[0];
+
+    if (!nearest) return null;
+
+    box[start] = nearest.value;
+    return { axis, ...nearest };
+  };
+
+  const vertical = axisRun('y');
+  if (vertical) spacings.push(vertical);
+
+  const horizontal = axisRun('x');
+  if (horizontal) spacings.push(horizontal);
+
+  return spacings;
+}
+
+/**
+ * Snaps a box being resized to the width or height of another part, or of the
+ * canvas - the "make this the same size as that" move.
+ *
+ * Returns what it matched so the canvas can point at it: a size that lines up
+ * with something off to one side is otherwise a mystery jump.
+ */
+function snapToMatchingSize(box, type) {
+  const { width, height } = state.model.canvas;
+  const matches = [];
+
+  const candidates = state.model.modules
+    .filter(module => module.type !== type && !module.hidden)
+    .map(module => ({ label: MODULE_LABELS[module.type], type: module.type, w: module.w, h: module.h }));
+
+  candidates.push({ label: 'the canvas', type: 'canvas', w: width, h: height });
+
+  const nearest = (value, key) => candidates
+    .filter(candidate => Math.abs(candidate[key] - value) <= SNAP)
+    .sort((a, b) => Math.abs(a[key] - value) - Math.abs(b[key] - value))[0];
+
+  const sameWidth = nearest(box.w, 'w');
+  if (sameWidth) {
+    box.w = sameWidth.w;
+    matches.push({ axis: 'w', size: sameWidth.w, label: sameWidth.label, type: sameWidth.type });
+  }
+
+  const sameHeight = nearest(box.h, 'h');
+  if (sameHeight) {
+    box.h = sameHeight.h;
+    matches.push({ axis: 'h', size: sameHeight.h, label: sameHeight.label, type: sameHeight.type });
+  }
+
+  return matches;
+}
+
+/**
+ * Snaps edges and centers to the canvas and to the other modules, and reports
+ * the lines to draw so it is obvious why something jumped.
+ */
+function snap(box, type, moving, sizeMatches = [], spacings = []) {
+  const { width, height } = state.model.canvas;
+  const guides = [];
+
+  const others = state.model.modules
+    .filter(module => module.type !== type && !module.hidden)
+    .map(module => ({ x: module.x, y: module.y, w: module.w, h: module.h }));
+
+  const vTargets = [0, width / 2, width];
+  const hTargets = [0, height / 2, height];
+
+  for (const other of others) {
+    vTargets.push(other.x, other.x + other.w / 2, other.x + other.w);
+    hTargets.push(other.y, other.y + other.h / 2, other.y + other.h);
+  }
+
+  const applyAxis = (edges, targets, apply) => {
+    let best = null;
+
+    for (const edge of edges) {
+      for (const target of targets) {
+        const delta = target - edge.value;
+        if (Math.abs(delta) <= SNAP && (!best || Math.abs(delta) < Math.abs(best.delta))) {
+          best = { delta, target, edge };
+        }
+      }
+    }
+
+    if (best) {
+      apply(best);
+      return best.target;
+    }
+    return null;
+  };
+
+  if (moving) {
+    // An axis already held by an equal-spacing match is left alone.
+    const heldX = spacings.some(spacing => spacing.axis === 'x');
+    const heldY = spacings.some(spacing => spacing.axis === 'y');
+
+    if (!heldX) {
+      const vLine = applyAxis(
+        [{ value: box.x }, { value: box.x + box.w / 2 }, { value: box.x + box.w }],
+        vTargets,
+        best => { box.x += best.delta; }
+      );
+      if (vLine !== null) guides.push({ axis: 'v', at: vLine });
+    }
+
+    if (!heldY) {
+      const hLine = applyAxis(
+        [{ value: box.y }, { value: box.y + box.h / 2 }, { value: box.y + box.h }],
+        hTargets,
+        best => { box.y += best.delta; }
+      );
+      if (hLine !== null) guides.push({ axis: 'h', at: hLine });
+    }
+  } else {
+    // A width that has just been matched to another part stays matched.
+    const matchedWidth = sizeMatches.some(match => match.axis === 'w');
+    const matchedHeight = sizeMatches.some(match => match.axis === 'h');
+
+    if (!matchedWidth) {
+      const vLine = applyAxis([{ value: box.x + box.w }], vTargets, best => { box.w += best.delta; });
+      if (vLine !== null) guides.push({ axis: 'v', at: vLine });
+    }
+
+    if (!matchedHeight) {
+      const hLine = applyAxis([{ value: box.y + box.h }], hTargets, best => { box.h += best.delta; });
+      if (hLine !== null) guides.push({ axis: 'h', at: hLine });
+    }
+  }
+
+  return { ...box, guides };
+}
+
+/** A pink block over a gap, labelled with how big it is. */
+function drawGap(axis, gap, from, to, across) {
+  const mark = document.createElement('div');
+  mark.className = 'gap-mark';
+
+  if (axis === 'y') {
+    mark.style.left = across + 'px';
+    mark.style.top = from + 'px';
+    mark.style.width = '14px';
+    mark.style.height = Math.max(1, to - from) + 'px';
+  } else {
+    mark.style.left = from + 'px';
+    mark.style.top = across + 'px';
+    mark.style.width = Math.max(1, to - from) + 'px';
+    mark.style.height = '14px';
+  }
+
+  const label = document.createElement('span');
+  label.textContent = gap;
+  mark.appendChild(label);
+
+  $('artboard').appendChild(mark);
+}
+
+function drawGuides(guides, sizeMatches = [], spacing = null) {
+  for (const old of document.querySelectorAll('.guide, .match, .match-label, .gap-mark')) old.remove();
+
+  for (const guide of guides || []) {
+    const line = document.createElement('div');
+    line.className = 'guide ' + guide.axis;
+    if (guide.axis === 'v') line.style.left = guide.at + 'px';
+    else line.style.top = guide.at + 'px';
+    $('artboard').appendChild(line);
+  }
+
+  // Point at whatever the size was matched to, and say what happened.
+  for (const match of sizeMatches) {
+    const partner = match.type === 'canvas'
+      ? { x: 0, y: 0, w: state.model.canvas.width, h: state.model.canvas.height }
+      : moduleOf(match.type);
+
+    if (!partner) continue;
+
+    const outline = document.createElement('div');
+    outline.className = 'match';
+    outline.style.left = partner.x + 'px';
+    outline.style.top = partner.y + 'px';
+    outline.style.width = partner.w + 'px';
+    outline.style.height = partner.h + 'px';
+    $('artboard').appendChild(outline);
+
+    const label = document.createElement('div');
+    label.className = 'match-label';
+    label.textContent = (match.axis === 'w' ? 'same width as ' : 'same height as ') + match.label +
+      '  ' + match.size + 'px';
+    label.style.left = partner.x + 'px';
+    label.style.top = Math.max(0, partner.y - 20) + 'px';
+    $('artboard').appendChild(label);
+  }
+
+  if (!spacing) return;
+
+  // Show both gaps that are now equal: the one that already existed, and the
+  // one the dragged part has just matched.
+  for (const match of spacing.spacings) {
+    const axis = match.axis;
+    const start = axis === 'y' ? 'y' : 'x';
+    const size = axis === 'y' ? 'h' : 'w';
+    const other = axis === 'y' ? 'x' : 'y';
+    const otherSize = axis === 'y' ? 'w' : 'h';
+
+    const existing = match.pair;
+    drawGap(
+      axis,
+      match.gap,
+      existing.before[start] + existing.before[size],
+      existing.after[start],
+      existing.before[other] + existing.before[otherSize] / 2
+    );
+
+    // ...and the new one, between the dragged part and its neighbour.
+    const dragged = spacing.box;
+    const neighbour = match.neighbour;
+    const first = match.side === 'after' ? neighbour : dragged;
+    const second = match.side === 'after' ? dragged : neighbour;
+
+    drawGap(
+      axis,
+      match.gap,
+      first[start] + first[size],
+      second[start],
+      dragged[other] + dragged[otherSize] / 2
+    );
+  }
+}
+
+window.addEventListener('keydown', event => {
+  if (event.target.matches('input, select, textarea')) return;
+
+  if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'z') {
+    event.preventDefault();
+    event.shiftKey ? redo() : undo();
+    return;
+  }
+
+  const module = selected();
+  if (!module) return;
+
+  const step = event.shiftKey ? 10 : 1;
+  const moves = { ArrowLeft: [-step, 0], ArrowRight: [step, 0], ArrowUp: [0, -step], ArrowDown: [0, step] };
+  const move = moves[event.key];
+  if (!move) return;
+
+  event.preventDefault();
+  pushHistory();
+  module.x += move[0];
+  module.y += move[1];
+  markChanged();
+  refreshCss();
+  positionOverlay();
+  renderProps();
+});
+
+/* -------------------------------------------------------------- panels */
+
+function select(type) {
+  state.selection = type;
+  renderModules();
+  renderProps();
+  positionOverlay();
+}
+
+function renderModules() {
+  const list = $('modules');
+  list.innerHTML = '';
+
+  const hint = document.createElement('p');
+  hint.className = 'panel-hint';
+  hint.textContent = 'Click a part to edit it:';
+  list.appendChild(hint);
+
+  const canvas = state.model.canvas;
+
+  const canvasRow = document.createElement('div');
+  canvasRow.className = 'module-row' + (state.selection === 'canvas' ? ' selected' : '') +
+    (canvas.hidden ? ' is-hidden' : '');
+  canvasRow.title = 'Edit the panel behind everything';
+
+  const canvasName = document.createElement('span');
+  canvasName.className = 'name';
+  canvasName.textContent = 'Canvas';
+
+  const canvasTag = document.createElement('span');
+  canvasTag.className = 'tag' + (canvas.hidden ? ' hidden-tag' : '');
+  canvasTag.textContent = canvas.hidden ? 'hidden' : 'background';
+
+  // The panel can be taken away too - a text-only overlay straight over
+  // gameplay is a perfectly good design, and nobody would find it without this.
+  const canvasEye = document.createElement('button');
+  canvasEye.className = 'eye';
+  canvasEye.innerHTML = canvas.hidden ? EYE_OFF : EYE_ON;
+  canvasEye.title = canvas.hidden
+    ? 'The panel is hidden - click to bring the background back'
+    : 'Hide the panel, leaving just the parts on top of your scene';
+  canvasEye.addEventListener('click', event => {
+    event.stopPropagation();
+    toggleCanvasHidden();
+  });
+
+  const canvasGo = document.createElement('span');
+  canvasGo.className = 'go';
+  canvasGo.textContent = '\u203a';
+
+  canvasRow.append(canvasName, canvasTag, canvasEye, canvasGo);
+  canvasRow.addEventListener('click', () => select('canvas'));
+  list.appendChild(canvasRow);
+
+  for (const module of state.model.modules) {
+    const row = document.createElement('div');
+    row.className = 'module-row' + (state.selection === module.type ? ' selected' : '');
+
+    const name = document.createElement('span');
+    name.className = 'name';
+    name.textContent = MODULE_LABELS[module.type];
+
+    const tag = document.createElement('span');
+    tag.className = 'tag' + (module.hidden ? ' hidden-tag' : '');
+    tag.textContent = module.hidden ? 'hidden' : 'required';
+
+    const eye = document.createElement('button');
+    eye.className = 'eye';
+    eye.innerHTML = module.hidden ? EYE_OFF : EYE_ON;
+    eye.title = module.hidden
+      ? MODULE_LABELS[module.type] + ' is hidden - click to show it'
+      : 'Hide ' + MODULE_LABELS[module.type].toLowerCase() + ' (it stays part of the theme)';
+    eye.addEventListener('click', event => {
+      event.stopPropagation();
+      toggleHidden(module);
+    });
+
+    const go = document.createElement('span');
+    go.className = 'go';
+    go.textContent = '\u203a';
+
+    row.append(name, tag, eye, go);
+    row.classList.toggle('is-hidden', Boolean(module.hidden));
+    row.title = 'Edit ' + MODULE_LABELS[module.type].toLowerCase();
+    row.addEventListener('click', () => select(module.type));
+    list.appendChild(row);
+  }
+}
+
+function googleHref(entries) {
+  if (!entries.length) return '';
+
+  const families = entries.map(entry =>
+    'family=' + encodeURIComponent(entry.family).replace(/%20/g, '+') + ':wght@' + entry.weights.join(';')
+  );
+
+  return 'https://fonts.googleapis.com/css2?' + families.join('&') + '&display=swap';
+}
+
+/** Every family at one weight, purely so the font menu renders in its fonts. */
+function loadMenuFonts() {
+  const entries = Object.values(state.fonts)
+    .filter(font => font.google)
+    .map(font => ({ family: font.family, weights: [font.weights.includes(400) ? 400 : font.weights[0]] }));
+
+  $('font-menu-css').href = googleHref(entries);
+}
+
+/** The families the design itself uses, at the weights it uses. */
+function loadUsedFonts() {
+  const used = new Map();
+
+  for (const module of state.model.modules) {
+    if (module.type !== 'title' && module.type !== 'artist') continue;
+    const font = state.fonts[module.font];
+    if (!font || !font.google) continue;
+    if (!used.has(font.family)) used.set(font.family, new Set());
+    used.get(font.family).add(module.fontWeight);
+  }
+
+  const href = googleHref([...used.entries()].map(([family, weights]) => ({
+    family,
+    weights: [...weights].sort((a, b) => a - b)
+  })));
+
+  if ($('font-used-css').href !== href) $('font-used-css').href = href;
+}
+
+/**
+ * Grouped by category, and every option is drawn in its own typeface - picking
+ * a font by name alone is guesswork.
+ */
+function fontInput(module) {
+  const select = document.createElement('select');
+  const groups = new Map();
+
+  for (const [key, font] of Object.entries(state.fonts)) {
+    if (!groups.has(font.category)) groups.set(font.category, []);
+    groups.get(font.category).push([key, font]);
+  }
+
+  for (const [category, fonts] of groups) {
+    // Named for what it is: `group` is now the panel-section helper.
+    const optgroup = document.createElement('optgroup');
+    optgroup.label = state.fontCategories[category] || category;
+
+    for (const [key, font] of fonts) {
+      const option = document.createElement('option');
+      option.value = key;
+      option.textContent = font.label;
+      option.style.fontFamily = font.stack;
+      option.style.fontSize = '14px';
+      optgroup.appendChild(option);
+    }
+
+    select.appendChild(optgroup);
+  }
+
+  select.value = module.font;
+  select.style.fontFamily = state.fonts[module.font].stack;
+
+  select.addEventListener('change', () => {
+    commit(() => {
+      module.font = select.value;
+      // The new family may not ship the weight that was set.
+      const weights = state.fonts[select.value].weights;
+      if (!weights.includes(module.fontWeight)) {
+        module.fontWeight = weights.reduce((best, weight) =>
+          Math.abs(weight - module.fontWeight) < Math.abs(best - module.fontWeight) ? weight : best, weights[0]);
+      }
+    });
+    loadUsedFonts();
+    renderProps();
+  });
+
+  return select;
+}
+
+function weightInput(module) {
+  const weights = state.fonts[module.font].weights;
+  const select = selectInput(module, 'fontWeight', weights.map(weight => [String(weight), String(weight)]));
+
+  select.addEventListener('change', loadUsedFonts);
+
+  if (weights.length === 1) {
+    select.disabled = true;
+    select.title = state.fonts[module.font].label + ' ships one weight only.';
+  }
+
+  return select;
+}
+
+const FIELD_TIPS = {
+  'X': 'Distance from the left edge of the canvas, in pixels.',
+  'Y': 'Distance from the top edge of the canvas, in pixels.',
+  'Width': 'How wide this part is, in pixels.',
+  'Height': 'How tall this part is, in pixels.',
+  'Font': 'Every option is drawn in its own typeface. Web fonts are downloaded by the theme.',
+  'Size': 'Text size in pixels.',
+  'Weight': 'How bold the text is. Only weights this font really has are offered.',
+  'Color': 'Pick any color, or one taken from the album art (Vib / Dark / Light / Mute).',
+  'Letter spacing': 'Extra space between letters. Negative values tighten them up.',
+  'Align': 'Where the text sits inside its box.',
+  'Opacity': 'How see-through this part is. 1 is solid.',
+  'Glow': 'A halo around the letters, so text stays readable over busy gameplay.',
+  'Glow color': 'The color of that halo.',
+  'Corner radius': 'How rounded the corners are. 0 is square.',
+  'Shadow': 'A soft shadow behind the artwork.',
+  'Fit': 'Album art is square: fill the box (cropping) or fit inside it (letterboxed).',
+  'Background': 'The color behind everything.',
+  'Background style': 'A flat color, or a gradient between two colors.',
+  'Gradient from': 'The color the gradient starts at.',
+  'Gradient to': 'The color the gradient ends at.',
+  'Angle': 'Which way the gradient runs, in degrees. 90 is top to bottom.',
+  'Border width': 'Thickness of the outline around the widget. 0 removes it.',
+  'Border color': 'Color of that outline.',
+  'Track color': 'The unfilled part of the progress bar.',
+  'Fill color': 'The part of the progress bar that fills as the song plays.',
+  'Album art': 'Whether to play Spotify Canvas videos when a track has one.',
+  'Hide the widget after': 'Seconds of nothing playing before the widget fades out.',
+  'Scroll speed': 'How fast a title too long to fit slides across, in pixels per second.',
+  'Show progress bar': 'Show the bar that fills as the song plays.',
+  'Scroll long text': 'Slide titles that do not fit, instead of cutting them off.',
+  'UPPERCASE': 'Show the text in capitals.',
+  'Italic': 'Slant the text.',
+  'Hidden': 'Keep this part out of the widget without deleting it.'
+};
+
+const EYE_ON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" ' +
+  'stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>' +
+  '<circle cx="12" cy="12" r="3"></circle></svg>';
+
+const EYE_OFF = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" ' +
+  'stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8' +
+  'a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07' +
+  'a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>';
+
+/** Hiding is a design choice, so it is undoable and redraws everything. */
+function toggleHidden(module) {
+  pushHistory();
+  module.hidden = !module.hidden;
+  markChanged();
+  refreshCss();
+  renderModules();
+  renderProps();
+  positionOverlay();
+
+  note(module.hidden
+    ? MODULE_LABELS[module.type] + ' is hidden. It stays part of the theme - show it again any time.'
+    : MODULE_LABELS[module.type] + ' is showing again.', 'good');
+}
+
+// Which sections are folded away. Remembered across re-renders, so opening
+// "Behaviour" once does not close itself again the next time something moves.
+const foldedGroups = new Set(['Behaviour']);
+
+/**
+ * A foldable section of settings. The panel used to be one long list, which
+ * made the thing you wanted hard to find.
+ */
+function group(title, { note } = {}) {
+  const section = document.createElement('details');
+  section.className = 'group';
+  section.open = !foldedGroups.has(title);
+
+  const summary = document.createElement('summary');
+  summary.textContent = title;
+
+  if (note) {
+    const count = document.createElement('span');
+    count.className = 'count';
+    count.textContent = note;
+    summary.appendChild(count);
+  }
+
+  const body = document.createElement('div');
+  body.className = 'group-body';
+
+  section.append(summary, body);
+  section.addEventListener('toggle', () => {
+    if (section.open) foldedGroups.delete(title);
+    else foldedGroups.add(title);
+  });
+
+  // Callers add controls to the body, not the <details> itself.
+  section.body = body;
+  return section;
+}
+
+/** Hiding the panel keeps its colors, so it can be brought back as it was. */
+function toggleCanvasHidden() {
+  const canvas = state.model.canvas;
+
+  pushHistory();
+  canvas.hidden = !canvas.hidden;
+  markChanged();
+  refreshCss();
+  renderModules();
+  renderProps();
+
+  note(canvas.hidden
+    ? 'Panel hidden - only the album art, text and progress bar will show over your scene.'
+    : 'Panel showing again, with the colors you had.', 'good');
+}
+
+/** The show/hide switch that sits at the top of a part's settings. */
+function visibilityButton(module) {
+  const button = document.createElement('button');
+  button.className = 'visibility' + (module.hidden ? ' is-hidden' : '');
+  button.innerHTML = (module.hidden ? EYE_OFF : EYE_ON) +
+    '<span>' + (module.hidden ? 'Hidden from the widget' : 'Showing in the widget') + '</span>' +
+    '<span class="why-hidden">' + (module.hidden ? 'click to show' : 'click to hide') + '</span>';
+  button.title = module.hidden
+    ? 'Put this part back into the widget'
+    : 'Take this part out of the widget without deleting it';
+  button.addEventListener('click', () => toggleHidden(module));
+  return button;
+}
+
+function field(label, control, why) {
+  const wrap = document.createElement('div');
+  wrap.className = 'prop';
+
+  const tag = document.createElement('label');
+  tag.textContent = label;
+
+  const tip = FIELD_TIPS[label] || why;
+  if (tip) {
+    tag.title = tip;
+    wrap.title = tip;
+  }
+
+  wrap.append(tag, control);
+
+  if (why) {
+    const note = document.createElement('span');
+    note.className = 'why';
+    note.textContent = why;
+    wrap.appendChild(note);
+  }
+
+  return wrap;
+}
+
+function commit(mutate) {
+  pushHistory();
+  mutate();
+  markChanged();
+  refreshCss();
+  positionOverlay();
+}
+
+function numberInput(target, key, { min, max, step = 1 } = {}) {
+  const wrap = document.createElement('div');
+  wrap.className = 'stepper';
+
+  const input = document.createElement('input');
+  input.type = 'number';
+  input.value = target[key];
+  if (min !== undefined) input.min = min;
+  if (max !== undefined) input.max = max;
+  input.step = step;
+
+  const apply = value => {
+    let next = Number(value);
+    if (!Number.isFinite(next)) {
+      input.value = target[key];
+      return;
+    }
+
+    // Held to the limits here as well as on the field, so the steppers and a
+    // typed-in number behave the same way.
+    if (min !== undefined) next = Math.max(min, next);
+    if (max !== undefined) next = Math.min(max, next);
+
+    input.value = next;
+    if (target[key] !== next) commit(() => { target[key] = next; });
+  };
+
+  input.addEventListener('change', () => apply(input.value));
+
+  const nudge = (label, delta, hint) => {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.textContent = label;
+    button.title = hint;
+    button.tabIndex = -1;   // tabbing should land on the number, not the arrows
+    button.addEventListener('click', () => apply(Number(input.value) + delta));
+    return button;
+  };
+
+  wrap.append(nudge('−', -step, 'Less'), input, nudge('+', step, 'More'));
+  return wrap;
+}
+
+function sliderInput(target, key, { min, max, step = 1 } = {}) {
+  const wrap = document.createElement('div');
+  wrap.className = 'slider';
+
+  const range = document.createElement('input');
+  range.type = 'range';
+  range.min = min; range.max = max; range.step = step;
+  range.value = target[key];
+
+  const box = document.createElement('input');
+  box.type = 'number';
+  box.value = target[key];
+  box.min = min; box.max = max; box.step = step;
+
+  const set = value => {
+    const had = Number(target[key]);
+    commit(() => { target[key] = Number(value); });
+    // Turning a glow on (or off) adds or removes its color field.
+    if (key === 'glow' && (had === 0) !== (Number(value) === 0)) renderProps();
+  };
+
+  range.addEventListener('input', () => { box.value = range.value; set(range.value); });
+  box.addEventListener('change', () => { range.value = box.value; set(box.value); });
+
+  wrap.append(range, box);
+  return wrap;
+}
+
+function selectInput(target, key, options) {
+  const select = document.createElement('select');
+
+  for (const [value, label] of options) {
+    const option = document.createElement('option');
+    option.value = value;
+    option.textContent = label;
+    select.appendChild(option);
+  }
+
+  select.value = target[key];
+  select.addEventListener('change', () => {
+    commit(() => {
+      // Numeric settings (font weight) must not become strings in the model.
+      const value = select.value;
+      target[key] = /^-?\d+(\.\d+)?$/.test(value) ? Number(value) : value;
+    });
+    if (key === 'backgroundMode') {
+      // The default 1px pale border reads as a bright hairline against the
+      // dark end of a gradient, so take it off when it has not been changed.
+      const canvas = state.model.canvas;
+      if (select.value === 'gradient' && canvas.borderWidth === 1 && canvas.borderColor === 'rgba(255,255,255,0.08)') {
+        canvas.borderWidth = 0;
+        note('Turned the thin border off - on a gradient it shows as a bright line down one edge. Border width is under Canvas.', '');
+        refreshCss();
+      }
+      // Some choices reveal other fields (a gradient needs a second color).
+      renderProps();
+    }
+  });
+  return select;
+}
+
+function checkboxInput(label, target, key) {
+  const wrap = document.createElement('div');
+  wrap.className = 'prop inline';
+
+  const tag = document.createElement('label');
+  tag.textContent = label;
+
+  const box = document.createElement('input');
+  box.type = 'checkbox';
+  box.checked = Boolean(target[key]);
+  const tip = FIELD_TIPS[label];
+  if (tip) wrap.title = tip;
+  box.addEventListener('change', () => commit(() => { target[key] = box.checked; }));
+
+  wrap.append(tag, box);
+  return wrap;
+}
+
+/** Album colors are variables, so a plain color input is not enough. */
+/**
+ * A color picker plus the album-derived choices.
+ *
+ * The buttons redraw their own selected state after every change: they used to
+ * be marked up once when the panel was built, so clicking one changed the
+ * color but left the outline sitting on whatever had been chosen before.
+ */
+function colorInput(target, key) {
+  const wrap = document.createElement('div');
+  wrap.className = 'color';
+
+  const picker = document.createElement('input');
+  picker.type = 'color';
+  picker.title = 'Pick any color';
+
+  const albums = document.createElement('div');
+  albums.className = 'albums';
+
+  const buttons = ALBUM_COLORS.map(([value, label]) => {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'album';
+    button.dataset.value = value;
+    button.textContent = label;
+    button.style.background = value === 'transparent'
+      ? 'repeating-linear-gradient(45deg,#333,#333 4px,#222 4px,#222 8px)'
+      : value;
+    button.title = value === 'transparent' ? 'No color at all' : 'Taken from the album art: ' + value;
+    albums.appendChild(button);
+    return button;
+  });
+
+  const showSelection = () => {
+    const current = target[key];
+    const custom = /^#[0-9a-f]{3,8}$/i.test(current) || /^rgba?\(/.test(current);
+
+    for (const button of buttons) {
+      button.classList.toggle('active', button.dataset.value === current);
+    }
+
+    picker.classList.toggle('active', custom);
+    if (/^#[0-9a-f]{6}$/i.test(current)) picker.value = current;
+  };
+
+  picker.addEventListener('input', () => {
+    commit(() => { target[key] = picker.value; });
+    showSelection();
+  });
+
+  for (const button of buttons) {
+    button.addEventListener('click', () => {
+      commit(() => { target[key] = button.dataset.value; });
+      showSelection();
+    });
+  }
+
+  showSelection();
+  wrap.append(picker, albums);
+  return wrap;
+}
+
+/** Centring by eye is fiddly; these do it exactly. */
+function alignButtons(module) {
+  const row = document.createElement('div');
+  row.className = 'align-row';
+
+  const actions = [
+    ['Center X', () => { module.x = Math.round((state.model.canvas.width - module.w) / 2); },
+      'Line this part up with the middle of the canvas, left to right'],
+    ['Center Y', () => { module.y = Math.round((state.model.canvas.height - module.h) / 2); },
+      'Line this part up with the middle of the canvas, top to bottom'],
+    ['Full width', () => {
+      const inset = Math.min(module.x, 16);
+      module.x = inset;
+      module.w = state.model.canvas.width - inset * 2;
+    }, 'Stretch this part across the canvas, leaving an even margin each side']
+  ];
+
+  for (const [label, action, tip] of actions) {
+    const button = document.createElement('button');
+    button.className = 'mini';
+    button.textContent = label;
+    if (tip) button.title = tip;
+    button.addEventListener('click', () => { commit(action); renderProps(); });
+    row.appendChild(button);
+  }
+
+  return row;
+}
+
+function boxFields(module) {
+  const section = group('Position & size', { note: module.w + ' \u00d7 ' + module.h });
+
+  const position = document.createElement('div');
+  position.className = 'pair';
+  position.append(field('X', numberInput(module, 'x')), field('Y', numberInput(module, 'y')));
+
+  const size = document.createElement('div');
+  size.className = 'pair';
+  size.append(field('Width', numberInput(module, 'w')), field('Height', numberInput(module, 'h')));
+
+  section.body.append(position, size, alignButtons(module));
+  return section;
+}
+
+function renderProps() {
+  const host = $('props');
+  host.innerHTML = '';
+
+  if (state.selection === null) {
+    const empty = document.createElement('p');
+    empty.className = 'panel-hint';
+    empty.textContent = 'Nothing selected. Click a part on the canvas, or one in the list above, to change it.';
+    host.appendChild(empty);
+    return;
+  }
+
+  if (state.selection === 'canvas') {
+    const canvas = state.model.canvas;
+    const section = group('Canvas', {
+      note: canvas.hidden ? 'hidden' : canvas.width + ' \u00d7 ' + canvas.height
+    });
+
+    // The same switch the parts have, for the panel behind them.
+    const panelSwitch = document.createElement('button');
+    panelSwitch.className = 'visibility' + (canvas.hidden ? ' is-hidden' : '');
+    panelSwitch.innerHTML = (canvas.hidden ? EYE_OFF : EYE_ON) +
+      '<span>' + (canvas.hidden ? 'Panel hidden' : 'Panel showing') + '</span>' +
+      '<span class="why-hidden">' + (canvas.hidden ? 'click to show' : 'click to hide') + '</span>';
+    panelSwitch.title = canvas.hidden
+      ? 'Bring the background panel back'
+      : 'Drop the background and let the parts sit straight on your scene';
+    panelSwitch.addEventListener('click', toggleCanvasHidden);
+    section.body.appendChild(panelSwitch);
+
+    const size = document.createElement('div');
+    size.className = 'pair';
+    size.append(field('Width', numberInput(canvas, 'width')), field('Height', numberInput(canvas, 'height')));
+
+    const gradient = canvas.backgroundMode === 'gradient';
+
+    section.body.append(
+      size,
+      field('Background style', selectInput(canvas, 'backgroundMode', [
+        ['solid', 'Solid color'],
+        ['gradient', 'Gradient']
+      ])),
+      field(gradient ? 'Gradient from' : 'Background', colorInput(canvas, 'background'))
+    );
+
+    if (gradient) {
+      section.body.append(
+        field('Gradient to', colorInput(canvas, 'backgroundTo')),
+        field('Angle', sliderInput(canvas, 'gradientAngle', { min: 0, max: 360, step: 5 }))
+      );
+    }
+
+    section.body.append(
+      field('Corner radius', sliderInput(canvas, 'radius', { min: 0, max: 120 })),
+      field('Border width', sliderInput(canvas, 'borderWidth', { min: 0, max: 12 }),
+        'A pale border shows up as a bright hairline against dark backgrounds. Set it to 0 to remove it.'),
+      field('Border color', colorInput(canvas, 'borderColor'))
+    );
+
+    host.append(section, themeProps());
+    return;
+  }
+
+  const module = selected();
+  host.appendChild(boxFields(module));
+
+  const section = group(MODULE_LABELS[module.type], { note: module.hidden ? 'hidden' : '' });
+
+  if (module.type === 'art') {
+    section.body.append(
+      field('Corner radius', sliderInput(module, 'radius', { min: 0, max: 200 })),
+      field('Shadow', sliderInput(module, 'shadow', { min: 0, max: 80 }),
+        'A soft drop shadow behind the artwork, to lift it off the panel.'),
+      field('Fit', selectInput(module, 'fit', [['cover', 'Fill the box'], ['contain', 'Fit inside']]),
+        'Album art is square. "Fill the box" crops it to your shape; "Fit inside" keeps all of it.')
+    );
+  } else if (module.type === 'progress') {
+    section.body.append(
+      field('Corner radius', sliderInput(module, 'radius', { min: 0, max: 999 })),
+      field('Track color', colorInput(module, 'trackColor')),
+      field('Fill color', colorInput(module, 'fillColor'))
+    );
+  } else {
+    section.body.append(
+      field('Font', fontInput(module)),
+      field('Size', sliderInput(module, 'fontSize', { min: 8, max: 96 })),
+      field('Weight', weightInput(module)),
+      field('Color', colorInput(module, 'color')),
+      field('Letter spacing', sliderInput(module, 'letterSpacing', { min: -3, max: 12, step: 0.5 })),
+      field('Align', selectInput(module, 'align', [['left', 'Left'], ['center', 'Center'], ['right', 'Right']])),
+      field('Opacity', sliderInput(module, 'opacity', { min: 0, max: 1, step: 0.05 })),
+      checkboxInput('UPPERCASE', module, 'uppercase'),
+      checkboxInput('Italic', module, 'italic'),
+      field('Glow', sliderInput(module, 'glow', { min: 0, max: 40 }),
+        'A halo around the letters. Reads well on busy gameplay; 0 turns it off.')
+    );
+
+    if (module.glow) section.body.append(field('Glow color', colorInput(module, 'glowColor')));
+  }
+
+  // The old "Hidden" tickbox was easy to miss; this is a switch that says
+  // what state the part is in.
+  section.body.insertBefore(visibilityButton(module), section.body.firstChild);
+  host.append(section, themeProps());
+}
+
+function themeProps() {
+  const props = state.model.properties;
+  const section = group('Behaviour', { note: 'applies to the whole theme' });
+
+  section.body.append(
+    field('Album art', selectInput(props.media, 'mode', [
+      ['canvas', 'Canvas video when available'],
+      ['cover', 'Album cover only']
+    ]), 'Spotify ships a short looping video for some tracks. "Album cover only" always shows the artwork.'),
+
+    checkboxInput('Show progress bar', props, 'showProgress'),
+
+    field('Hide the widget after', numberInput(props, 'hideAfter', { min: -1, max: 3600 }),
+      'Seconds of nothing playing before the widget fades out. -1 keeps it on screen always.'),
+
+    checkboxInput('Scroll long text', props.scroll, 'enabled'),
+
+    field('Scroll speed', sliderInput(props.scroll, 'speed', { min: 10, max: 300 }),
+      'How fast a title too long to fit slides across, in pixels per second. 70 is a gentle crawl; 200 is brisk.')
+  );
+
+  return section;
+}
+
+function renderAll() {
+  applyZoom(state.zoom);
+  loadUsedFonts();
+  renderModules();
+  renderProps();
+  positionOverlay();
+  refreshCss();
+}
+
+/* ------------------------------------------------------------ toolbar */
+
+async function loadThemes(selectName) {
+  const data = await api('/api/themes');
+  state.themes = data.themes;
+  state.active = data.active;
+  state.fonts = data.fonts;
+  state.fontCategories = data.fontCategories || {};
+  state.presets = data.presets || [];
+  loadMenuFonts();
+
+  const picker = $('theme-open');
+  // Only the themes that can actually be opened. The built-in ones are
+  // read-only, so listing them greyed out was clutter with nothing behind it.
+  picker.innerHTML = '<option value="">- new theme -</option>' +
+    data.themes.filter(theme => theme.editable).map(theme =>
+      '<option value="' + escapeHtml(theme.name) + '">' + escapeHtml(theme.label) +
+      (theme.name === data.active ? ' • live' : '') + '</option>'
+    ).join('');
+
+  picker.value = selectName || state.name || '';
+  $('btn-delete').disabled = !state.name;
+  $('btn-duplicate').disabled = !state.name;
+
+  // Which theme is live has just been re-read, and that decides whether
+  // "Use on stream" is worth showing at all.
+  setDirty(state.dirty);
+}
+
+async function openTheme(name) {
+  if (!name) {
+    const data = await api('/api/themes');
+    state.name = null;
+    state.model = data.defaults;
+    state.history.length = state.future.length = 0;
+    $('theme-label').value = '';
+    markSaved();
+    select('canvas');
+    renderAll();
+    await loadThemes('');
+    return;
+  }
+
+  const { model } = await api('/api/themes/' + encodeURIComponent(name));
+  state.name = name;
+  state.model = model;
+  state.history.length = state.future.length = 0;
+  $('theme-label').value = model.label;
+  markSaved();
+  select('canvas');
+  renderAll();
+  await loadThemes(name);
+}
+
+$('theme-open').addEventListener('change', async event => {
+  if (state.dirty && !await askDiscard('Open another theme')) {
+    $('theme-open').value = state.name || '';
+    return;
+  }
+  try {
+    await openTheme(event.target.value);
+    note('');
+  } catch (err) {
+    note(err.message, 'bad');
+  }
+});
+
+/* ------------------------------------------------------- starting points */
+
+function showPresets() {
+  const list = $('preset-list');
+  list.innerHTML = '';
+
+  for (const preset of state.presets) {
+    const button = document.createElement('button');
+    button.className = 'preset';
+    button.innerHTML = escapeHtml(preset.label) + '<small>' + escapeHtml(preset.description) + '</small>';
+    button.addEventListener('click', () => {
+      state.name = null;
+      state.model = JSON.parse(JSON.stringify(preset.model));
+      state.history.length = state.future.length = 0;
+      $('theme-label').value = state.model.label;
+      state.baseline = null;
+      markChanged();
+      $('preset-sheet').classList.add('hidden');
+      select('canvas');
+      renderAll();
+      note('Started from "' + escapeHtml(preset.label) + '". Give it a name and save when you like it.', 'good');
+    });
+    list.appendChild(button);
+  }
+
+  $('preset-sheet').classList.remove('hidden');
+}
+
+$('btn-presets').addEventListener('click', async () => {
+  if (state.dirty && !await askDiscard('Start from a layout')) return;
+  showPresets();
+});
+
+$('btn-preset-cancel').addEventListener('click', () => $('preset-sheet').classList.add('hidden'));
+$('preset-sheet').addEventListener('click', event => {
+  if (event.target === $('preset-sheet')) $('preset-sheet').classList.add('hidden');
+});
+
+$('btn-new').addEventListener('click', async () => {
+  if (state.dirty && !await askDiscard('Start a new theme')) return;
+  if (state.presets.length) {
+    showPresets();
+    return;
+  }
+  await openTheme('');
+});
+
+/* ------------------------------------------------------------ share */
+
+// A theme is a small JSON model, so sharing one is just a file.
+$('btn-export').addEventListener('click', () => {
+  const payload = JSON.stringify({ queueifyTheme: 1, ...state.model }, null, 2);
+  const url = URL.createObjectURL(new Blob([payload], { type: 'application/json' }));
+
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = (state.name || slugify(state.model.label)) + '.queueify-theme.json';
+  link.click();
+
+  URL.revokeObjectURL(url);
+  note('Exported. Anyone can bring that file in with Import.', 'good');
+});
+
+$('btn-import').addEventListener('click', () => $('import-file').click());
+
+$('import-file').addEventListener('change', async event => {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  event.target.value = '';
+
+  try {
+    const parsed = JSON.parse(await file.text());
+
+    // Run it through the server's own normaliser: an imported file is
+    // untrusted, and this is the same clamping a save would apply.
+    const { model } = await api('/api/themes-preview/css', {
+      method: 'POST',
+      body: JSON.stringify({ model: parsed })
+    });
+
+    state.name = null;
+    state.model = model;
+    state.history.length = state.future.length = 0;
+    $('theme-label').value = model.label;
+    state.baseline = null;
+    markChanged();
+    select('canvas');
+    renderAll();
+    note('Imported "' + escapeHtml(model.label) + '". Save it to keep it.', 'good');
+  } catch (err) {
+    note('That file is not a Queueify theme: ' + escapeHtml(err.message), 'bad');
+  }
+});
+
+$('btn-duplicate').addEventListener('click', () => {
+  state.name = null;
+  state.model.label = state.model.label + ' copy';
+  $('theme-label').value = state.model.label;
+  state.baseline = null;
+  markChanged();
+  loadThemes('');
+  note('Duplicated. Saving will create a new theme, leaving the original alone.', 'good');
+});
+
+$('theme-label').addEventListener('change', () => {
+  state.model.label = $('theme-label').value.trim();
+  markChanged();
+});
+
+$('btn-save').addEventListener('click', async () => {
+  const label = $('theme-label').value.trim() || state.model.label;
+  state.model.label = label;
+
+  const name = state.name || slugify(label);
+  const existing = state.themes.find(theme => theme.name === name);
+
+  if (!state.name && existing) {
+    note('A theme called "' + name + '" already exists. Pick another name.', 'bad');
+    return;
+  }
+
+  $('btn-save').disabled = true;
+
+  try {
+    const saved = await api('/api/themes/' + encodeURIComponent(name), {
+      method: 'PUT',
+      body: JSON.stringify({ model: state.model })
+    });
+
+    state.name = saved.name;
+    state.model = saved.model;
+    markSaved();
+    await loadThemes(saved.name);
+    renderAll();
+
+    if (saved.obs) {
+      const outcome = obsOutcome(saved.obs);
+      note('Saved.' + outcome.text, outcome.bad ? '' : 'good');
+    } else {
+      note('Saved as "' + escapeHtml(saved.name) + '". Press "Use on stream" to show it, or type !theme ' +
+        escapeHtml(saved.name) + ' in chat.', 'good');
+    }
+  } catch (err) {
+    note(err.message, 'bad');
+  } finally {
+    $('btn-save').disabled = false;
+  }
+});
+
+$('btn-activate').addEventListener('click', async () => {
+  if (!state.name) {
+    note('Save the theme first, then it can go on stream.', '');
+    return;
+  }
+
+  const button = $('btn-activate');
+  button.disabled = true;
+
+  try {
+    const result = await api('/api/themes/' + encodeURIComponent(state.name) + '/activate', { method: 'POST' });
+    await loadThemes(state.name);
+    markChanged();
+
+    const outcome = obsOutcome(result.obs);
+    note('"' + escapeHtml(state.name) + '" is live.' + outcome.text, outcome.bad ? '' : 'good');
+  } catch (err) {
+    note(err.message, 'bad');
+  } finally {
+    button.disabled = false;
+  }
+});
+
+$('btn-delete').addEventListener('click', async () => {
+  if (!state.name) return;
+  const sure = await askConfirm(
+    'This deletes the theme and its files. It cannot be undone.',
+    { title: 'Delete "' + state.model.label + '"?', confirm: 'Delete theme', danger: true }
+  );
+  if (!sure) return;
+
+  try {
+    const result = await api('/api/themes/' + encodeURIComponent(state.name), { method: 'DELETE' });
+    note('Deleted.' + (result.switchedTo ? ' The widget switched back to "' + result.switchedTo + '".' : ''), 'good');
+    await openTheme('');
+  } catch (err) {
+    note(err.message, 'bad');
+  }
+});
+
+for (const swatch of document.querySelectorAll('.swatch')) {
+  swatch.addEventListener('click', () => {
+    for (const other of document.querySelectorAll('.swatch')) other.classList.remove('active');
+    swatch.classList.add('active');
+    $('stage').className = 'stage ' + swatch.dataset.backdrop;
+  });
+}
+
+$('btn-refresh-song').addEventListener('click', loadSong);
+$('btn-undo').addEventListener('click', undo);
+$('btn-redo').addEventListener('click', redo);
+
+$('btn-back').addEventListener('click', async event => {
+  if (!state.dirty) return;
+
+  // The question is asked after the fact, so the link has to be stopped first
+  // and followed by hand once the answer is in.
+  event.preventDefault();
+  if (await askDiscard('Leave the editor')) {
+    state.dirty = false;   // stops the browser asking the same thing again
+    location.href = $('btn-back').href;
+  }
+});
+
+window.addEventListener('beforeunload', event => {
+  if (!state.dirty) return;
+  event.preventDefault();
+  event.returnValue = '';
+});
+
+async function loadSourceSize() {
+  try {
+    const status = await api('/api/status');
+    // baseWidth/baseHeight are the layout size; the sharpness multiplier does
+    // not change how much of the design fits.
+    state.source = { width: status.widget.baseWidth, height: status.widget.baseHeight };
+    state.obsReady = Boolean(status.obs && status.obs.configured);
+    checkFit();
+  } catch {
+    state.source = null;
+  }
+}
+
+(async () => {
+  try {
+    // Both the box and the canvas start on the zoom this editor was left at.
+    state.zoom = startingZoom();
+    $('zoom').value = String(state.zoom);
+
+    await loadThemes('');
+
+    // Open whatever is on stream, when that is a theme this editor made: that
+    // is the one somebody came here to change. ?theme= still wins.
+    const asked = new URLSearchParams(location.search).get('theme');
+    const live = state.themes.find(theme => theme.name === state.active && theme.editable);
+    const wanted = asked || (live ? live.name : '');
+
+    await openTheme(wanted);
+    if (!asked && live) {
+      note('Opened <b>' + escapeHtml(live.label) + '</b>, the theme on stream right now.', 'good');
+    }
+
+    // Nothing of your own yet: offer somewhere to start rather than a blank one.
+    if (!wanted && !state.themes.some(theme => theme.editable)) showPresets();
+  } catch (err) {
+    await openTheme('');
+    note(err.message, 'bad');
+  }
+  await Promise.all([loadSong(), loadSourceSize()]);
+  setInterval(loadSong, 15000);
+})();
+</script>
+<script src="dialogs.js"></script>
+<script src="tooltips.js"></script>
+</body>
+</html>

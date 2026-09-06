@@ -2,11 +2,15 @@ const fs = require('fs');
 const fsPromises = require('fs/promises');
 const path = require('path');
 
-const BLACKLIST_FILE = path.join(__dirname, '../queue-blacklist.json');
-const QUEUE_STATE_FILE = path.join(__dirname, '../queue-state.json');
-const QUEUE_SETTINGS_FILE = path.join(__dirname, '../queue-settings.json');
-const PENDING_QUEUE_FILE = path.join(__dirname, '../queue-pending.json');
-const RECENT_REQUESTS_FILE = path.join(__dirname, '../queue-recent.json');
+// QUEUEIFY_DATA_DIR lets tests (and the setup sandbox) point the persisted
+// state at a throwaway directory instead of the real project files.
+const DATA_DIR = process.env.QUEUEIFY_DATA_DIR || path.join(__dirname, '..');
+
+const BLACKLIST_FILE = path.join(DATA_DIR, 'queue-blacklist.json');
+const QUEUE_STATE_FILE = path.join(DATA_DIR, 'queue-state.json');
+const QUEUE_SETTINGS_FILE = process.env.QUEUEIFY_SETTINGS_FILE || path.join(DATA_DIR, 'queue-settings.json');
+const PENDING_QUEUE_FILE = path.join(DATA_DIR, 'queue-pending.json');
+const RECENT_REQUESTS_FILE = path.join(DATA_DIR, 'queue-recent.json');
 
 const DEFAULT_COOLDOWN_SECONDS = 60;
 const DEFAULT_REPEAT_BLOCK_SECONDS = 600;
@@ -14,7 +18,13 @@ const DEFAULT_MAX_SONG_LENGTH = 360;
 const PROGRESS_RESET_GRACE_MS = 5000;
 const MAX_WRITE_RETRY = 3;
 
-const pendingWrites = new Map();
+// Debounce timers, keyed by file: coalesce rapid saveX() bursts into one write.
+const pendingTimers = new Map();
+// Tail promise of each file's write chain: guarantees writes (and their
+// retries) for a given file are never in flight concurrently, so completion
+// order always matches schedule order and a stale write can't clobber a
+// fresher one that happened to finish first.
+const writeChains = new Map();
 
 function loadJSON(file, fallback) {
     try {
@@ -27,28 +37,36 @@ function loadJSON(file, fallback) {
     return fallback;
 }
 
-function scheduleWrite(file, value, retries = 0) {
-    if (pendingWrites.has(file)) {
-        clearTimeout(pendingWrites.get(file).timer);
-    }
-
-    const timer = setTimeout(async () => {
-        pendingWrites.delete(file);
-        try {
-            await fsPromises.writeFile(file, JSON.stringify(value, null, 2));
-        } catch (err) {
-            console.error(`Failed to save ${path.basename(file)}:`, err.message);
-            if (retries < MAX_WRITE_RETRY) {
-                const retryDelay = 200;
-                console.warn(`Retrying write to ${path.basename(file)} in ${retryDelay}ms (${retries + 1}/${MAX_WRITE_RETRY})`);
-                setTimeout(() => scheduleWrite(file, value, retries + 1), retryDelay);
-            } else {
-                console.error(`Max retries exceeded for ${path.basename(file)}`);
-            }
+async function writeOnce(file, value, retries) {
+    try {
+        await fsPromises.writeFile(file, JSON.stringify(value, null, 2));
+    } catch (err) {
+        console.error(`Failed to save ${path.basename(file)}:`, err.message);
+        if (retries < MAX_WRITE_RETRY) {
+            const retryDelay = 200;
+            console.warn(`Retrying write to ${path.basename(file)} in ${retryDelay}ms (${retries + 1}/${MAX_WRITE_RETRY})`);
+            await new Promise(resolve => setTimeout(resolve, retryDelay));
+            return writeOnce(file, value, retries + 1);
         }
+        console.error(`Max retries exceeded for ${path.basename(file)}`);
+    }
+}
+
+function enqueueWrite(file, value) {
+    const previous = writeChains.get(file) || Promise.resolve();
+    const next = previous.then(() => writeOnce(file, value, 0));
+    writeChains.set(file, next);
+}
+
+function scheduleWrite(file, value) {
+    clearTimeout(pendingTimers.get(file));
+
+    const timer = setTimeout(() => {
+        pendingTimers.delete(file);
+        enqueueWrite(file, value);
     }, 100);
 
-    pendingWrites.set(file, { timer, value });
+    pendingTimers.set(file, timer);
 }
 
 function saveJSON(file, value) {
@@ -107,10 +125,15 @@ const state = {
     cooldownSeconds: settings.cooldownSeconds ?? DEFAULT_COOLDOWN_SECONDS,
     repeatBlockSeconds: settings.repeatBlockSeconds ?? DEFAULT_REPEAT_BLOCK_SECONDS,
     maxSongLength: settings.maxSongLength ?? DEFAULT_MAX_SONG_LENGTH,
-    themeTakeoverDurationSeconds: settings.themeTakeoverDurationSeconds ?? 3600,
-    themeTakeoverEnabled: settings.themeTakeoverEnabled ?? true,
     activeWidgetPosition: settings.activeWidgetPosition ?? "topright",
-    themeTakeoverRewardId: settings.themeTakeoverRewardId ?? null,
+    // Persisted so a restart knows which reward/channel it already owns,
+    // instead of rediscovering them before anything can use them.
+    spotifyRewardId: settings.spotifyRewardId ?? null,
+    broadcasterId: settings.broadcasterId ?? null,
+    // The last reward id we unlinked. Kept so an unlink is never a dead end:
+    // the reward still exists on Twitch, and this is the only record of which
+    // one it was once the link is gone.
+    previousSpotifyRewardId: settings.previousSpotifyRewardId ?? null,
     pendingQueue: loadJSON(PENDING_QUEUE_FILE, []).map(normalizePendingItem),
     recentRequests: loadJSON(RECENT_REQUESTS_FILE, []),
     activeTrack: null,
@@ -134,16 +157,34 @@ const state = {
             cooldownSeconds: this.cooldownSeconds,
             repeatBlockSeconds: this.repeatBlockSeconds,
             maxSongLength: this.maxSongLength,
-            themeTakeoverDurationSeconds: this.themeTakeoverDurationSeconds,
-            themeTakeoverEnabled: this.themeTakeoverEnabled,
             chatEnabled: this.chatEnabled,
             redeemsEnabled: this.redeemsEnabled,
             allowExplicit: this.allowExplicit,
             spotifyRewardId: this.spotifyRewardId,
-            themeTakeoverRewardId: this.themeTakeoverRewardId,
+            broadcasterId: this.broadcasterId,
+            previousSpotifyRewardId: this.previousSpotifyRewardId,
             activeWidgetPosition: this.activeWidgetPosition,
             widgetPresets: this.widgetPresets
         });
+    },
+
+    /**
+     * Drop the link to the channel point reward, remembering which one it was.
+     *
+     * Nothing is deleted on Twitch - the reward keeps existing, we just stop
+     * claiming it. Every caller that clears the link goes through here so the
+     * id is always recoverable afterwards; a bare `spotifyRewardId = null`
+     * throws away the only pointer to a reward the user may have renamed.
+     *
+     * Returns whether anything was actually unlinked.
+     */
+    forgetSpotifyReward() {
+        if (!this.spotifyRewardId) return false;
+
+        this.previousSpotifyRewardId = this.spotifyRewardId;
+        this.spotifyRewardId = null;
+        this.saveSettings();
+        return true;
     },
 
     saveWidgetPreset(name, transform) {

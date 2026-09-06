@@ -1,7 +1,6 @@
 const obs = require("../services/obs");
 const state = require("../core/state");
 const { sayMessage } = require('../services/messages');
-const { syncThemeTakeoverReward } = require('../services/syncThemeTakeoverReward');
 
 function getPresetName(theme, currentPosition) {
     if (currentPosition === "bottomcenter") {
@@ -20,12 +19,18 @@ module.exports = {
         const theme = args[0];
 
         if (!theme) {
-            const res = await fetch(
-                "http://localhost:3001/api/widget/themes"
-            );
+            const [themesRes, configRes] = await Promise.all([
+                fetch("http://localhost:3001/api/widget/themes"),
+                fetch("http://localhost:3001/api/widget/config")
+            ]);
 
-            const themes = await res.json();
-            sayMessage(client, channel, 'widget.availableThemes', { themes: themes.join(', ') });
+            const themes = await themesRes.json();
+            const config = await configRes.json();
+
+            sayMessage(client, channel, 'widget.availableThemes', {
+                current: config.effectiveTheme || config.theme || 'default',
+                themes: themes.join(', ')
+            });
 
             return;
         }
@@ -53,7 +58,7 @@ module.exports = {
             return;
         }
 
-        await fetch(
+        const themeRes = await fetch(
             "http://localhost:3001/api/widget/theme",
             {
                 method: "POST",
@@ -66,15 +71,12 @@ module.exports = {
             }
         );
 
-        try {
-            await syncThemeTakeoverReward({
-                broadcasterId: state.broadcasterId,
-                rewardId: state.themeTakeoverRewardId,
+        if (!themeRes.ok) {
+            sayMessage(client, channel, 'widget.unknownTheme', {
                 theme,
-                enabled: state.themeTakeoverEnabled
+                themes: themes.join(', ')
             });
-        } catch (err) {
-            console.error('Failed to update Theme Takeover reward availability:', err.message);
+            return;
         }
 
         try {
@@ -89,7 +91,9 @@ module.exports = {
                 await obs.setTransform(currentTransform);
             }
         } catch (err) {
-            console.error("Failed to apply theme position preset:", err.message);
+            // The theme itself changed; only the OBS repositioning failed, so
+            // this stays out of chat - but the reason still has to be legible.
+            console.warn("Could not reposition the widget in OBS:", err.message);
         }
 
         sayMessage(client, channel, 'widget.themeChanged', { theme });

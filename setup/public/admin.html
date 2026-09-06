@@ -1,0 +1,841 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Queueify Admin</title>
+<style>
+  :root {
+    --bg: #0b0c0f;
+    --surface: #12141a;
+    --surface-2: #171a21;
+    --line: #23262f;
+    --line-soft: #1b1e25;
+    --text: #e9eaee;
+    --muted: #9aa0ad;
+    --faint: #6b7280;
+    --accent: #7c5cff;
+    --accent-soft: rgba(124, 92, 255, .16);
+    --green: #2fb87a;
+    --amber: #d9a441;
+    --red: #e5566d;
+    --radius: 10px;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  a { color: #a894ff; text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+
+  /* A faint grid behind everything, so a dark page has some depth to it
+     instead of being a flat slab. Fixed, so it does not slide around as you
+     scroll, and masked so it fades out down the page rather than stopping at
+     a hard edge. It is decoration: nothing can be clicked through it. */
+  body::before {
+    content: '';
+    position: fixed; inset: 0; z-index: 0; pointer-events: none;
+    background-image:
+      linear-gradient(to right, rgba(255, 255, 255, .04) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(255, 255, 255, .04) 1px, transparent 1px);
+    background-size: 46px 46px;
+    -webkit-mask-image: radial-gradient(130% 105% at 50% -5%, #000 0%, rgba(0, 0, 0, .55) 55%, transparent 100%);
+    mask-image: radial-gradient(130% 105% at 50% -5%, #000 0%, rgba(0, 0, 0, .55) 55%, transparent 100%);
+  }
+
+  /* ------------------------------------------------------------ layout */
+
+  .shell {
+    display: grid; grid-template-columns: 232px minmax(0, 1fr); min-height: 100vh;
+    position: relative; z-index: 1;
+  }
+
+  .side {
+    border-right: 1px solid var(--line);
+    background: var(--surface);
+    padding: 20px 14px;
+    position: sticky; top: 0; height: 100vh;
+    display: flex; flex-direction: column; gap: 4px;
+  }
+
+  .brand {
+    display: flex; align-items: center; gap: 9px;
+    padding: 2px 8px 18px;
+    font-size: 15px; font-weight: 650; letter-spacing: -.01em;
+  }
+  .brand .mark {
+    width: 22px; height: 22px; border-radius: 6px;
+    background: linear-gradient(140deg, var(--accent), #b58cff);
+    display: grid; place-items: center; font-size: 12px; color: #fff;
+  }
+
+  .side .label {
+    padding: 14px 8px 6px;
+    font-size: 11px; font-weight: 600; letter-spacing: .07em;
+    text-transform: uppercase; color: var(--faint);
+  }
+
+  .nav {
+    display: flex; align-items: center; gap: 9px;
+    padding: 8px 9px; border-radius: 8px;
+    color: var(--muted); font-size: 13.5px; font-weight: 500;
+    cursor: pointer; border: 1px solid transparent;
+    text-align: left; background: none; width: 100%;
+  }
+  .nav:hover { background: var(--surface-2); color: var(--text); }
+  .nav.active { background: var(--accent-soft); color: #fff; border-color: rgba(124,92,255,.35); }
+  .nav svg { width: 15px; height: 15px; flex: none; opacity: .9; }
+
+  .side .foot { margin-top: auto; padding: 10px 8px 0; font-size: 12px; color: var(--faint); }
+
+  .main { min-width: 0; padding: 30px 34px 120px; max-width: 940px; }
+
+  .page-head { margin-bottom: 26px; }
+  .page-head h1 { margin: 0 0 6px; font-size: 22px; font-weight: 650; letter-spacing: -.02em; }
+  .page-head p { margin: 0; color: var(--muted); font-size: 13.5px; max-width: 62ch; }
+
+  /* ------------------------------------------------------------- cards */
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    margin-bottom: 16px;
+    overflow: hidden;
+  }
+  .card > header {
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--line-soft);
+    display: flex; align-items: baseline; gap: 10px;
+  }
+  .card > header h2 { margin: 0; font-size: 14.5px; font-weight: 600; letter-spacing: -.01em; }
+  .card > header .sub { color: var(--faint); font-size: 12.5px; }
+  .card .body { padding: 6px 18px 16px; }
+
+  .row {
+    display: grid; grid-template-columns: minmax(0, 1fr) 236px;
+    gap: 18px; align-items: center;
+    padding: 14px 0; border-bottom: 1px solid var(--line-soft);
+  }
+  .row:last-child { border-bottom: 0; }
+  .row .name { font-size: 13.5px; font-weight: 550; }
+  .row .why { display: block; margin-top: 3px; color: var(--faint); font-size: 12.5px; font-weight: 400; }
+  .row .control { display: flex; align-items: center; gap: 8px; justify-content: flex-end; }
+  .row .unit { color: var(--faint); font-size: 12.5px; }
+
+  input[type="text"], input[type="number"], input[type="password"], textarea, select {
+    font: inherit; font-size: 13.5px;
+    color: var(--text); background: var(--bg);
+    border: 1px solid var(--line); border-radius: 8px;
+    padding: 8px 10px; width: 100%;
+    transition: border-color .15s, box-shadow .15s;
+  }
+  input:focus, textarea:focus, select:focus {
+    outline: none; border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-soft);
+  }
+  textarea { resize: vertical; min-height: 62px; line-height: 1.5; }
+  /* The browser's own up/down arrows are cramped and out of place next to
+     everything else here, so a number gets steppers of its own instead. */
+  input[type="number"] {
+    width: 84px; text-align: center;
+    border-radius: 0; border-left: 0; border-right: 0;
+    -moz-appearance: textfield; appearance: textfield;
+  }
+  input[type="number"]::-webkit-outer-spin-button,
+  input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+
+  .stepper { display: flex; align-items: stretch; }
+  .stepper button {
+    flex: none; width: 30px; padding: 0;
+    background: var(--bg); color: var(--faint);
+    border: 1px solid var(--line); border-radius: 0;
+    font-size: 15px; font-weight: 600; line-height: 1; cursor: pointer;
+    transition: background .15s, color .15s;
+  }
+  .stepper button:first-child { border-radius: 8px 0 0 8px; border-right: 0; }
+  .stepper button:last-child { border-radius: 0 8px 8px 0; border-left: 0; }
+  .stepper button:hover { background: var(--accent-soft); color: var(--accent); }
+  .stepper:focus-within > * { border-color: var(--accent); }
+  .stepper:focus-within { border-radius: 8px; box-shadow: 0 0 0 3px var(--accent-soft); }
+  .stepper input:focus { box-shadow: none; }
+
+  /* A switch, rather than a stray tickbox. */
+  .toggle {
+    position: relative; width: 40px; height: 22px; flex: none;
+    background: #2a2e38; border: 1px solid var(--line); border-radius: 999px;
+    cursor: pointer; transition: background .18s, border-color .18s;
+  }
+  .toggle::after {
+    content: ''; position: absolute; top: 2px; left: 2px;
+    width: 16px; height: 16px; border-radius: 50%;
+    background: #9aa0ad; transition: transform .18s, background .18s;
+  }
+  .toggle[aria-checked="true"] { background: var(--accent); border-color: var(--accent); }
+  .toggle[aria-checked="true"]::after { transform: translateX(18px); background: #fff; }
+  .toggle:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--accent-soft); }
+
+  button.btn {
+    font: inherit; font-size: 13.5px; font-weight: 600;
+    border-radius: 8px; padding: 8px 14px; cursor: pointer;
+    background: var(--accent); color: #fff; border: 1px solid transparent;
+    transition: background .15s, opacity .15s;
+  }
+  button.btn:hover:not(:disabled) { background: #8c70ff; }
+  button.btn:disabled { opacity: .45; cursor: default; }
+  button.btn.ghost { background: transparent; border-color: var(--line); color: var(--text); }
+  button.btn.ghost:hover:not(:disabled) { background: var(--surface-2); }
+  button.btn.small { padding: 5px 10px; font-size: 12.5px; }
+
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: var(--surface-2); border: 1px solid var(--line);
+    border-radius: 999px; padding: 4px 6px 4px 10px;
+    font-size: 12.5px; font-family: ui-monospace, Menlo, Consolas, monospace;
+  }
+  .chip button {
+    background: none; border: 0; color: var(--faint); cursor: pointer;
+    font-size: 14px; line-height: 1; padding: 0 2px;
+  }
+  .chip button:hover { color: var(--red); }
+
+  .tag {
+    font-size: 11px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase;
+    padding: 2px 7px; border-radius: 999px;
+    background: var(--surface-2); color: var(--faint);
+  }
+  .tag.edited { background: rgba(217,164,65,.14); color: var(--amber); }
+
+  .mono { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 12.5px; }
+  .muted { color: var(--muted); }
+  .hidden { display: none !important; }
+
+  /* --------------------------------------------------------- save bar */
+
+  .savebar {
+    position: fixed; left: 232px; right: 0; bottom: 0; z-index: 20;
+    display: flex; align-items: center; gap: 14px;
+    padding: 13px 34px;
+    background: rgba(18, 20, 26, .96);
+    border-top: 1px solid var(--line);
+    backdrop-filter: blur(6px);
+    transform: translateY(105%); transition: transform .22s ease;
+  }
+  .savebar.show { transform: translateY(0); }
+  .savebar .status { flex: 1; font-size: 13px; color: var(--muted); }
+  .savebar .status.error { color: #ff9dab; }
+
+  .toast {
+    position: fixed; right: 22px; bottom: 84px; z-index: 30;
+    background: var(--surface-2); border: 1px solid var(--line);
+    border-left: 3px solid var(--green);
+    border-radius: 8px; padding: 11px 14px; font-size: 13px;
+    box-shadow: 0 12px 32px rgba(0,0,0,.5);
+    max-width: 340px;
+  }
+  .toast.bad { border-left-color: var(--red); }
+
+  .search { margin-bottom: 14px; }
+  .empty { padding: 20px 0; color: var(--faint); font-size: 13px; }
+
+  @media (max-width: 860px) {
+    .shell { grid-template-columns: 1fr; }
+    .side { position: static; height: auto; flex-direction: row; flex-wrap: wrap; }
+    .side .label, .side .foot { display: none; }
+    .savebar { left: 0; }
+    .main { padding: 22px 18px 120px; }
+    .row { grid-template-columns: 1fr; }
+    .row .control { justify-content: flex-start; }
+  }
+</style>
+</head>
+<body>
+
+<div class="shell">
+  <aside class="side">
+    <div class="brand"><span class="mark">Q</span> Queueify</div>
+
+    <div class="label">Configure</div>
+    <button class="nav active" data-view="settings">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-1.8-.3 1.6 1.6 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1A1.6 1.6 0 0 0 9 19.4a1.6 1.6 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.6 1.6 0 0 0 .3-1.8 1.6 1.6 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1A1.6 1.6 0 0 0 4.6 9a1.6 1.6 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.6 1.6 0 0 0 1.8.3H9a1.6 1.6 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.6 1.6 0 0 0 1 1.5 1.6 1.6 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0-.3 1.8V9a1.6 1.6 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1z"/></svg>
+      Settings
+    </button>
+    <button class="nav" data-view="aliases">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
+      Commands
+    </button>
+    <button class="nav" data-view="messages">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M21 11.5a8.4 8.4 0 0 1-9 8.4L3 21l1.1-9A8.4 8.4 0 1 1 21 11.5z"/></svg>
+      Chat messages
+    </button>
+
+    <div class="label">Elsewhere</div>
+    <a class="nav" href="/">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+      Setup dashboard
+    </a>
+    <a class="nav" href="/editor.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M2 2l7.5 7.5"/><circle cx="11" cy="11" r="2"/></svg>
+      Theme editor
+    </a>
+
+    <div class="foot">Changes apply while the bot runs.</div>
+  </aside>
+
+  <main class="main">
+    <div id="view"></div>
+  </main>
+</div>
+
+<div class="savebar" id="savebar">
+  <span class="status" id="save-status">You have unsaved changes.</span>
+  <button class="btn ghost" id="btn-discard">Discard</button>
+  <button class="btn" id="btn-save">Save changes</button>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+
+const state = {
+  view: 'settings',
+  loaded: {},
+  draft: {},
+  dirty: false
+};
+
+function escapeHtml(text) {
+  return String(text).replace(/[&<>"']/g, character => (
+    { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[character]
+  ));
+}
+
+async function api(path, options) {
+  const res = await fetch(path, Object.assign({ headers: { 'Content-Type': 'application/json' } }, options));
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || data.message || 'Request failed');
+  return data;
+}
+
+let toastTimer = null;
+
+function toast(text, bad) {
+  clearTimeout(toastTimer);
+  document.querySelector('.toast')?.remove();
+
+  const element = document.createElement('div');
+  element.className = 'toast' + (bad ? ' bad' : '');
+  element.textContent = text;
+  document.body.appendChild(element);
+
+  toastTimer = setTimeout(() => element.remove(), bad ? 9000 : 5000);
+}
+
+function setDirty(dirty, message) {
+  state.dirty = dirty;
+  $('savebar').classList.toggle('show', dirty);
+  $('save-status').className = 'status';
+  $('save-status').textContent = message || 'You have unsaved changes.';
+}
+
+/* ------------------------------------------------------------ controls */
+
+function toggle(checked, onChange) {
+  const button = document.createElement('button');
+  button.className = 'toggle';
+  button.setAttribute('role', 'switch');
+  button.setAttribute('aria-checked', String(Boolean(checked)));
+  button.addEventListener('click', () => {
+    const next = button.getAttribute('aria-checked') !== 'true';
+    button.setAttribute('aria-checked', String(next));
+    onChange(next);
+  });
+  return button;
+}
+
+function row(name, why, control) {
+  const element = document.createElement('div');
+  element.className = 'row';
+
+  const label = document.createElement('div');
+  label.className = 'name';
+  label.innerHTML = escapeHtml(name) + (why ? '<span class="why">' + escapeHtml(why) + '</span>' : '');
+
+  const holder = document.createElement('div');
+  holder.className = 'control';
+  holder.append(...(Array.isArray(control) ? control : [control]));
+
+  element.append(label, holder);
+  return element;
+}
+
+function card(title, sub) {
+  const element = document.createElement('section');
+  element.className = 'card';
+
+  const header = document.createElement('header');
+  header.innerHTML = '<h2>' + escapeHtml(title) + '</h2>' +
+    (sub ? '<span class="sub">' + escapeHtml(sub) + '</span>' : '');
+
+  const body = document.createElement('div');
+  body.className = 'body';
+
+  element.append(header, body);
+  element.body = body;
+  return element;
+}
+
+function pageHead(title, description) {
+  const head = document.createElement('div');
+  head.className = 'page-head';
+  head.innerHTML = '<h1>' + escapeHtml(title) + '</h1><p>' + description + '</p>';
+  return head;
+}
+
+/* ------------------------------------------------------------ settings */
+
+async function renderSettings() {
+  const data = await api('/api/admin/settings');
+  state.loaded.settings = data;
+  state.draft.settings = { queue: { ...data.queue }, whitelist: [...data.whitelist] };
+
+  const view = $('view');
+  view.innerHTML = '';
+  view.appendChild(pageHead('Settings',
+    'How the queue behaves, and who may move the widget. Everything here takes effect immediately - the same values the chat commands change.'));
+
+  const queue = card('Queue', 'Also settable with !delay, !repeatdelay, !duration');
+
+  for (const [key, field] of Object.entries(data.fields)) {
+    const draft = state.draft.settings.queue;
+
+    if (field.type === 'boolean') {
+      queue.body.appendChild(row(field.label, '', toggle(draft[key], value => {
+        draft[key] = value;
+        setDirty(true);
+      })));
+      continue;
+    }
+
+    const stepper = document.createElement('div');
+    stepper.className = 'stepper';
+
+    const input = document.createElement('input');
+    input.type = 'number';
+    input.value = draft[key];
+    input.min = field.min;
+    input.max = field.max;
+
+    const set = value => {
+      const next = Math.max(field.min, Math.min(field.max, Math.round(value)));
+      if (!Number.isFinite(next)) return;
+
+      input.value = next;
+      draft[key] = next;
+      setDirty(true);
+    };
+
+    input.addEventListener('input', () => {
+      draft[key] = Number(input.value);
+      setDirty(true);
+    });
+    // Whatever was typed is pulled back inside the limits once they leave it.
+    input.addEventListener('change', () => set(Number(input.value)));
+
+    const nudge = (label, delta, hint) => {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.textContent = label;
+      button.title = hint;
+      button.tabIndex = -1;
+      button.addEventListener('click', () => set(Number(input.value) + delta));
+      return button;
+    };
+
+    stepper.append(nudge('−', -1, 'Less'), input, nudge('+', 1, 'More'));
+
+    const unit = document.createElement('span');
+    unit.className = 'unit';
+    unit.textContent = field.unit || '';
+
+    queue.body.appendChild(row(field.label, `${field.min}-${field.max} ${field.unit || ''}`.trim(), [stepper, unit]));
+  }
+
+  view.appendChild(queue);
+
+  // --- whitelist -------------------------------------------------------
+  const whitelist = card('Widget whitelist', 'Viewers who may use !tr and !bc without being a mod');
+  const chips = document.createElement('div');
+  chips.className = 'chips';
+
+  const drawChips = () => {
+    chips.innerHTML = '';
+
+    if (!state.draft.settings.whitelist.length) {
+      const empty = document.createElement('span');
+      empty.className = 'muted';
+      empty.textContent = 'Mods only.';
+      chips.appendChild(empty);
+    }
+
+    for (const user of state.draft.settings.whitelist) {
+      const chip = document.createElement('span');
+      chip.className = 'chip';
+      chip.textContent = user;
+
+      const remove = document.createElement('button');
+      remove.textContent = '×';
+      remove.title = 'Remove ' + user;
+      remove.addEventListener('click', () => {
+        state.draft.settings.whitelist = state.draft.settings.whitelist.filter(name => name !== user);
+        drawChips();
+        setDirty(true);
+      });
+
+      chip.appendChild(remove);
+      chips.appendChild(chip);
+    }
+  };
+
+  drawChips();
+
+  const add = document.createElement('input');
+  add.type = 'text';
+  add.placeholder = 'twitch username';
+  add.addEventListener('keydown', event => {
+    if (event.key !== 'Enter') return;
+    const name = add.value.trim().toLowerCase();
+    if (!name) return;
+
+    if (!state.draft.settings.whitelist.includes(name)) {
+      state.draft.settings.whitelist.push(name);
+      drawChips();
+      setDirty(true);
+    }
+
+    add.value = '';
+  });
+
+  whitelist.body.appendChild(row('Allowed viewers', 'Press Enter to add', add));
+  const chipRow = document.createElement('div');
+  chipRow.className = 'row';
+  chipRow.style.gridTemplateColumns = '1fr';
+  chipRow.appendChild(chips);
+  whitelist.body.appendChild(chipRow);
+
+  view.appendChild(whitelist);
+
+  // --- read-only summary ------------------------------------------------
+  const status = card('Connections', 'Changed on the setup dashboard');
+  const line = (name, value, ok) => {
+    const badge = document.createElement('span');
+    badge.className = 'tag' + (ok ? '' : ' edited');
+    badge.textContent = ok ? 'connected' : 'not set';
+
+    const detail = document.createElement('span');
+    detail.className = 'mono muted';
+    detail.textContent = value;
+
+    status.body.appendChild(row(name, '', [detail, badge]));
+  };
+
+  line('OBS', data.obs.configured ? `${data.obs.scene} / ${data.obs.source}` : '', data.obs.configured);
+  line('Spotify Canvas cookie', '', data.canvas.configured);
+  line('Widget', `${data.widget.width} × ${data.widget.height}`, true);
+
+  view.appendChild(status);
+}
+
+async function saveSettings() {
+  let result;
+
+  try {
+    result = await api('/api/admin/settings', {
+      method: 'PUT',
+      body: JSON.stringify(state.draft.settings)
+    });
+  } catch (err) {
+    // Turning channel point requests on asks Twitch to enable the reward, and
+    // Twitch can say no. Redraw from the server so the switches show what is
+    // really set rather than what was asked for, then report the refusal.
+    await renderSettings().catch(() => {});
+    setDirty(false);
+    throw err;
+  }
+
+  toast(result.changed.length || result.whitelist
+    ? 'Saved. The bot is using these now.'
+    : 'Nothing to change.');
+}
+
+/* ------------------------------------------------------------- aliases */
+
+async function renderAliases() {
+  const data = await api('/api/admin/aliases');
+  state.loaded.aliases = data;
+  state.draft.aliases = Object.fromEntries(data.commands.map(command => [command.name, [...command.aliases]]));
+
+  const view = $('view');
+  view.innerHTML = '';
+  view.appendChild(pageHead('Commands',
+    'What chat has to type for each command. The name itself never changes - these are the extra words that also work. Saved to <span class="mono">config/aliases.json</span>.'));
+
+  const search = document.createElement('input');
+  search.type = 'text';
+  search.className = 'search';
+  search.placeholder = 'Filter commands';
+  view.appendChild(search);
+
+  const groups = {};
+  for (const command of data.commands) {
+    (groups[command.group] = groups[command.group] || []).push(command);
+  }
+
+  const cards = [];
+
+  for (const [group, commands] of Object.entries(groups)) {
+    const section = card(group);
+
+    for (const command of commands) {
+      const draft = state.draft.aliases;
+
+      const input = document.createElement('input');
+      input.type = 'text';
+      input.value = draft[command.name].join(', ');
+      input.placeholder = 'no aliases';
+      input.spellcheck = false;
+      input.addEventListener('input', () => {
+        draft[command.name] = input.value.split(',').map(alias => alias.trim()).filter(Boolean);
+        setDirty(true);
+      });
+
+      const reset = document.createElement('button');
+      reset.className = 'btn ghost small';
+      reset.textContent = 'Reset';
+      reset.title = 'Back to ' + (command.defaults.map(alias => '!' + alias).join(', ') || 'no aliases');
+      reset.addEventListener('click', () => {
+        draft[command.name] = [...command.defaults];
+        input.value = command.defaults.join(', ');
+        setDirty(true);
+      });
+
+      const element = row('!' + command.name, command.summary, [input, reset]);
+      element.dataset.search = (command.name + ' ' + command.summary + ' ' + command.aliases.join(' ')).toLowerCase();
+      section.body.appendChild(element);
+    }
+
+    cards.push(section);
+    view.appendChild(section);
+  }
+
+  search.addEventListener('input', () => {
+    const term = search.value.trim().toLowerCase();
+
+    for (const section of cards) {
+      let shown = 0;
+
+      for (const element of section.body.children) {
+        const match = !term || (element.dataset.search || '').includes(term);
+        element.classList.toggle('hidden', !match);
+        if (match) shown++;
+      }
+
+      section.classList.toggle('hidden', shown === 0);
+    }
+  });
+}
+
+async function saveAliases() {
+  await api('/api/admin/aliases', {
+    method: 'PUT',
+    body: JSON.stringify({ aliases: state.draft.aliases })
+  });
+
+  toast('Saved. Chat answers to these straight away.');
+}
+
+/* ------------------------------------------------------------ messages */
+
+async function renderMessages() {
+  const data = await api('/api/admin/messages');
+  state.loaded.messages = data;
+  state.draft.messages = {};
+
+  const view = $('view');
+  view.innerHTML = '';
+  view.appendChild(pageHead('Chat messages',
+    'Every line Queueify says. Anything in <span class="mono">{{curly braces}}</span> is filled in when the message is sent and has to stay. Saved to <span class="mono">config/messages.json</span>.'));
+
+  const search = document.createElement('input');
+  search.type = 'text';
+  search.className = 'search';
+  search.placeholder = 'Filter messages';
+  view.appendChild(search);
+
+  const cards = [];
+
+  for (const group of data.groups) {
+    state.draft.messages[group.category] = {};
+    const section = card(group.category, group.messages.length + ' messages');
+
+    for (const entry of group.messages) {
+      state.draft.messages[group.category][entry.key] = entry.text;
+
+      const input = document.createElement('textarea');
+      input.value = entry.text;
+      input.rows = Math.min(4, Math.ceil(entry.text.length / 60));
+      input.spellcheck = false;
+      input.addEventListener('input', () => {
+        state.draft.messages[group.category][entry.key] = input.value;
+        setDirty(true);
+      });
+
+      const reset = document.createElement('button');
+      reset.className = 'btn ghost small';
+      reset.textContent = 'Reset';
+      reset.title = 'Back to the original wording';
+      reset.addEventListener('click', () => {
+        input.value = entry.fallback;
+        state.draft.messages[group.category][entry.key] = entry.fallback;
+        setDirty(true);
+      });
+
+      const label = document.createElement('div');
+      label.className = 'name';
+      label.innerHTML = escapeHtml(entry.key) +
+        (entry.customised ? ' <span class="tag edited">edited</span>' : '') +
+        (entry.placeholders.length
+          ? '<span class="why mono">' + entry.placeholders.map(escapeHtml).join('  ') + '</span>'
+          : '');
+
+      const element = document.createElement('div');
+      element.className = 'row';
+      element.style.gridTemplateColumns = '220px minmax(0, 1fr)';
+
+      const control = document.createElement('div');
+      control.className = 'control';
+      control.style.flexDirection = 'column';
+      control.style.alignItems = 'stretch';
+      control.style.gap = '7px';
+      control.append(input);
+
+      const actions = document.createElement('div');
+      actions.style.display = 'flex';
+      actions.style.justifyContent = 'flex-end';
+      actions.appendChild(reset);
+      control.appendChild(actions);
+
+      element.append(label, control);
+      element.dataset.search = (entry.key + ' ' + entry.text).toLowerCase();
+      section.body.appendChild(element);
+    }
+
+    cards.push(section);
+    view.appendChild(section);
+  }
+
+  search.addEventListener('input', () => {
+    const term = search.value.trim().toLowerCase();
+
+    for (const section of cards) {
+      let shown = 0;
+
+      for (const element of section.body.children) {
+        const match = !term || (element.dataset.search || '').includes(term);
+        element.classList.toggle('hidden', !match);
+        if (match) shown++;
+      }
+
+      section.classList.toggle('hidden', shown === 0);
+    }
+  });
+}
+
+async function saveMessages() {
+  await api('/api/admin/messages', {
+    method: 'PUT',
+    body: JSON.stringify({ messages: state.draft.messages })
+  });
+
+  toast('Saved. The bot is already using the new wording.');
+}
+
+/* --------------------------------------------------------------- shell */
+
+const views = {
+  settings: { render: renderSettings, save: saveSettings },
+  aliases: { render: renderAliases, save: saveAliases },
+  messages: { render: renderMessages, save: saveMessages }
+};
+
+async function show(name) {
+  if (state.dirty) {
+    const leave = await askConfirm(
+      'The changes on this page have not been saved. They will be lost.',
+      { title: 'Leave without saving?', confirm: 'Discard changes', cancel: 'Stay here', danger: true }
+    );
+    if (!leave) return;
+  }
+
+  state.view = name;
+  setDirty(false);
+
+  for (const button of document.querySelectorAll('.nav[data-view]')) {
+    button.classList.toggle('active', button.dataset.view === name);
+  }
+
+  $('view').innerHTML = '<div class="empty">Loading…</div>';
+
+  try {
+    await views[name].render();
+  } catch (err) {
+    $('view').innerHTML = '<div class="empty">Could not load this page: ' + escapeHtml(err.message) + '</div>';
+  }
+}
+
+for (const button of document.querySelectorAll('.nav[data-view]')) {
+  button.addEventListener('click', () => show(button.dataset.view));
+}
+
+$('btn-save').addEventListener('click', async () => {
+  const button = $('btn-save');
+  button.disabled = true;
+
+  try {
+    await views[state.view].save();
+    setDirty(false);
+    await views[state.view].render();
+  } catch (err) {
+    $('save-status').className = 'status error';
+    $('save-status').textContent = err.message;
+    toast(err.message, true);
+  } finally {
+    button.disabled = false;
+  }
+});
+
+$('btn-discard').addEventListener('click', async () => {
+  setDirty(false);
+  await views[state.view].render();
+});
+
+window.addEventListener('beforeunload', event => {
+  if (!state.dirty) return;
+  event.preventDefault();
+  event.returnValue = '';
+});
+
+show('settings');
+</script>
+<script src="dialogs.js"></script>
+<script src="tooltips.js"></script>
+</body>
+</html>

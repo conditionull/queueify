@@ -5,6 +5,10 @@ const COLOR_RESET = '\x1b[0m';
 const DEFAULT_UPDATE_URL = 'https://github.com/conditionull/queueify';
 const REMOTE_PACKAGE_URL = 'https://raw.githubusercontent.com/conditionull/queueify/main/package.json';
 const REMOTE_COMMIT_URL = 'https://api.github.com/repos/conditionull/queueify/commits/main';
+// The changelog for the version they would be updating to. The one on their
+// own dashboard describes the copy they are already running, which is not the
+// question being asked here.
+const CHANGELOG_URL = 'https://github.com/conditionull/queueify/blob/main/CHANGELOG.md';
 const UPDATE_BOX_LINE = '────────────────────────────────────────────────────────────';
 
 function printUpdateNotice(url = DEFAULT_UPDATE_URL, commitMessage = null) {
@@ -16,9 +20,11 @@ function printUpdateNotice(url = DEFAULT_UPDATE_URL, commitMessage = null) {
     ];
 
     if (commitMessage) {
-        lines.push(`${COLOR_PINK}  What's new: ${commitMessage}${COLOR_RESET}`);
+        lines.push(`${COLOR_PINK}  Latest change: ${commitMessage}${COLOR_RESET}`);
     }
 
+    // The commit line is one change; the changelog is the whole story.
+    lines.push(`${COLOR_PINK}  What's new: ${CHANGELOG_URL}${COLOR_RESET}`);
     lines.push(`${COLOR_PINK}${UPDATE_BOX_LINE}${COLOR_RESET}`, '');
 
     console.log(lines.join('\n'));

@@ -188,7 +188,7 @@ async function fetchWithToken(url, options = {}, retry = true, attempt = 1) {
     });
 
     if (response.status === 401 && retry) {
-      token = await refreshAccessToken();
+      token = await refreshAccessToken(token);
       return fetchWithToken(url, options, false, attempt);
     }
 
@@ -215,8 +215,16 @@ async function fetchWithToken(url, options = {}, retry = true, attempt = 1) {
   }
 }
 
-async function refreshAccessToken() {
+let refreshPromise = null;
+
+async function refreshAccessToken(expectedToken = null) {
   const currentTokenData = loadToken();
+
+  // Someone else's concurrent refresh already replaced the token we were
+  // trying to refresh away from - use it instead of firing another grant.
+  if (expectedToken && currentTokenData.access_token !== expectedToken) {
+    return currentTokenData.access_token;
+  }
 
   if (!currentTokenData.refresh_token) {
     throw new Error('Missing Spotify refresh token. Run `node auth.js` first.');
@@ -226,44 +234,52 @@ async function refreshAccessToken() {
     throw new Error('Missing SPOTIFY_CLIENT_ID or SPOTIFY_CLIENT_SECRET in .env');
   }
 
-  const response = await fetchWithRateLimitRetry('https://accounts.spotify.com/api/token', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/x-www-form-urlencoded',
-      'Authorization': 'Basic ' + Buffer.from(
-        process.env.SPOTIFY_CLIENT_ID + ':' + process.env.SPOTIFY_CLIENT_SECRET
-      ).toString('base64')
-    },
-    body: new URLSearchParams({
-      grant_type: 'refresh_token',
-      refresh_token: currentTokenData.refresh_token
-    })
-  });
+  if (!refreshPromise) {
+    refreshPromise = (async () => {
+      const response = await fetchWithRateLimitRetry('https://accounts.spotify.com/api/token', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'Authorization': 'Basic ' + Buffer.from(
+            process.env.SPOTIFY_CLIENT_ID + ':' + process.env.SPOTIFY_CLIENT_SECRET
+          ).toString('base64')
+        },
+        body: new URLSearchParams({
+          grant_type: 'refresh_token',
+          refresh_token: currentTokenData.refresh_token
+        })
+      });
 
-  const data = await response.json().catch(() => ({}));
+      const data = await response.json().catch(() => ({}));
 
-  if (!response.ok) {
-    if (response.status === 400 && data.error === 'invalid_grant') {
-      throw new Error('Spotify refresh token expired or was revoked. Run `node auth.js` to authorize again.');
-    }
+      if (!response.ok) {
+        if (response.status === 400 && data.error === 'invalid_grant') {
+          throw new Error('Spotify refresh token expired or was revoked. Run `node auth.js` to authorize again.');
+        }
 
-    throw new Error(data.error_description || data.error || `Spotify token refresh failed with status ${response.status}`);
+        throw new Error(data.error_description || data.error || `Spotify token refresh failed with status ${response.status}`);
+      }
+
+      if (!data.access_token || !data.expires_in) {
+        throw new Error(`Spotify token refresh response was incomplete: ${JSON.stringify(data)}`);
+      }
+
+      const updatedTokenData = {
+        ...currentTokenData,
+        access_token: data.access_token,
+        expires_at: Date.now() + data.expires_in * 1000,
+        ...(data.refresh_token ? { refresh_token: data.refresh_token } : {})
+      };
+
+      saveToken(updatedTokenData);
+      console.log('Spotify token refreshed.');
+      return updatedTokenData.access_token;
+    })().finally(() => {
+      refreshPromise = null;
+    });
   }
 
-  if (!data.access_token || !data.expires_in) {
-    throw new Error(`Spotify token refresh response was incomplete: ${JSON.stringify(data)}`);
-  }
-
-  const updatedTokenData = {
-    ...currentTokenData,
-    access_token: data.access_token,
-    expires_at: Date.now() + data.expires_in * 1000,
-    ...(data.refresh_token ? { refresh_token: data.refresh_token } : {})
-  };
-
-  saveToken(updatedTokenData);
-  console.log('Spotify token refreshed.');
-  return updatedTokenData.access_token;
+  return refreshPromise;
 }
 
 async function getValidToken() {

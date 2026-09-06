@@ -38,7 +38,7 @@ app.get('/callback', async (req, res) => {
   const spotifyError = req.query.error;
 
   if (spotifyError) {
-    res.status(400).send(`Spotify authorization failed: ${spotifyError}`);
+    res.status(400).type('text/plain').send(`Spotify authorization failed: ${spotifyError}`);
     return;
   }
 

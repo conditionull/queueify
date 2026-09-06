@@ -1,7 +1,13 @@
 import axios from "axios";
 import * as OTPAuth from "otpauth";
+import { getLiveValue } from "../../config/liveEnv.js";
 
-const SP_DC = process.env.SP_DC;
+// Read at call time, not at import: the cookie is often pasted into the setup
+// page after the bot is already running, and a boot-time snapshot would keep
+// serving the old (or missing) value until a restart.
+function spotifyCookie() {
+  return getLiveValue('SP_DC');
+}
 const SECRETS_URL = "https://raw.githubusercontent.com/xyloflake/spot-secrets-go/refs/heads/main/secrets/secretDict.json";
 
 // Global variables to store the current TOTP configuration
@@ -107,7 +113,7 @@ function useFallbackSecret() {
   console.log('Using fallback TOTP secret');
 }
 
-export async function getToken(reason = "init", productType = "mobile-web-player") {
+async function requestToken(reason, productType) {
   // Ensure we have a TOTP instance
   if (!currentTotp) {
     await initializeTOTPSecrets();
@@ -123,11 +129,38 @@ export async function getToken(reason = "init", productType = "mobile-web-player
       'User-Agent': userAgent(),
       'Origin': 'https://open.spotify.com/',
       'Referer': 'https://open.spotify.com/',
-      'Cookie': `sp_dc=${SP_DC}`,
+      'Cookie': `sp_dc=${spotifyCookie()}`,
     },
   });
 
-  return response.data?.accessToken;
+  return response.data || {};
+}
+
+export async function getToken(reason = "init", productType = "mobile-web-player") {
+  const data = await requestToken(reason, productType);
+  return data.accessToken;
+}
+
+/**
+ * Checks the sp_dc cookie without touching the widget, so setup can tell the
+ * user it works before they go looking for missing Canvas videos.
+ *
+ * Spotify answers an unusable cookie with an anonymous token rather than an
+ * error, which is why the flag - not the status code - is what decides here.
+ */
+export async function verifyCookie() {
+  if (!spotifyCookie()) return { ok: false, reason: 'missing' };
+
+  try {
+    const data = await requestToken("init", "mobile-web-player");
+
+    if (!data.accessToken) return { ok: false, reason: 'no_token' };
+    if (data.isAnonymous) return { ok: false, reason: 'anonymous' };
+
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, reason: 'request_failed', message: err.message };
+  }
 }
 
 async function generateAuthPayload(reason, productType) {
@@ -150,7 +183,7 @@ async function getServerTime() {
         'User-Agent': userAgent(),
         'Origin': 'https://open.spotify.com/',
         'Referer': 'https://open.spotify.com/',
-        'Cookie': `sp_dc=${SP_DC}`,
+        'Cookie': `sp_dc=${spotifyCookie()}`,
       },
     });
 

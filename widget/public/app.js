@@ -1,7 +1,12 @@
 let THEME = "default";
+let RENDER_SCALE = 1;
 
+// The theme's own stylesheet, and nothing else. A theme can pull in web fonts
+// with their own <link>, and grabbing "the first stylesheet" used to overwrite
+// one of those - the font then vanished, because its @font-face rules went
+// with it.
 const themeLink = document.getElementById("theme")
-    || document.querySelector('link[rel="stylesheet"]');
+    || document.querySelector('link[rel="stylesheet"][href*="/themes/"]');
 
 function applyTheme(theme) {
     THEME = theme || "default";
@@ -9,6 +14,26 @@ function applyTheme(theme) {
     if (themeLink) {
         themeLink.href = `/themes/${THEME}/style.css`;
     }
+}
+
+/**
+ * Lays the widget out larger instead of letting OBS stretch it.
+ *
+ * OBS rasterises a browser source at its configured pixel size, so a source
+ * enlarged in the scene is an upscaled bitmap - soft edges, mushy text. `zoom`
+ * re-runs layout at the bigger size, so every pixel is drawn rather than
+ * interpolated; the scene item is scaled back down to keep the same footprint.
+ * The browser source must be sized to match (680 x 192 times the scale).
+ */
+function applyRenderScale(scale) {
+    const next = Number(scale) || 1;
+    RENDER_SCALE = next;
+
+    // OBS zeroes the body margin through its own injected CSS; a normal
+    // browser does not, and at 2x that gap is doubled too.
+    document.body.style.margin = "0";
+    document.body.style.overflow = "hidden";
+    document.documentElement.style.zoom = next === 1 ? "" : String(next);
 }
 
 async function refreshThemeFromServer() {
@@ -20,6 +45,8 @@ async function refreshThemeFromServer() {
         if (config.effectiveTheme || config.theme) {
             applyTheme(config.effectiveTheme || config.theme);
         }
+
+        applyRenderScale(config.renderScale);
     } catch (err) {
         console.error("Failed to refresh theme config:", err);
     }
@@ -29,10 +56,14 @@ const themeEvents = new EventSource("/api/widget/theme-events");
 
 themeEvents.onmessage = (event) => {
     try {
-        const { theme } = JSON.parse(event.data);
+        const { theme, renderScale } = JSON.parse(event.data);
 
-        if (theme && theme !== THEME) {
-            applyTheme(theme);
+        // A resolution change needs a reload as much as a theme change does:
+        // the layout is rebuilt at the new size.
+        const scaleChanged = Number(renderScale) && Number(renderScale) !== RENDER_SCALE;
+
+        if ((theme && theme !== THEME) || scaleChanged) {
+            if (theme) applyTheme(theme);
             setTimeout(() => {
                 window.location.reload();
             }, 250);
@@ -230,7 +261,17 @@ async function updateSong() {
 
             let visibleWidth = artistWrapper.clientWidth;
 
-            if (progressRect && progressRect.left < wrapperRect.right) {
+            // Some themes sit the progress bar on the same line as the artist,
+            // where it eats into the space the text has. Only then does it
+            // count: a bar on its own row below (as themes made in the editor
+            // have) shares no space at all, and treating it as an overlap left
+            // the artist with zero width - so it scrolled a line that fitted
+            // perfectly well.
+            const sharesTheLine = progressRect &&
+                progressRect.top < wrapperRect.bottom - 1 &&
+                progressRect.bottom > wrapperRect.top + 1;
+
+            if (sharesTheLine && progressRect.left < wrapperRect.right) {
                 visibleWidth = Math.max(0, progressRect.left - wrapperRect.left);
             }
 

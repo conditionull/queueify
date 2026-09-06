@@ -21,7 +21,7 @@ Adding songs to playback queue requires Spotify Premium
 ### Features
 
 - On-screen Spotify widget that displays the currently playing song to viewers. (`Set this up with a browser source in OBS; see instructions below.`)
-- Twitch Channel Point Redemptions as an alternative way to queue songs
+- Twitch Channel Point Redemptions as an optional second way to queue songs (Affiliate or Partner only - chat requests work on any channel)
 - View the current queue with `!q`
 - Automatic refunds for Channel Point Redemptions when:
   - The user is on cooldown
@@ -38,76 +38,160 @@ Adding songs to playback queue requires Spotify Premium
 - Moderator controls for playback, the queue, cooldowns, song duration, and blacklist. (`See commands below.`)
 - Persistent queue state, deny list, cooldown settings, repeat delay, and pending attribution stored in JSON files
 - Automatic management of Spotify access and refresh tokens
+- A setup dashboard that stays open while the bot runs, so accounts, OBS and the Spotify Canvas cookie can be changed without stopping anything
+- An Admin Panel for the queue settings, command aliases and every line Queueify says in chat
+- A visual theme editor: drag the album art, title, artist and progress bar around a canvas and save it as a real theme (`!theme <name>`)
+- Themes can be exported to a file and shared with anyone else running Queueify
+- The widget sizes itself to whatever space you give it in OBS, so it stays sharp at any size
+- Nothing needs a restart: credentials, settings, aliases, messages and themes are all re-read while the bot runs
+
+See [CHANGELOG.md](CHANGELOG.md) for what has changed, or open **What's new** on the dashboard.
 
 <br />
 
 ### Requirements
 
-- [Node.js](https://nodejs.org/en/download) (download the .msi for windows)
+- [Node.js 20 or newer](https://nodejs.org/en/download) (download the .msi for windows) - Queueify checks this on startup and says so if it is older
 - [OBS Studio](https://obsproject.com/download) (Streamlabs OBS etc. will prob work, didn't test it)
 - [Spotify Premium](https://www.spotify.com/premium/) account (required for adding songs to playback queue)
 
-### Edit Twitch Chat Messages
+### Admin Panel
 
-All messages sent to Twitch chat can be edited in [config/messages.json](config/messages.json). Messages are grouped by purpose, such as `queue`, `moderation`, `settings`, `playback`, and `widget`, so each entry describes the response it controls.
+The dashboard has an Admin Panel at <http://127.0.0.1:3002/admin.html> covering the things people
+used to edit by hand:
 
-Values that change at runtime use placeholders such as `{{username}}`, `{{artist}}`, `{{duration}}`, or `{{count}}`. Keep the placeholder names in place when editing those messages.
+- **Settings** - cooldown, repeat block, maximum song length, whether chat and channel point
+  requests are on, explicit tracks, whether the queue is open, and who may move the widget.
+  Exactly what the chat commands do, applied immediately.
+- **Commands** - rename any command or give it extra aliases, with a reset to the original.
+- **Chat messages** - every line Queueify says, grouped and searchable. A message that drops a
+  placeholder it needs is refused rather than going out broken.
 
-Valid changes are reloaded automatically while the bot is running. A restart is not required. If the file is missing, temporarily incomplete, or invalid JSON, Queueify keeps using the last valid messages and logs a warning instead of interrupting the bot.
+Everything is written to the same files as before (`queue-settings.json`,
+`config/aliases.json`, `config/messages.json`, `config/settings.js`), so editing those by hand
+still works if you prefer.
 
-### Edit Command Aliases
+### Chat messages and command aliases
 
-All command aliases can be edited in [config/aliases.json](config/aliases.json), keyed by each command's canonical name (e.g. `queue`, `active`, `deny`).
+Both live in **Admin Panel → Chat messages** and **Admin Panel → Commands**, searchable, with a
+reset to the original wording beside each one. Changes apply while the bot runs.
 
-Valid changes are reloaded automatically while the bot is running. A restart is not required. If the file is missing, temporarily incomplete, or invalid JSON, Queueify falls back to the aliases hard-coded in each command file under `commands/`.
+Messages use placeholders like `{{username}}`, `{{artist}}` or `{{count}}` for the parts that
+change; the panel shows which ones a message has to keep and refuses a change that drops one.
+
+They are stored in [config/messages.json](config/messages.json) and
+[config/aliases.json](config/aliases.json) if you would rather edit files - the same reload
+applies, and a file that is missing or half-written falls back to the built-in wording rather
+than interrupting the bot.
+
+<details>
+  <summary><strong>Already running an older version?</strong> (nothing to redo - click for the details)</summary>
+
+<br />
+
+Pull, run `npm install` (there are no new dependencies, but it keeps npm happy), then `npm start`.
+It checks your saved Twitch login and reward on startup and opens the dashboard if anything
+needs redoing. Nothing silently half-works.
+
+**Nothing to redo.** Your Spotify connection, queue settings, blacklist, widget presets, themes
+and `.env` are all kept as they are.
+
+Three things happen by themselves the first time you run it:
+
+- **Node 20 is now the minimum.** On anything older Queueify stops with a one-line message
+  instead of a stack trace. Update Node and start it again.
+- **Your OBS browser source is resized once**, to whatever the active theme is designed at, and
+  the scene item is scaled by the matching amount. The widget stays exactly the same size on
+  stream - it just renders at the right number of pixels instead of being stretched or squashed.
+  Saved `!tr` / `!bc` presets are adjusted at the same time, so they still land where you set
+  them.
+- **`config/settings.js` is created for you** if you do not have one. The old
+  `config/settings.example.js` is gone; there is nothing to copy or rename any more.
+
+You may also notice that there is nothing left to configure by hand: the dashboard stays open
+at `http://127.0.0.1:3002` for as long as the bot runs, and everything it writes is picked up
+without a restart.
+
+**Using your own Twitch application?** It keeps working. The dashboard offers a one-click switch
+to the built-in one (no client ID or secret, logins renew themselves) - that requires
+reconnecting Twitch and recreating the channel point reward once.
+
+</details>
+
+<br />
+
+## Ports and other overrides
+
+Queueify uses three local ports: `3001` for the widget, `3002` for the dashboard and `3000`
+for the Canvas API. If the widget's or the Canvas API's port is taken, Queueify says which one
+and stops rather than starting half-broken - usually that means it is already running in
+another window. A dashboard already serving on its port is simply reused.
+
+Ports are the one thing the dashboard cannot change, because it is served on one of them. Put
+them in `.env` if the defaults clash with something else:
+
+```ini
+SETUP_PORT=3002            # the dashboard
+QUEUEIFY_WIDGET_PORT=3001  # the widget, i.e. your OBS browser source URL
+QUEUEIFY_CANVAS_PORT=3000  # the Canvas video helper
+```
+
+The dashboard link printed at startup, and the address Queueify puts in chat messages, both
+follow `SETUP_PORT`.
 
 ## Setup
 
-### 1. Clone and install dependencies (or download the zip file)
+### 1. Clone and install dependencies
 
 ```sh
 git clone https://github.com/conditionull/queueify.git
 cd queueify
 npm install
 ```
+
+**Use `git clone` if you can.** Updating later is then `git pull` and you are done - your
+settings, themes and logins stay where they are. Downloading the zip works just as well to
+start with, but every update means downloading it again and moving your files across by hand.
+[Git for Windows](https://git-scm.com/download/win) takes a minute to install and saves you
+that every time.
 <br />
 
-### 2. Environment variables
+### 2. Start it
 
-Copy the contents of `.env.example` file to `.env` and fill in your credentials:
+```sh
+npm start
+```
 
-<<<<<
+That opens the dashboard at `http://127.0.0.1:3002` and it takes it from there:
+
+| On the dashboard | What it does |
+|---|---|
+| **Twitch** | Approve Queueify on Twitch. Nothing to copy or paste. |
+| **Spotify** | Paste a Client ID and Secret, then connect. |
+| **Channel points** *(optional)* | Creates the reward viewers redeem to request a song. |
+| **OBS** *(optional)* | Pick your scene and widget source from lists that come from OBS. |
+| **Canvas videos** *(optional)* | Paste the `sp_dc` cookie for Spotify's looping clips. |
+
+There is no configuration file to fill in - the dashboard writes everything Queueify needs.
+
+Only Twitch and Spotify are needed. **Channel points are optional** - Twitch only allows reward
+buttons on Affiliate and Partner channels, so if yours is not one of those, skip that step and
+viewers request songs with `!q` as normal. You can add the reward later without reinstalling
+anything.
+
+The page stays up for as long as the bot runs, and the startup banner prints the link. Go back
+to it whenever you need to reconnect an account, fix your OBS scene or source, or paste a new
+Spotify cookie - changes apply on the next command, without stopping the bot.
+
 > [!NOTE]
-Users had confusion with this, so to reiterate: Rename the file `.env.example` to `.env`. Same thing applies to `config/settings.example.js`, rename it to `settings.js`
+Whichever Twitch account you approve with is the account the bot chats as. It must be your broadcaster account or a moderator on your channel, or channel point redemptions won't work.
 
-\>>>>>
+Spotify needs its own app (Spotify caps shared apps at 5 users), and the dashboard links you straight to it — create an app, set the Redirect URI to `http://127.0.0.1:8000/callback`, and paste the Client ID and Secret into the page.
 
-```sh
-cp .env.example .env
-```
-
-Your `.env` should contain:
-
-```sh
-TWITCH_BROADCASTER_USERNAME=
-TWITCH_BOT_USERNAME=
-TWITCH_ACCESS_TOKEN=
-TWITCH_CLIENT_ID=
-
-SPOTIFY_CLIENT_ID=
-SPOTIFY_CLIENT_SECRET=
-SPOTIFY_REDIRECT_URI=http://127.0.0.1:8000/callback
-SPOTIFY_REWARD_NAME=Spotify Queue # this can be anything
-THEME_TAKEOVER_REWARD_NAME= # optional; enables the Theme Takeover reward
-
-OBS_WEBSOCKET_PASSWORD=
-OBS_WEBSOCKET_PORT=4455
-OBS_WEBSOCKET_IP=
-OBS_SCENE=Gaming # match it to yours
-OBS_SOURCE=Queueify # match it to yours
-
-SP_DC=your_sp_dc_cookie_here # You must supply your sp_dc cookie from a logged-in Spotify session in your WEB browser. View the image below to know where it is. 
-```
+<details>
+  <summary>[ Click to view working example ]</summary>
+  <img src="assets/spotify_example.png" />
+</details>
 
 <details>
   <summary>[ Click to view where to find the SP_DC value ]</summary>
@@ -115,111 +199,74 @@ SP_DC=your_sp_dc_cookie_here # You must supply your sp_dc cookie from a logged-i
   <img src="assets/SP_DC.png" />
 </details>
 
-### Twitch Tokens
-Get them from [twitchtokengenerator.com](https://twitchtokengenerator.com/)
-<br />
-When visiting the site, click the robot icon `Bot Chat Token` > then toggle the following scopes: `chat:read` `chat:edit`, `channel:read:redemptions`, `channel:manage:redemptions`, `user:read:chat`
-<br />Then click `"Generate  Token!"`
-<br /><br />
-**((** the values below are located under `"Generated Tokens"` section on the website **))**
-<br />
-The `TWITCH_ACCESS_TOKEN` value is what you copy from `ACCESS TOKEN` on the website.<br />Add `CLIENT ID` value to your .env file as well. 
+### 3. Spotify Canvas videos (optional)
+
+Spotify ships a short looping clip for a lot of tracks, and the widget can play it instead of
+the album cover. Nothing to install - it needs one cookie.
+
+Paste your `sp_dc` cookie into the **Canvas videos** step on the dashboard. It shows the same
+screenshot as above and checks the cookie against Spotify, so an expired one is rejected there
+rather than silently showing no videos later.
 
 > [!NOTE]
-If you wanted to use another account to send messages instead of your own, simply do the same process but logged into the other account when visiting twitch [twitchtokengenerator.com](https://twitchtokengenerator.com/)
+Skip this and the widget shows album art. To turn the clips off for a theme, set **Album art**
+to "Album cover only" in the theme editor.
 
-### Spotify Application Creation
-Create an app at [Spotify Developer Dashboard](https://developer.spotify.com/dashboard) to get your `Client ID` **and** `Client Secret`.<br />
-Set the redirect-uri to `http://127.0.0.1:8000/callback` or the exact value you put for `SPOTIFY_REDIRECT_URI` in the .env file. `localhost` is no longer supported by Spotify's API. 
-<details>
-  <summary>[ Click to view working example ]</summary>
-  <img src="assets/image.png" />
-</details>
+### Make your own theme
 
-<br />
+The dashboard has a visual theme editor (**Widget themes → Open the theme editor**, or
+<http://127.0.0.1:3002/editor.html>). Drag the album art, title, artist and progress bar around
+a canvas, restyle them, and save — that writes a real theme folder under `widget/themes/`, so
+it shows up in `!theme` straight away with no restart and no build step.
 
-### 3. Spotify tokens
- 
-Run `node auth.js` from the project root to generate `spotify-token.json`:
+- **Start from a layout** rather than a blank canvas: Classic, Spotlight, Ticker or Stacked.
+- Album art, title, artist and progress bar are always part of a theme, because the widget fills
+  them in. Hide one rather than deleting it if a design does not need it - including the
+  background panel, for a design that sits straight over gameplay.
+- 50 fonts, gradients, glow, UPPERCASE and italic, and colors that follow the album art.
+- Snapping like a design tool: edges and centers line up as you drag, resizing locks to another
+  part's width or height, and moving locks to spacing you have already used. Hold <kbd>Ctrl</kbd>
+  or <kbd>Shift</kbd> while dragging to turn it off.
+- The preview is drawn by the same code that writes the theme, with your currently playing song
+  when there is one, so what you see is what OBS gets.
+- **Export** a theme to a file and **Import** one someone sent you. An import arrives as a new
+  theme, so nothing you already have is overwritten.
+- `default`, `minimal` and `swag` are hand-written and read-only, so there is always a known-good
+  fallback. Duplicate one instead of editing it.
+- Themes you make live in `widget/themes/` and are left alone by updates.
 
-```sh
-node auth.js
-```
-Open the link it prints in your terminal, log in with Spotify, and it'll save your access token, refresh token, and expiry to `spotify-token.json`.
-
-<br />
-
-### 4. Create Custom Channel Reward
-If you've done everything above, simply run in project root:
-```sh
-node reward.js
-```
-
-You can now mess with the rewards name, color, icon, description text, etc. in your twitch dashboard. If you recreate the reward manually with the same name, functionality will break. Use the command above instead^
-
-### Optional: Theme Takeover Reward
-
-> [!NOTE]
-This optional feature lets viewers use channel points to temporarily change the current wdiget theme
-
-Set `THEME_TAKEOVER_REWARD_NAME` in `.env`, then create the reward:
-
-```sh
-npm run theme-takeover-reward
-```
-
-Viewers enter `default` or `swag` in the reward's input field to temporarily take over the OBS widget theme. `minimal` is intentionally unavailable because its compact dimensions can be misframed in an existing OBS browser source. 
-
-If `minimal` is the broadcaster's selected theme, the reward is automatically disabled. It becomes available again after switching to `default` or `swag`, unless the feature was disabled with `!themeoff`.
-
-A takeover lasts one hour by default; moderators can view or change the duration with `!themeduration` or `!themeduration <seconds>` (60-86400). Changing the duration **automatically updates** the Twitch reward prompt. A later redemption replaces the current takeover and starts a new duration; the `!theme <theme>` command **overrides** any theme set by a redeem. Invalid theme input or an unavailable widget server is refunded.
-
-Just like the other reward, you can modify the price in your Creator Dashboard after creating the reward with the bot.
-
-### 5. Spotify Canvas Setup
-
-Queueify includes support for Spotify Canvas videos in the widget.
-
-The Canvas API is already included in the project. No separate install is required :D
-
-Make sure your `.env` contains:
-
-```env
-SP_DC=your_sp_dc_cookie_here
-```
-(Info on where to get your `SP_DC` is already listed above^^)
-
-> [!NOTE]
-If you `don't want` the canvas video, then change "canvas" to "cover" in [properties.json](./widget/themes/default/properties.json)
-
-### 6. Add Browser Source
+### 4. Add Browser Source
 1. In OBS, add a `Browser` source
 2. Set the `URL` to: http://localhost:3001
-3. `Width:` 680 `Height:` 192 
+3. `Width:` 680 `Height:` 192
+
+**Sharpness is not a setting.** Queueify renders each theme at the size it was designed at and
+resizes the OBS browser source to match the space you have given it - when the bot starts, when
+you switch theme, and whenever you drag the widget in OBS. It reloads the source for you too, so
+opening OBS never needs a manual **Refresh**.
+
+Set the source to `680` x `192` to start with; the numbers only matter until Queueify first
+connects to OBS.
+
 > [!NOTE]
 If you encounter any issues, report an issue here on github and I'll respond asap
 
-### 7. OBS Widget Position Setup (optional step)
+### 5. OBS Widget Position Setup (optional step)
 - Use case: Your mods and/or whitelisted users can move the widget from Twitch chat depending on the game you're playing or if blocking information
-- Add whitelisted users in `queueify/config/settings.json` <br />
 
 The `!topright set` and `!bottomcenter set` commands require an OBS WebSocket connection.
 
-Enable it in: **OBS → Tools → WebSocket Server Settings**<br />
-Then set the corresponding `.env` variables that are listed above in this README:
-```ini
-OBS_WEBSOCKET_PASSWORD=
-OBS_WEBSOCKET_PORT=4455
-OBS_WEBSOCKET_IP=
-OBS_SCENE=Gaming # match it to yours
-OBS_SOURCE=Queueify # match it to yours
-```
+Two steps, and only the first one is in OBS:
 
-### 8. Start the bot
+1. Turn the server on: **OBS → Tools → WebSocket Server Settings**, then **Show Connect Info**.
+2. Open the **OBS** step on the dashboard (`http://127.0.0.1:3002`, or `npm run setup` if the
+   bot is not running), paste the connect info, and pick your scene and the widget source from
+   the dropdowns.
 
-```sh
-npm start
-```
+The scene and source lists come from OBS itself. Changing them later takes effect
+on the next command, without stopping the bot.
+
+Viewers who may move the widget without being mods go in **Admin Panel → Settings → Whitelist**.
 
 > [!NOTE]
 if the OBS widget does not show on startup, `Refresh` the source in OBS
@@ -227,6 +274,9 @@ if the OBS widget does not show on startup, `Refresh` the source in OBS
 <br />
 
 ## Twitch Chat Commands
+
+The dashboard has a **Chat commands** card with the same list, searchable, showing who may
+run each one and any aliases you have renamed in `config/aliases.json`.
 
 | Command | Who | Description |
 |---|---|---|
@@ -242,18 +292,14 @@ if the OBS widget does not show on startup, `Refresh` the source in OBS
 | `!duration` | Everyone | View the max duration for a queuable song |
 | `!duration <seconds>` | Mods | Change the max duration a song can be when queued |
 | `!repeatdelay <seconds>` | Mods | Change the same-user same-song block window |
-| `!themeduration` | Mods | Show the Theme Takeover duration |
-| `!themeduration <seconds>` | Mods | Change the Theme Takeover duration (60-86400) |
-| `!themeon` | Mods | Enable the Theme Takeover reward feature |
-| `!themeoff` | Mods | Disable the Theme Takeover reward feature |
 | `!deny <username>` | Mods | Block a user from queuing |
 | `!allow <username>` | Mods | Unblock a user |
 | `!blockartist <artist_name>` | Mods | Block songs by an artist, including featured artists |
 | `!blocksong <spotify_url>` | Mods | Block a specific Spotify song |
 | `!unblockartist <artist_name>` | Mods | Unblock an artist |
 | `!unblocksong <spotify_url>` | Mods | Unblock a specific Spotify song |
-| `!rewardoff` | Mods | Disable channel reward |
-| `!rewardon` | Mods | Enable channel reward |
+| `!rewardoff` | Mods | Disable the Spotify song request channel point reward |
+| `!rewardon` | Mods | Enable the Spotify song request channel point reward |
 | `!chatoff` | Mods | Disable chat queueing |
 | `!chaton` | Mods | Enable chat queueing |
 | `!topright set` or `!tr set` | Mods | Set the "topright" location. The location data will be saved in queue-settings.json|
@@ -265,7 +311,7 @@ if the OBS widget does not show on startup, `Refresh` the source in OBS
 
 
 > [!NOTE]
-!bottomcenter and !topright command names don't really matter. Just treat them both as unique positions you can set for any position in OBS. e.g.: `!topright set` can be at the bottom left for the widgets locatio
+!bottomcenter and !topright command names don't really matter. Just treat them both as unique positions you can set for any position in OBS. e.g.: `!topright set` can be at the bottom left for the widget's location
 
 <details>
   <summary>[ Click to view additional details about queueify functionality ]</summary>
@@ -287,6 +333,11 @@ Thanks [Paxsenix0](https://github.com/Paxsenix0) for creating the [Spotify Canva
 - You don't need to credit me, feel free to use it however you want!<br />
 - Maybe star this repo if you enjoyed using it :>
 - My twitch channel: [sadrobotsdontcry](https://www.twitch.tv/sadrobotsdontcry)
+
+### Support
+
+Queueify is free and always will be. If it saved you some hassle, you can
+[buy me a coffee](https://buymeacoffee.com/bobabeans) <3
 
 ### License
 This project is licensed under the [MIT License](LICENSE).

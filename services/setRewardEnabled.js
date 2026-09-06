@@ -1,11 +1,11 @@
+const { fetchTwitch } = require('./twitchAuth');
+
 async function setRewardEnabled(broadcasterId, rewardId, enabled) {
-    const res = await fetch(
+    const res = await fetchTwitch(
         `https://api.twitch.tv/helix/channel_points/custom_rewards?broadcaster_id=${broadcasterId}&id=${rewardId}`,
         {
             method: "PATCH",
             headers: {
-                "Client-Id": process.env.TWITCH_CLIENT_ID,
-                Authorization: `Bearer ${process.env.TWITCH_ACCESS_TOKEN}`,
                 "Content-Type": "application/json"
             },
             body: JSON.stringify({

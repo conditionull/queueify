@@ -1,0 +1,1574 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Queueify Setup</title>
+<style>
+  :root {
+    --bg: #0d0d11;
+    --card: #16161e;
+    --border: #272733;
+    --border-soft: #1f1f29;
+    --text: #ededf2;
+    --muted: #9494a8;
+    --faint: #6a6a7d;
+    --accent: #9147ff;
+    --accent-hover: #a970ff;
+    --green: #24d17e;
+    --amber: #f5a524;
+    --red: #f5566c;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background: var(--bg);
+    color: var(--text);
+    font: 15px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+
+  /* A faint grid behind everything, so a dark page has some depth to it
+     instead of being a flat slab. Fixed, so it does not slide around as you
+     scroll, and masked so it fades out down the page rather than stopping at
+     a hard edge. It is decoration: nothing can be clicked through it. */
+  body::before {
+    content: '';
+    position: fixed; inset: 0; z-index: 0; pointer-events: none;
+    background-image:
+      linear-gradient(to right, rgba(255, 255, 255, .045) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(255, 255, 255, .045) 1px, transparent 1px);
+    background-size: 46px 46px;
+    -webkit-mask-image: radial-gradient(130% 105% at 50% -5%, #000 0%, rgba(0, 0, 0, .55) 55%, transparent 100%);
+    mask-image: radial-gradient(130% 105% at 50% -5%, #000 0%, rgba(0, 0, 0, .55) 55%, transparent 100%);
+  }
+
+  /* One page, two panes: a rail that says where everything is and what still
+     needs doing, and a single section at a time beside it. Ten cards stacked
+     down a page is a list of chores; this is somewhere to work. */
+  .app {
+    display: grid;
+    grid-template-columns: 250px minmax(0, 1fr);
+    min-height: 100vh;
+    position: relative; z-index: 1;
+  }
+
+  /* --------------------------------------------------------------- rail */
+
+  .rail {
+    position: sticky; top: 0; align-self: start;
+    display: flex; flex-direction: column;
+    height: 100vh; overflow-y: auto;
+    padding: 22px 14px 18px;
+    background: #101016;
+    border-right: 1px solid var(--border-soft);
+  }
+
+  .brand { display: flex; align-items: center; gap: 10px; padding: 2px 10px 4px; }
+  .brand-mark {
+    width: 27px; height: 27px; flex: none; border-radius: 8px;
+    display: grid; place-items: center; font-size: 15px;
+    background: linear-gradient(135deg, var(--accent), #ff41a6);
+    box-shadow: 0 4px 14px rgba(145, 71, 255, .34);
+  }
+  .brand-name { font-weight: 700; font-size: 15px; letter-spacing: -.01em; }
+  .brand-version { margin-left: auto; font-size: 11px; color: var(--faint); font-variant-numeric: tabular-nums; }
+
+  .rail-label {
+    padding: 18px 10px 6px;
+    font-size: 10.5px; font-weight: 700; letter-spacing: .09em;
+    text-transform: uppercase; color: var(--faint);
+  }
+
+  .rail button.rail-item {
+    display: flex; align-items: center; gap: 10px; width: 100%;
+    padding: 8px 10px; margin-bottom: 1px;
+    border: 0; border-radius: 9px;
+    background: none; color: var(--muted);
+    font: inherit; font-size: 13.5px; font-weight: 600;
+    text-align: left; cursor: pointer;
+    transition: background .14s, color .14s;
+  }
+  .rail button.rail-item:hover { background: #191921; color: var(--text); }
+  .rail button.rail-item.active {
+    background: rgba(145, 71, 255, .15); color: var(--text);
+    box-shadow: inset 0 0 0 1px rgba(145, 71, 255, .32);
+  }
+  .rail-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .rail-item.done .rail-name { color: var(--muted); font-weight: 500; }
+  .rail-tag {
+    font-size: 9.5px; font-weight: 700; letter-spacing: .06em;
+    text-transform: uppercase; color: var(--faint);
+  }
+
+  .rail-foot { margin-top: auto; padding: 16px 10px 0; border-top: 1px solid var(--border-soft); }
+  .rail-foot .progress-text { font-size: 12px; color: var(--muted); margin-bottom: 8px; font-weight: 600; }
+
+  .progress {
+    height: 4px; background: #23232e; border-radius: 3px; overflow: hidden;
+  }
+  .progress span {
+    display: block; height: 100%; width: 0%;
+    background: linear-gradient(90deg, var(--accent), var(--green));
+    border-radius: 3px; transition: width .45s cubic-bezier(.4,0,.2,1);
+  }
+
+  /* --------------------------------------------------------------- pane */
+
+  .pane {
+    min-width: 0;
+    padding: 30px 40px 80px;
+  }
+  .pane-inner { max-width: 640px; }
+
+  .view { display: none; }
+  .view.active { display: block; animation: view-in .22s ease-out; }
+  @keyframes view-in {
+    from { opacity: 0; transform: translateY(5px); }
+    to { opacity: 1; transform: none; }
+  }
+
+  .step-head {
+    display: flex; align-items: center; gap: 12px;
+    padding: 0 0 4px;
+  }
+  .step-title { font-weight: 700; font-size: 23px; letter-spacing: -.02em; flex: 1; }
+  .view.optional .step-title::after {
+    content: 'optional'; margin-left: 9px; font-size: 11px; font-weight: 600;
+    color: var(--green); text-transform: uppercase; letter-spacing: .06em;
+    vertical-align: middle;
+  }
+
+  /* The status of the section you are looking at, as a chip rather than a
+     line of small print. */
+  .step-state {
+    flex: none; font-size: 12px; font-weight: 600;
+    color: var(--muted); background: #1c1c25;
+    border: 1px solid var(--border); border-radius: 999px;
+    padding: 3px 10px;
+  }
+  .step-state:empty { display: none; }
+  .view.done .step-state { color: #82e9ba; background: rgba(36,209,126,.1); border-color: rgba(36,209,126,.3); }
+
+  .dot {
+    width: 21px; height: 21px; border-radius: 50%; flex: none;
+    display: grid; place-items: center;
+    font-size: 11px; font-weight: 700;
+    background: #2a2a37; color: var(--muted);
+    transition: background .25s, color .25s;
+  }
+  .dot.done { background: var(--green); color: #04301c; }
+  .dot.error { background: var(--red); color: #3d0511; }
+  .dot.busy { background: var(--amber); color: #3d2a05; }
+
+  .step-body { padding: 14px 0 0; }
+
+  /* Where to go once this one is finished, so the page still leads the way
+     without stacking every section on top of each other. */
+  .next-bar {
+    display: flex; align-items: center; gap: 12px;
+    margin-top: 26px; padding: 14px 16px;
+    background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+  }
+  .next-bar .next-text { flex: 1; font-size: 13.5px; color: var(--muted); }
+
+  /* Narrow: the rail lies down across the top as a row of chips, and the
+     section fills what is left. Rows would stretch to fill the window, so the
+     first one is pinned to its content. */
+  @media (max-width: 900px) {
+    .app { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto 1fr; }
+    .rail {
+      position: static; height: auto; flex-direction: row; flex-wrap: wrap;
+      align-items: center; gap: 4px; padding: 14px;
+      border-right: 0; border-bottom: 1px solid var(--border-soft);
+    }
+    .brand { width: 100%; }
+    .rail-label { display: none; }
+    .rail button.rail-item { width: auto; margin: 0; }
+    .rail .rail-name { flex: none; }
+    .rail .rail-tag { display: none; }
+    .rail-foot { margin: 0; width: 100%; border-top: 0; padding: 8px 4px 0; }
+    .pane { padding: 22px 18px 60px; }
+  }
+  .step-body p { margin: 0 0 12px; color: var(--muted); font-size: 14px; }
+  .step-body p.tight { margin-bottom: 7px; }
+  .step-body ol { margin: 0 0 13px; padding-left: 18px; color: var(--muted); font-size: 14px; }
+  .step-body li { margin-bottom: 4px; }
+
+  button {
+    font: inherit; font-weight: 600; font-size: 14px;
+    border: 0; border-radius: 8px; padding: 9px 16px;
+    background: var(--accent); color: #fff; cursor: pointer;
+    transition: background .15s, opacity .15s;
+  }
+  button:hover:not(:disabled) { background: var(--accent-hover); }
+  button:disabled { opacity: .45; cursor: default; }
+  button.ghost { background: #292937; }
+  button.ghost:hover:not(:disabled) { background: #343446; }
+
+  .row { display: flex; gap: 9px; align-items: center; flex-wrap: wrap; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+  .code {
+    font-family: ui-monospace, Menlo, Consolas, monospace;
+    font-size: 25px; font-weight: 700; letter-spacing: .2em;
+    background: #08080c; border: 1px dashed var(--border);
+    border-radius: 9px; padding: 12px 18px;
+    display: inline-block; margin: 2px 0 12px;
+  }
+
+  a { color: var(--accent-hover); }
+  code { background: #08080c; padding: 1px 5px; border-radius: 4px; font-size: 13px; }
+
+  .field { margin-bottom: 9px; }
+  label { display: block; font-size: 12.5px; color: var(--muted); margin-bottom: 4px; }
+  input, select {
+    width: 100%; font: inherit; font-size: 14px;
+    background: #08080c; color: var(--text);
+    border: 1px solid var(--border); border-radius: 7px;
+    padding: 8px 10px;
+  }
+  input:focus, select:focus { outline: none; border-color: var(--accent); }
+
+  .note {
+    font-size: 13px; border-radius: 7px; padding: 9px 12px; margin-top: 11px;
+    background: rgba(245,165,36,.09); border: 1px solid rgba(245,165,36,.28); color: #f5c47a;
+  }
+  .note.bad  { background: rgba(245,86,108,.09); border-color: rgba(245,86,108,.28); color: #ff9dab; }
+  .note.good { background: rgba(36,209,126,.09); border-color: rgba(36,209,126,.28); color: #82e9ba; }
+
+  .banner {
+    border-radius: 12px; padding: 15px 17px; margin-bottom: 16px;
+    font-size: 14px; line-height: 1.5;
+    background: rgba(245,165,36,.1); border: 1px solid rgba(245,165,36,.3); color: #f5c47a;
+  }
+  .banner.bad { background: rgba(245,86,108,.1); border-color: rgba(245,86,108,.3); color: #ff9dab; }
+  .banner strong { display: block; margin-bottom: 4px; color: var(--text); font-size: 14.5px; }
+  .banner ul { margin: 6px 0 0; padding-left: 18px; }
+  .banner button { margin-top: 11px; }
+
+  details.guide {
+    margin: 0 0 12px; border: 1px solid var(--border);
+    border-radius: 9px; background: #101017; overflow: hidden;
+  }
+  details.guide summary {
+    cursor: pointer; padding: 9px 12px;
+    font-size: 13.5px; color: var(--muted);
+  }
+  details.guide[open] summary { color: var(--text); border-bottom: 1px solid var(--border-soft); }
+  .guide-body { padding: 12px; }
+  .guide-body ol { margin: 0 0 10px; }
+  .guide-body img {
+    display: block; width: 100%;
+    border: 1px solid var(--border); border-radius: 7px;
+  }
+
+  /* A button with an icon on it. It used to be a gradient, which read as one
+     more card back when the page was a stack of them. */
+  .btn-fancy { display: inline-flex; align-items: center; gap: 8px; }
+  .btn-fancy svg { width: 16px; height: 16px; }
+
+  .quality { margin-top: 15px; padding-top: 14px; border-top: 1px solid var(--border-soft); }
+  .quality .hint { margin: 8px 0 11px; color: var(--faint); font-size: 12.5px; line-height: 1.5; }
+
+  /* A step that has just been completed gives its dot one small nod. */
+  @keyframes pop {
+    0% { transform: scale(1); }
+    45% { transform: scale(1.35); }
+    100% { transform: scale(1); }
+  }
+  .dot.pop { animation: pop .42s cubic-bezier(.34, 1.56, .64, 1); }
+
+  .confetti {
+    position: fixed; top: -12px; width: 8px; height: 13px;
+    border-radius: 2px; pointer-events: none; z-index: 60;
+    animation: fall linear forwards;
+  }
+  @keyframes fall {
+    to { transform: translateY(102vh) rotate(var(--spin, 540deg)); opacity: .1; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .progress span { transition: none; }
+    .view.active { animation: none; }
+    .dot.pop { animation: none; }
+    .confetti { display: none; }
+  }
+
+  /* Commands */
+
+  .cmd-search { margin-bottom: 12px; }
+  .cmd-group + .cmd-group { margin-top: 16px; }
+  .cmd-group h4 {
+    margin: 0 0 8px; font-size: 11px; letter-spacing: .08em;
+    text-transform: uppercase; color: var(--faint);
+  }
+
+  .cmd {
+    display: grid; grid-template-columns: 1fr auto; gap: 4px 12px;
+    padding: 9px 11px; border-radius: 9px;
+    border: 1px solid var(--border-soft); background: #101017;
+  }
+  .cmd + .cmd { margin-top: 6px; }
+  .cmd-name {
+    font-family: ui-monospace, Menlo, Consolas, monospace;
+    font-size: 13.5px; font-weight: 600; color: var(--text);
+  }
+  .cmd-summary { grid-column: 1 / -1; font-size: 13px; color: var(--muted); }
+  .cmd-forms { grid-column: 1 / -1; margin: 3px 0 0; display: grid; gap: 3px; }
+  .cmd-form {
+    display: flex; gap: 8px; align-items: baseline;
+    font-size: 12.5px; color: var(--faint);
+  }
+  .cmd-form code {
+    font-size: 12px; background: #08080c; padding: 1px 6px;
+    border-radius: 4px; white-space: nowrap; color: #cbb6ff;
+  }
+  .cmd-alias {
+    font-size: 11.5px; color: var(--faint);
+    font-family: ui-monospace, Menlo, Consolas, monospace;
+  }
+  .who {
+    align-self: start; font-size: 10.5px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: .05em;
+    padding: 3px 7px; border-radius: 999px; white-space: nowrap;
+  }
+  .who.everyone { background: rgba(36,209,126,.13); color: #82e9ba; }
+  .who.mods { background: rgba(145,71,255,.16); color: #c4a2ff; }
+  .who.whitelist { background: rgba(245,165,36,.13); color: #f5c47a; }
+  .cmd-empty { font-size: 13px; color: var(--faint); padding: 6px 2px; }
+
+  .hidden { display: none !important; }
+  .spin { display: inline-block; animation: spin 1s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .final {
+    margin-top: 26px; text-align: center;
+    border: 1px solid rgba(36,209,126,.3); border-radius: 13px;
+    background: linear-gradient(180deg, rgba(36,209,126,.07), transparent);
+    padding: 28px 24px;
+  }
+  .final h2 { margin: 0 0 6px; font-size: 20px; }
+  .final p { color: var(--muted); margin: 0 0 16px; font-size: 14px; }
+  .url {
+    display: flex; gap: 8px; align-items: center; justify-content: center;
+    margin-bottom: 14px;
+  }
+  .url input { font-family: ui-monospace, Menlo, Consolas, monospace; text-align: center; max-width: 260px; }
+  .dims { font-size: 13px; color: var(--faint); }
+  .final p.close-hint {
+    margin: 16px 0 0; color: var(--green); font-size: 14px; font-weight: 600;
+  }
+
+  /* What's new */
+
+  /* A road down the side of the changelog: one stop per version, so a long
+     history can be jumped through instead of scrolled through. Only drawn
+     when there is more than one version to travel between. */
+  .log-layout { display: grid; grid-template-columns: minmax(0, 1fr); gap: 24px; }
+  .log-layout.has-path { grid-template-columns: 124px minmax(0, 1fr); }
+
+  .log-path { position: sticky; top: 22px; align-self: start; padding: 4px 0; }
+  .log-path::before {
+    content: ''; position: absolute; left: 5px; top: 14px; bottom: 14px;
+    width: 2px; border-radius: 2px; background: var(--border);
+  }
+
+  .log-path button.log-node {
+    position: relative; display: flex; align-items: center; gap: 11px;
+    width: 100%; padding: 7px 0; border: 0; background: none;
+    font: inherit; font-size: 12.5px; font-weight: 600;
+    color: var(--faint); text-align: left; cursor: pointer;
+    transition: color .15s;
+  }
+  .log-path button.log-node:hover { background: none; color: var(--text); }
+  .log-path button.log-node.current { color: var(--text); }
+
+  .log-dot {
+    position: relative; z-index: 1; flex: none;
+    width: 12px; height: 12px; border-radius: 50%;
+    background: #2a2a37; box-shadow: 0 0 0 4px var(--bg);
+    transition: background .18s, box-shadow .18s;
+  }
+  .log-path button.log-node:hover .log-dot { background: #4a4a5f; }
+  .log-node.current .log-dot {
+    background: var(--accent);
+    box-shadow: 0 0 0 4px var(--bg), 0 0 0 6px rgba(145, 71, 255, .28);
+  }
+  .log-node-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  @media (max-width: 900px) {
+    .log-layout.has-path { grid-template-columns: minmax(0, 1fr); }
+    .log-path {
+      position: static; display: flex; flex-wrap: wrap; gap: 6px;
+      padding: 0 0 4px;
+    }
+    .log-path::before { display: none; }
+    .log-path button.log-node {
+      width: auto; padding: 5px 11px 5px 9px;
+      border-radius: 999px; background: #17171f;
+    }
+    .log-path button.log-node:hover { background: #22222c; }
+  }
+
+  .release + .release { margin-top: 26px; }
+  .release { scroll-margin-top: 22px; }
+  .release-head {
+    display: flex; align-items: baseline; gap: 10px;
+    padding-bottom: 9px; margin-bottom: 14px;
+    border-bottom: 1px solid var(--border-soft);
+  }
+  .release-version { font-size: 17px; font-weight: 700; letter-spacing: -.01em; }
+  .release-date { font-size: 12.5px; color: var(--faint); }
+  .release-yours {
+    margin-left: auto; font-size: 10.5px; font-weight: 700; letter-spacing: .06em;
+    text-transform: uppercase; color: #82e9ba;
+    background: rgba(36,209,126,.1); border: 1px solid rgba(36,209,126,.3);
+    border-radius: 999px; padding: 2px 9px;
+  }
+
+  .release-group + .release-group { margin-top: 16px; }
+  .release-group h4 {
+    margin: 0 0 8px; font-size: 10.5px; font-weight: 700;
+    letter-spacing: .09em; text-transform: uppercase; color: var(--faint);
+  }
+  .release-group ul { margin: 0; padding-left: 17px; }
+  .release-group li {
+    margin-bottom: 7px; font-size: 14px; color: var(--muted); line-height: 1.55;
+  }
+  .release-group li strong { color: #c3c3d4; font-weight: 600; }
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="rail">
+    <div class="brand">
+      <div class="brand-mark">♫</div>
+      <div class="brand-name">Queueify</div>
+      <div class="brand-version" id="brand-version"></div>
+    </div>
+
+    <div class="rail-label">Setup</div>
+    <button class="rail-item" id="nav-twitch" data-view="twitch">
+      <span class="dot" id="dot-twitch">1</span><span class="rail-name">Twitch</span>
+    </button>
+    <button class="rail-item" id="nav-spotify" data-view="spotify">
+      <span class="dot" id="dot-spotify">2</span><span class="rail-name">Spotify</span>
+    </button>
+    <button class="rail-item" id="nav-reward" data-view="reward">
+      <span class="dot" id="dot-reward">3</span><span class="rail-name">Channel points</span><span class="rail-tag">optional</span>
+    </button>
+    <button class="rail-item" id="nav-obs" data-view="obs">
+      <span class="dot" id="dot-obs">4</span><span class="rail-name">OBS</span><span class="rail-tag">optional</span>
+    </button>
+    <button class="rail-item" id="nav-canvas" data-view="canvas">
+      <span class="dot" id="dot-canvas">5</span><span class="rail-name">Canvas videos</span><span class="rail-tag">optional</span>
+    </button>
+
+    <div class="rail-label">Your bot</div>
+    <button class="rail-item" id="nav-themes" data-view="themes">
+      <span class="dot" style="background:#2a2a37;color:#a970ff">✦</span><span class="rail-name">Widget themes</span>
+    </button>
+    <button class="rail-item" id="nav-admin" data-view="admin">
+      <span class="dot" style="background:#2a2a37;color:#a970ff">⚙</span><span class="rail-name">Admin Panel</span>
+    </button>
+    <button class="rail-item" id="nav-commands" data-view="commands">
+      <span class="dot" style="background:#2a2a37;color:#a970ff">!</span><span class="rail-name">Chat commands</span>
+    </button>
+    <button class="rail-item" id="nav-changelog" data-view="changelog">
+      <span class="dot" style="background:#2a2a37;color:#a970ff">★</span><span class="rail-name">What's new</span>
+    </button>
+
+    <div class="rail-foot">
+      <div class="progress-text" id="progress-text">Checking…</div>
+      <div class="progress"><span id="bar"></span></div>
+    </div>
+  </aside>
+
+  <main class="pane">
+    <div class="pane-inner">
+      <div id="banner" class="hidden"></div>
+
+  <section class="view" id="step-twitch">
+    <div class="step-head">
+      <div class="step-title">Twitch</div>
+      <div class="step-state" id="state-twitch">Checking…</div>
+    </div>
+    <div class="step-body">
+      <div id="twitch-idle">
+        <p>Approve Queueify on Twitch. Nothing to copy or paste.</p>
+        <div class="field">
+          <label for="broadcaster">Your Twitch channel name</label>
+          <input id="broadcaster" placeholder="yourchannel" autocomplete="off" spellcheck="false" title="The channel Queueify reads chat from - your Twitch name, without the @" />
+        </div>
+        <div class="row"><button id="btn-twitch" title="Opens Twitch so you can approve Queueify. Nothing to copy or paste.">Connect Twitch</button></div>
+        <div class="note">Approve with your broadcaster account, or an account that mods your channel — channel point redemptions need that.</div>
+      </div>
+
+      <div id="twitch-pending" class="hidden">
+        <p class="tight">Approve Queueify in the tab that opened. If it did not open, <a id="twitch-link" href="#" target="_blank" rel="noreferrer">use this link</a>.</p>
+        <div class="code" id="twitch-code">--------</div>
+        <div class="row">
+          <span class="step-state"><span class="spin">◠</span> Waiting for approval…</span>
+          <button class="ghost" id="btn-twitch-cancel">Cancel</button>
+        </div>
+      </div>
+
+      <div id="twitch-notes"></div>
+    </div>
+  </section>
+
+  <section class="view" id="step-spotify">
+    <div class="step-head">
+      <div class="step-title">Spotify</div>
+      <div class="step-state" id="state-spotify">Checking…</div>
+    </div>
+    <div class="step-body">
+      <p>Spotify limits shared apps to 5 users, so this one needs your own. Takes about a minute.</p>
+      <ol>
+        <li>Open the <a href="https://developer.spotify.com/dashboard" target="_blank" rel="noreferrer">Spotify Developer Dashboard</a> → Create app</li>
+        <li>Set the Redirect URI to exactly <code>http://127.0.0.1:8000/callback</code></li>
+        <li>Paste the Client ID and Secret below</li>
+      </ol>
+      <div class="field">
+        <label for="sp-id">Client ID</label>
+        <input id="sp-id" autocomplete="off" spellcheck="false" />
+      </div>
+      <div class="field">
+        <label for="sp-secret">Client Secret</label>
+        <input id="sp-secret" type="password" autocomplete="off" spellcheck="false" />
+      </div>
+      <div class="row">
+        <button id="btn-spotify-save">Save credentials</button>
+        <button id="btn-spotify-connect" class="ghost" disabled>Connect Spotify</button>
+      </div>
+      <div id="spotify-notes"></div>
+    </div>
+  </section>
+
+  <section class="view optional" id="step-reward">
+    <div class="step-head">
+      <div class="step-title">Channel point reward</div>
+      <div class="step-state" id="state-reward">Checking…</div>
+    </div>
+    <div class="step-body">
+      <p>A channel point reward viewers can redeem to request a song, instead of typing
+      <code>!q</code>. You can restyle it in your Creator Dashboard afterwards.</p>
+      <p>Skip this if you like - Queueify runs on chat requests alone. Channel points need an
+      Affiliate or Partner channel, so the button below will not work without one.</p>
+      <div class="row"><button id="btn-reward" disabled title="Creates the channel point reward viewers redeem to request a song">Create reward</button></div>
+      <div id="reward-notes"></div>
+    </div>
+  </section>
+
+  <section class="view optional" id="step-obs">
+    <div class="step-head">
+      <div class="step-title">OBS</div>
+      <div class="step-state" id="state-obs">Checking…</div>
+    </div>
+    <div class="step-body">
+      <p>Only needed for the <code>!tr</code> / <code>!bc</code> commands that move the widget. Enable it in OBS under <strong>Tools → WebSocket Server Settings</strong>, then paste the connect info here.</p>
+      <div class="grid2">
+        <div class="field">
+          <label for="obs-ip">IP</label>
+          <input id="obs-ip" value="127.0.0.1" autocomplete="off" spellcheck="false" title="127.0.0.1 if OBS runs on this computer, otherwise the IP of that machine" />
+        </div>
+        <div class="field">
+          <label for="obs-port">Port</label>
+          <input id="obs-port" value="4455" autocomplete="off" spellcheck="false" title="From OBS: Tools -> WebSocket Server Settings -> Show Connect Info" />
+        </div>
+      </div>
+      <div class="field">
+        <label for="obs-pass">Password</label>
+        <input id="obs-pass" type="password" autocomplete="off" title="The Server Password shown in OBS under Show Connect Info" />
+      </div>
+      <div class="row">
+        <button id="btn-obs-test" title="Check the connection and load your scenes and sources">Connect to OBS</button>
+      </div>
+      <div class="grid2 hidden" id="obs-picker">
+        <div class="field">
+          <label for="obs-scene">Scene</label>
+          <select id="obs-scene" title="The OBS scene your widget lives in - the list comes from OBS itself"></select>
+        </div>
+        <div class="field">
+          <label for="obs-source">Widget source</label>
+          <select id="obs-source" title="The browser source showing the widget. !tr and !bc move this one."></select>
+        </div>
+      </div>
+      <div id="obs-notes"></div>
+
+      <div class="quality">
+        <p class="hint" id="quality-hint">Queueify keeps the widget sharp on its own: it renders
+        the design at full size and lets OBS place it, so nothing is stretched or squashed. Resize
+        the widget by dragging it in OBS - it follows.</p>
+        <div class="row"><button class="ghost" id="btn-quality" title="Re-check the widget's size in OBS and reload it">Re-check the widget in OBS</button></div>
+        <div id="quality-notes"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="view optional" id="step-canvas">
+    <div class="step-head">
+      <div class="step-title">Canvas videos</div>
+      <div class="step-state" id="state-canvas">Checking…</div>
+    </div>
+    <div class="step-body">
+      <p>Spotify's looping Canvas clips in the widget need the <code>sp_dc</code> cookie from a browser you are logged into Spotify with. Skip this and the widget shows album art instead.</p>
+      <details class="guide">
+        <summary>Where do I find sp_dc?</summary>
+        <div class="guide-body">
+          <ol>
+            <li>Open <a href="https://open.spotify.com" target="_blank" rel="noreferrer">open.spotify.com</a> and log in.</li>
+            <li>Press <strong>Shift + F9</strong> for the Storage tab (or F12 → Application → Cookies).</li>
+            <li>Under Cookies pick <code>https://open.spotify.com</code>, then copy the <strong>Value</strong> of <code>sp_dc</code>.</li>
+          </ol>
+          <img src="/assets/SP_DC.png" alt="The sp_dc cookie shown in the browser storage tab" />
+        </div>
+      </details>
+      <div class="field">
+        <label for="canvas-cookie">sp_dc cookie</label>
+        <input id="canvas-cookie" type="password" autocomplete="off" spellcheck="false" placeholder="paste the value here" title="The sp_dc cookie from a browser logged into Spotify. It never leaves this computer." />
+      </div>
+      <div class="row">
+        <button id="btn-canvas-save" title="Save the cookie and ask Spotify whether it works">Save &amp; test</button>
+        <button class="ghost" id="btn-canvas-show" type="button" title="Show the cookie so you can check what you pasted">Show</button>
+      </div>
+      <div id="canvas-notes"></div>
+    </div>
+  </section>
+
+  <section class="view" id="step-themes">
+    <div class="step-head">
+      <div class="step-title">Widget themes</div>
+      <div class="step-state" id="state-themes"></div>
+    </div>
+    <div class="step-body">
+      <p>Design your own widget on a canvas - drag the album art, title, artist and progress bar
+      wherever you want them. Saving turns it into a real theme you can switch to with
+      <code>!theme</code>. The built-in themes stay untouched as fallbacks.</p>
+      <div class="row"><a href="/editor.html"><button class="btn-fancy" title="Design your own widget layout on a canvas">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M12 3l1.9 4.6L18.5 9l-4.6 1.9L12 15l-1.9-4.1L5.5 9l4.6-1.4L12 3z"></path>
+          <path d="M18 15l.9 2.1L21 18l-2.1.9L18 21l-.9-2.1L15 18l2.1-.9L18 15z"></path>
+        </svg>
+        Open the theme editor
+      </button></a></div>
+    </div>
+  </section>
+
+  <section class="view" id="step-admin">
+    <div class="step-head">
+      <div class="step-title">Admin Panel</div>
+      <div class="step-state" id="state-admin"></div>
+    </div>
+    <div class="step-body">
+      <p>Change how the queue behaves, rename commands, and edit every line Queueify says in chat -
+      without opening a single file.</p>
+      <div class="row"><a href="/admin.html"><button class="btn-fancy" title="Queue settings, command aliases and every chat message">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="12" cy="12" r="3"></circle>
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+        </svg>
+        Open the Admin Panel
+      </button></a></div>
+    </div>
+  </section>
+
+  <section class="view" id="step-commands">
+    <div class="step-head">
+      <div class="step-title">Chat commands</div>
+      <div class="step-state" id="state-commands"></div>
+    </div>
+    <div class="step-body">
+      <p>Everything Queueify answers to in chat, including any aliases you have renamed in
+      <code>config/aliases.json</code>.</p>
+      <input class="cmd-search" id="cmd-search" placeholder="Filter commands..." autocomplete="off" spellcheck="false" title="Search by command name, alias or what it does" />
+      <div id="cmd-list"></div>
+    </div>
+  </section>
+
+  <section class="view" id="step-changelog">
+    <div class="step-head">
+      <div class="step-title">What's new</div>
+      <div class="step-state" id="state-changelog"></div>
+    </div>
+    <div class="step-body">
+      <p>Everything worth knowing that has changed in Queueify. The terminal points here whenever
+      there is an update waiting.</p>
+      <div id="changelog">Loading…</div>
+    </div>
+  </section>
+
+  <div class="next-bar hidden" id="next-bar"></div>
+
+  <section class="final hidden" id="final">
+    <h2 id="final-title">You are all set</h2>
+    <p id="final-sub">Add this as a Browser source in OBS:</p>
+    <div class="url">
+      <input id="widget-url" readonly value="http://localhost:3001" />
+      <button class="ghost" id="btn-copy" title="Copy the widget address for your OBS browser source">Copy</button>
+    </div>
+    <div class="dims" id="dims">Width 680 &nbsp;·&nbsp; Height 192</div>
+    <p class="close-hint hidden" id="close-hint">Nothing else to do here — this page stays at this address for later changes.</p>
+  </section>
+    </div>
+  </main>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+let twitchTimer = null, spotifyTimer = null, statusTimer = null;
+let sawComplete = false, obsScenes = [], migrating = false;
+// Set once the OBS box has been filled in from a status poll, so a later poll
+// cannot overwrite what the user is in the middle of typing.
+let obsPrefilled = false, obsAutoConnected = false, canvasPrefilled = false;
+
+function setDot(name, cls, text) {
+  const dot = $('dot-' + name);
+  const n = { twitch: 1, spotify: 2, reward: 3, obs: 4, canvas: 5 }[name] || '✦';
+  const wasDone = dot.classList.contains('done');
+
+  dot.className = 'dot' + (cls ? ' ' + cls : '');
+  dot.textContent = cls === 'done' ? '✓' : n;
+  $('state-' + name).textContent = text;
+  $('step-' + name).classList.toggle('done', cls === 'done');
+  $('nav-' + name).classList.toggle('done', cls === 'done');
+
+  if (cls === 'done') done.add(name); else done.delete(name);
+
+  if (cls === 'done' && !wasDone) {
+    dot.classList.add('pop');
+    dot.addEventListener('animationend', () => dot.classList.remove('pop'), { once: true });
+  }
+}
+
+function note(container, text, kind) {
+  $(container).innerHTML = text ? '<div class="note ' + (kind || '') + '">' + text + '</div>' : '';
+}
+
+async function api(path, options) {
+  const res = await fetch(path, Object.assign({ headers: { 'Content-Type': 'application/json' } }, options));
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.message || data.error || 'Request failed');
+  return data;
+}
+
+function botStarting() {
+  clearInterval(statusTimer);
+  clearInterval(twitchTimer);
+  clearInterval(spotifyTimer);
+  $('final-title').textContent = 'Queueify is running';
+  $('final-sub').textContent = 'Add this as a Browser source in OBS:';
+  $('close-hint').textContent = 'The bot is running in your terminal. Leave this page open or come back to it any time — changes apply without restarting.';
+  $('close-hint').classList.remove('hidden');
+  setupFinished = true;
+  updateFinalCard();
+}
+
+function renderBanner(status) {
+  const banner = $('banner');
+  const issues = status.issues || [];
+
+  if (issues.length) {
+    banner.className = 'banner bad';
+    banner.innerHTML =
+      '<strong>Your previous setup needs attention</strong>' +
+      '<ul>' + issues.map(i => '<li>' + i.message + '</li>').join('') + '</ul>';
+    banner.classList.remove('hidden');
+    return;
+  }
+
+  if (status.legacyClientId && !migrating) {
+    banner.className = 'banner';
+    banner.innerHTML =
+      '<strong>You are using your own Twitch application</strong>' +
+      'That still works. Switching to the built-in one means no client ID, no secret, ' +
+      'and logins that renew themselves. You will reconnect Twitch and recreate the ' +
+      'channel point reward once. Spotify and your settings are untouched.' +
+      '<br /><button id="btn-migrate">Switch to the built-in app</button>';
+    banner.classList.remove('hidden');
+
+    $('btn-migrate').addEventListener('click', async () => {
+      const sure = await askConfirm(
+        'This clears your Twitch login and the reward link so you can reconnect. Spotify and your queue settings are kept.',
+        { title: 'Switch to the built-in Twitch app?', confirm: 'Switch over' }
+      );
+      if (!sure) return;
+
+      migrating = true;
+      try {
+        await api('/api/migrate/twitch', { method: 'POST', body: JSON.stringify({ confirm: true }) });
+        banner.className = 'banner';
+        banner.innerHTML = '<strong>Ready to reconnect</strong>Click Connect Twitch below, then Create reward. If the reward step says it already exists, delete it in your Creator Dashboard first.';
+        await refreshStatus();
+      } catch (err) {
+        migrating = false;
+        banner.className = 'banner bad';
+        banner.innerHTML = '<strong>Could not switch</strong>' + err.message;
+      }
+    });
+    return;
+  }
+
+  if (!migrating) banner.classList.add('hidden');
+}
+
+async function refreshStatus() {
+  let status;
+  try {
+    status = await api('/api/status');
+  } catch (err) {
+    // The setup server shuts down once setup completes and the bot takes over.
+    if (sawComplete) botStarting();
+    return null;
+  }
+
+  if (status.twitch.connected) {
+    setDot('twitch', 'done', 'Connected' + (status.twitch.identity ? ' as ' + status.twitch.identity.login : ''));
+  } else {
+    setDot('twitch', '', 'Not connected');
+  }
+  if (status.twitch.broadcaster && !$('broadcaster').value) $('broadcaster').value = status.twitch.broadcaster;
+
+  const creds = status.spotify.clientId && status.spotify.clientSecret;
+  $('btn-spotify-connect').disabled = !creds || status.spotify.connected;
+  setDot('spotify', status.spotify.connected ? 'done' : '',
+    status.spotify.connected ? 'Connected' : creds ? 'Credentials saved — connect next' : 'Not configured');
+
+  setDot('reward', status.reward.created ? 'done' : '', status.reward.created ? 'Created' : 'Not created');
+  $('btn-reward').disabled = !status.twitch.connected || status.reward.created;
+
+  setDot('obs', status.obs.configured ? 'done' : '', status.obs.configured ? 'Configured' : 'Not configured');
+  if (!obsPrefilled) {
+    obsPrefilled = true;
+    if (status.obs.ip) $('obs-ip').value = status.obs.ip;
+    if (status.obs.port) $('obs-port').value = status.obs.port;
+    savedObsScene = status.obs.scene || '';
+    savedObsSource = status.obs.source || '';
+
+    // Ask OBS for its scene list straight away, so the dropdowns are already
+    // filled in when the user gets here instead of hiding behind a button.
+    if (status.obs.ip && !obsAutoConnected) {
+      obsAutoConnected = true;
+      connectObs({ silent: true });
+    }
+  }
+
+  setDot('canvas', status.canvas.configured ? 'done' : '',
+    status.canvas.configured ? 'Cookie saved' : 'Not configured');
+  if (!canvasPrefilled) {
+    canvasPrefilled = true;
+    // The cookie itself never leaves the .env; this only shows it is set.
+    if (status.canvas.configured) $('canvas-cookie').placeholder = 'saved — paste a new one to replace it';
+  }
+
+  renderBanner(status);
+
+  // Required steps only. The reward, OBS and Canvas are all optional, and
+  // counting them left a finished setup showing part-done forever.
+  const steps = [status.twitch.connected, status.spotify.connected];
+  const finished = steps.filter(Boolean).length;
+
+  $('bar').style.width = (finished / steps.length * 100) + '%';
+  $('progress-text').textContent = finished === steps.length
+    ? 'Setup complete'
+    : finished + ' of ' + steps.length + ' done';
+
+  updateNextBar();
+
+  $('widget-url').value = status.widget.url;
+  $('dims').innerHTML = 'Width ' + status.widget.width + ' &nbsp;·&nbsp; Height ' + status.widget.height +
+    (status.widget.renderScale !== 1 ? ' &nbsp;·&nbsp; drawn at ' + status.widget.renderScale + 'x' : '');
+
+
+  if (status.complete) {
+    if (!sawComplete) celebrate();
+    sawComplete = true;
+    setupFinished = true;
+    updateFinalCard();
+    $('final-sub').textContent = 'Add this as a Browser source in OBS:';
+    $('close-hint').classList.remove('hidden');
+  }
+
+  return status;
+}
+
+$('btn-twitch').addEventListener('click', async () => {
+  note('twitch-notes', '');
+  const broadcaster = $('broadcaster').value.trim();
+
+  try {
+    if (broadcaster) {
+      await api('/api/env', {
+        method: 'POST',
+        body: JSON.stringify({ TWITCH_BROADCASTER_USERNAME: broadcaster, TWITCH_BOT_USERNAME: broadcaster })
+      });
+    }
+
+    const flow = await api('/api/twitch/start', { method: 'POST' });
+    $('twitch-code').textContent = flow.userCode;
+    $('twitch-link').href = flow.verificationUri;
+    $('twitch-idle').classList.add('hidden');
+    $('twitch-pending').classList.remove('hidden');
+    setDot('twitch', 'busy', 'Waiting for approval');
+    window.open(flow.verificationUri, '_blank', 'noreferrer');
+    watchTwitch();
+  } catch (err) {
+    note('twitch-notes', err.message, 'bad');
+  }
+});
+
+$('btn-twitch-cancel').addEventListener('click', async () => {
+  clearInterval(twitchTimer);
+  await api('/api/twitch/cancel', { method: 'POST' }).catch(() => {});
+  $('twitch-pending').classList.add('hidden');
+  $('twitch-idle').classList.remove('hidden');
+  setDot('twitch', '', 'Not connected');
+});
+
+function watchTwitch() {
+  clearInterval(twitchTimer);
+  twitchTimer = setInterval(async () => {
+    let flow;
+    try { flow = await api('/api/twitch/status'); } catch (err) { return; }
+
+    if (flow.state === 'complete') {
+      clearInterval(twitchTimer);
+      $('twitch-pending').classList.add('hidden');
+      await refreshStatus();
+
+      const warnings = [];
+      if (flow.missingScopes && flow.missingScopes.length) {
+        warnings.push('Not granted: ' + flow.missingScopes.join(', ') + '. Reconnect and approve everything.');
+      }
+      if (flow.canRefresh === false) {
+        warnings.push('No refresh token was issued, so the token will not renew itself.');
+      }
+      note('twitch-notes', warnings.join('<br />'), warnings.length ? '' : 'good');
+    }
+
+    if (flow.state === 'error') {
+      clearInterval(twitchTimer);
+      $('twitch-pending').classList.add('hidden');
+      $('twitch-idle').classList.remove('hidden');
+      setDot('twitch', 'error', 'Failed');
+      const friendly = {
+        denied: 'You denied the request on Twitch. Try connecting again.',
+        expired: 'The code expired before it was approved. Try again for a new one.',
+        cancelled: 'Cancelled.',
+        network: 'Lost connection to Twitch. Check your internet and try again.',
+        config: 'Missing or invalid Twitch client ID.'
+      };
+      const code = flow.error && flow.error.code;
+      note('twitch-notes', friendly[code] || (flow.error && flow.error.message) || 'Authorization failed.', 'bad');
+    }
+  }, 1500);
+}
+
+$('btn-spotify-save').addEventListener('click', async () => {
+  const id = $('sp-id').value.trim(), secret = $('sp-secret').value.trim();
+  if (!id || !secret) {
+    note('spotify-notes', 'Enter both the Client ID and Client Secret.', 'bad');
+    return;
+  }
+
+  try {
+    await api('/api/env', { method: 'POST', body: JSON.stringify({ SPOTIFY_CLIENT_ID: id, SPOTIFY_CLIENT_SECRET: secret }) });
+    $('sp-secret').value = '';
+    await refreshStatus();
+    note('spotify-notes', 'Saved. Now click Connect Spotify.', 'good');
+  } catch (err) {
+    note('spotify-notes', err.message, 'bad');
+  }
+});
+
+$('btn-spotify-connect').addEventListener('click', async () => {
+  note('spotify-notes', '');
+  try {
+    const flow = await api('/api/spotify/start', { method: 'POST' });
+    setDot('spotify', 'busy', 'Waiting for approval');
+    window.open(flow.authorizeUrl, '_blank', 'noreferrer');
+
+    clearInterval(spotifyTimer);
+    spotifyTimer = setInterval(async () => {
+      let state;
+      try { state = await api('/api/spotify/status'); } catch (err) { return; }
+
+      if (state.state === 'complete') {
+        clearInterval(spotifyTimer);
+        await refreshStatus();
+        note('spotify-notes', 'Spotify connected.', 'good');
+      }
+      if (state.state === 'error') {
+        clearInterval(spotifyTimer);
+        await refreshStatus();
+        const friendly = {
+          denied: 'You denied the request on Spotify. Try again.',
+          state_mismatch: 'That authorization did not match this session. Try again.'
+        };
+        const code = state.error && state.error.code;
+        note('spotify-notes', friendly[code] || (state.error && state.error.message) || 'Spotify authorization failed.', 'bad');
+      }
+    }, 1500);
+  } catch (err) {
+    note('spotify-notes', err.message, 'bad');
+  }
+});
+
+$('btn-reward').addEventListener('click', async () => {
+  $('btn-reward').disabled = true;
+  note('reward-notes', '');
+  try {
+    const reward = await api('/api/reward/create', { method: 'POST' });
+    await refreshStatus();
+    note('reward-notes', reward.created
+      ? 'Created "' + reward.title + '". Change its cost and icon in your Creator Dashboard.'
+      : '"' + reward.title + '" already existed and is now linked.', 'good');
+  } catch (err) {
+    $('btn-reward').disabled = false;
+    const hint = /match|client|manage/i.test(err.message)
+      ? '<br />If a different app created this reward, delete it in your Creator Dashboard first.'
+      : '';
+    note('reward-notes', err.message + hint, 'bad');
+  }
+});
+
+let savedObsScene = '', savedObsSource = '';
+
+// Re-connect when the connection details change: the scene list belongs to
+// whichever OBS these point at, and stale options are how the wrong scene name
+// ends up in .env.
+['obs-ip', 'obs-port', 'obs-pass'].forEach(id => {
+  $(id).addEventListener('change', () => {
+    $('obs-picker').classList.add('hidden');
+    connectObs({ silent: true });
+  });
+});
+
+function escapeHtml(text) {
+  return String(text).replace(/[&<>"']/g, c => (
+    { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
+  ));
+}
+
+function fillSelect(select, values, preferred) {
+  select.innerHTML = values.map(v => '<option>' + escapeHtml(v) + '</option>').join('');
+  if (preferred && values.includes(preferred)) select.value = preferred;
+  return select.value;
+}
+
+function fillSources(sceneName, preferred) {
+  const scene = obsScenes.find(s => s.scene === sceneName);
+  return fillSelect($('obs-source'), scene ? scene.sources : [], preferred);
+}
+
+// The names come from OBS itself, so what lands in .env cannot be a typo - a
+// mismatch between OBS and .env is the whole reason !tr / !bc used to fail.
+async function saveObs() {
+  const scene = $('obs-scene').value;
+  const source = $('obs-source').value;
+  if (!scene || !source) return false;
+
+  try {
+    await api('/api/env', {
+      method: 'POST',
+      body: JSON.stringify({
+        OBS_WEBSOCKET_IP: $('obs-ip').value.trim(),
+        OBS_WEBSOCKET_PORT: $('obs-port').value.trim(),
+        OBS_WEBSOCKET_PASSWORD: $('obs-pass').value,
+        OBS_SCENE: scene,
+        OBS_SOURCE: source
+      })
+    });
+
+    savedObsScene = scene;
+    savedObsSource = source;
+    note('obs-notes', 'Saved "' + escapeHtml(source) + '" in "' + escapeHtml(scene) +
+      '". Queueify uses it on the next !tr / !bc - no restart needed.', 'good');
+    await refreshStatus();
+    return true;
+  } catch (err) {
+    note('obs-notes', err.message, 'bad');
+    return false;
+  }
+}
+
+$('obs-scene').addEventListener('change', e => {
+  fillSources(e.target.value, savedObsSource);
+  saveObs();
+});
+$('obs-source').addEventListener('change', saveObs);
+
+async function connectObs(options) {
+  const silent = Boolean(options && options.silent);
+  const button = $('btn-obs-test');
+  const ip = $('obs-ip').value.trim();
+  const port = $('obs-port').value.trim();
+
+  if (!ip || !port) {
+    if (!silent) note('obs-notes', 'Enter the OBS WebSocket IP and port.', 'bad');
+    return;
+  }
+
+  button.disabled = true;
+  if (!silent) note('obs-notes', '');
+  setDot('obs', 'busy', 'Connecting...');
+
+  try {
+    const result = await api('/api/obs/test', {
+      method: 'POST',
+      body: JSON.stringify({ ip, port, password: $('obs-pass').value })
+    });
+
+    if (!result.ok) {
+      // The page probes on load, and .env ships with a default address: a
+      // first-run visitor who has not touched OBS yet should not be met with
+      // a red step for something they never asked for.
+      if (silent) {
+        setDot('obs', '', 'Not configured');
+        return;
+      }
+      setDot('obs', 'error', 'Not connected');
+      note('obs-notes', result.error, 'bad');
+      return;
+    }
+
+    obsScenes = result.scenes || [];
+    const scene = fillSelect($('obs-scene'), obsScenes.map(s => s.scene), savedObsScene);
+    const source = fillSources(scene, savedObsSource);
+    $('obs-picker').classList.remove('hidden');
+
+    if (!scene || !source) {
+      setDot('obs', 'error', 'Nothing to pick');
+      note('obs-notes', 'Connected, but that scene has no sources. Add the Queueify browser source in OBS, then press Connect again.', 'bad');
+      return;
+    }
+
+    // Nothing is written here: which source carries the widget is the user's
+    // call, and guessing it would put a name in .env they never chose. What
+    // this does guarantee is that whatever they pick comes from OBS itself.
+    if (savedObsScene && (savedObsScene !== scene || savedObsSource !== source)) {
+      setDot('obs', 'error', 'Needs picking again');
+      note('obs-notes', 'OBS no longer has "' + escapeHtml(savedObsSource) + '" in "' + escapeHtml(savedObsScene) +
+        '" - that is why !tr / !bc would fail. Pick the scene and source below and it saves right away.', 'bad');
+      return;
+    }
+
+    if (savedObsScene) {
+      setDot('obs', 'done', 'Configured');
+      note('obs-notes', 'Connected. "' + escapeHtml(source) + '" in "' + escapeHtml(scene) +
+        '" is what !tr / !bc will move.', 'good');
+      return;
+    }
+
+    setDot('obs', '', 'Connected - pick your scene');
+    note('obs-notes', 'Connected. Pick the scene and the browser source your widget uses - it saves as you choose.', 'good');
+  } catch (err) {
+    if (silent) {
+      setDot('obs', '', 'Not configured');
+      return;
+    }
+    setDot('obs', 'error', 'Not connected');
+    note('obs-notes', err.message, 'bad');
+  } finally {
+    button.disabled = false;
+  }
+}
+
+$('btn-obs-test').addEventListener('click', () => connectObs());
+
+$('btn-quality').addEventListener('click', async () => {
+  const button = $('btn-quality');
+
+  button.disabled = true;
+  note('quality-notes', '');
+
+  try {
+    const result = await api('/api/widget/rematch', { method: 'POST' });
+
+    note('quality-notes', 'Done. The widget renders at ' + result.width + ' \u00d7 ' + result.height +
+      ' for a ' + result.designWidth + ' \u00d7 ' + result.designHeight + ' design shown at ' +
+      result.displayedWidth + ' \u00d7 ' + result.displayedHeight + ' in OBS.' +
+      (result.presetsAdjusted ? ' ' + result.presetsAdjusted + ' saved preset(s) were adjusted.' : ''), 'good');
+
+    await refreshStatus();
+  } catch (err) {
+    note('quality-notes', err.message, 'bad');
+  } finally {
+    button.disabled = false;
+  }
+});
+
+$('btn-canvas-show').addEventListener('click', () => {
+  const input = $('canvas-cookie');
+  const hidden = input.type === 'password';
+  input.type = hidden ? 'text' : 'password';
+  $('btn-canvas-show').textContent = hidden ? 'Hide' : 'Show';
+});
+
+$('btn-canvas-save').addEventListener('click', async () => {
+  const button = $('btn-canvas-save');
+  const cookie = $('canvas-cookie').value.trim();
+
+  if (!cookie) {
+    note('canvas-notes', 'Paste the sp_dc value first.', 'bad');
+    return;
+  }
+
+  button.disabled = true;
+  setDot('canvas', 'busy', 'Checking...');
+  note('canvas-notes', '');
+
+  try {
+    await api('/api/env', { method: 'POST', body: JSON.stringify({ SP_DC: cookie }) });
+
+    // Spotify answers a bad cookie with an anonymous token instead of an
+    // error, so a saved cookie is not the same as a working one.
+    const result = await api('/api/canvas/test', { method: 'POST' });
+
+    if (result.ok) {
+      $('canvas-cookie').value = '';
+      $('canvas-cookie').placeholder = 'saved - paste a new one to replace it';
+      setDot('canvas', 'done', 'Cookie saved');
+      note('canvas-notes', 'Working. Canvas videos will play in the widget.', 'good');
+    } else if (result.reason === 'anonymous' || result.reason === 'no_token') {
+      setDot('canvas', 'error', 'Cookie rejected');
+      note('canvas-notes', 'Spotify did not accept that cookie. Copy the sp_dc value again from a browser that is logged in - it stops working when you log out.', 'bad');
+    } else {
+      setDot('canvas', 'error', 'Check failed');
+      note('canvas-notes', 'Saved, but the check could not reach Spotify: ' + escapeHtml(result.message || result.reason), '');
+    }
+
+    await refreshStatus();
+  } catch (err) {
+    setDot('canvas', 'error', 'Not saved');
+    note('canvas-notes', err.message, 'bad');
+  } finally {
+    button.disabled = false;
+  }
+});
+
+/* ------------------------------------------------------------ navigation */
+
+// The order the rail lists them in, and the order "next" walks through.
+const VIEWS = ['twitch', 'spotify', 'reward', 'obs', 'canvas',
+  'themes', 'admin', 'commands', 'changelog'];
+
+// The ones that have to be finished before the bot can start. OBS and Canvas
+// are worth having, but nothing waits for them.
+const REQUIRED = ['twitch', 'spotify'];
+
+// Everything under "Setup" in the rail, required or not.
+const SETUP = ['twitch', 'spotify', 'reward', 'obs', 'canvas'];
+
+const done = new Set();
+let view = null;
+
+/**
+ * Shows one section and marks it in the rail.
+ *
+ * Everything lives on the page the whole time; this only decides which part of
+ * it you are looking at. The name goes in the address bar, so a refresh comes
+ * back to the same place and the terminal can link straight to a section.
+ */
+function showView(name, options = {}) {
+  if (!VIEWS.includes(name)) name = VIEWS[0];
+  view = name;
+
+  for (const other of VIEWS) {
+    $('step-' + other).classList.toggle('active', other === name);
+    $('nav-' + other).classList.toggle('active', other === name);
+  }
+
+  if (!options.silent && location.hash.slice(1) !== name) {
+    history.replaceState(null, '', '#' + name);
+  }
+
+  if (name === 'changelog') loadChangelog();
+
+  updateNextBar();
+  updateFinalCard();
+  window.scrollTo({ top: 0, behavior: options.jumped ? 'smooth' : 'auto' });
+}
+
+for (const button of document.querySelectorAll('.rail-item')) {
+  button.addEventListener('click', () => showView(button.dataset.view));
+}
+
+window.addEventListener('hashchange', () => showView(location.hash.slice(1), { silent: true }));
+
+let setupFinished = false;
+
+/**
+ * The "you are all set" card, with the address for the OBS browser source.
+ *
+ * It belongs to the setup steps - that is what it is the end of. Showing it
+ * under the theme editor, the commands list and the changelog as well made it
+ * a green box on every page.
+ */
+function updateFinalCard() {
+  $('final').classList.toggle('hidden', !setupFinished || !SETUP.includes(view));
+}
+
+/**
+ * The one thing to do next, offered at the bottom of a section that is
+ * finished - so the page still leads a first-timer through in order without
+ * putting every section on screen at once.
+ */
+function updateNextBar() {
+  const bar = $('next-bar');
+  const next = REQUIRED.find(name => !done.has(name) && name !== view);
+
+  // Only while there is still setup left, and only once the section you are
+  // looking at has nothing waiting on it.
+  const settled = !REQUIRED.includes(view) || done.has(view);
+  if (!next || !settled) {
+    bar.classList.add('hidden');
+    return;
+  }
+
+  bar.innerHTML = '<span class="next-text">Next: <strong>' + escapeHtml(LABELS[next]) + '</strong></span>' +
+    '<button id="btn-next">Go there</button>';
+  bar.querySelector('#btn-next').addEventListener('click', () => showView(next, { jumped: true }));
+  bar.classList.remove('hidden');
+}
+
+const LABELS = {
+  twitch: 'Twitch', spotify: 'Spotify', reward: 'Channel points',
+  obs: 'OBS', canvas: 'Canvas videos', themes: 'Widget themes',
+  admin: 'Admin Panel', commands: 'Chat commands', changelog: "What's new"
+};
+
+/* ------------------------------------------------------------- what's new */
+
+let loadingChangelog = false;
+
+/**
+ * Reads the changelog again every time the page is opened, so editing
+ * CHANGELOG.md shows up without reloading the dashboard.
+ */
+async function loadChangelog() {
+  if (loadingChangelog) return;
+  loadingChangelog = true;
+
+  try {
+    const data = await api('/api/changelog');
+    $('brand-version').textContent = 'v' + data.version;
+
+    if (!data.releases.length) {
+      $('changelog').innerHTML = '<p>No changelog shipped with this copy.</p>';
+      return;
+    }
+
+    // Every version in the file, newest first, and none of them dropped: a
+    // new release goes on top and pushes the rest down.
+    const body = data.releases.map((release, index) => {
+      const yours = release.version === data.version
+        ? '<span class="release-yours">You are on this</span>' : '';
+
+      const groups = release.groups.map(group =>
+        '<div class="release-group">' +
+        (group.name ? '<h4>' + escapeHtml(group.name) + '</h4>' : '') +
+        '<ul>' + group.entries.map(entry => '<li>' + entry + '</li>').join('') + '</ul>' +
+        '</div>'
+      ).join('');
+
+      return '<div class="release" id="release-' + index + '"><div class="release-head">' +
+        '<span class="release-version">' + escapeHtml(release.version) + '</span>' +
+        (release.date ? '<span class="release-date">' + escapeHtml(release.date) + '</span>' : '') +
+        yours + '</div>' + groups + '</div>';
+    }).join('');
+
+    // One version is not a journey, so the road only appears from two up.
+    const path = data.releases.length > 1
+      ? '<nav class="log-path" aria-label="Versions">' + data.releases.map((release, index) =>
+        '<button class="log-node" data-release="' + index + '">' +
+        '<span class="log-dot"></span>' +
+        '<span class="log-node-name">' + escapeHtml(release.version) + '</span>' +
+        '</button>').join('') + '</nav>'
+      : '';
+
+    $('changelog').innerHTML =
+      '<div class="log-layout' + (path ? ' has-path' : '') + '">' +
+      path + '<div class="log-body">' + body + '</div></div>';
+
+    if (path) wirePath(data.releases.length);
+  } catch (err) {
+    $('changelog').innerHTML = '<p>Could not read the changelog: ' + escapeHtml(err.message) + '</p>';
+  } finally {
+    loadingChangelog = false;
+  }
+}
+
+/**
+ * Makes the road work: each stop scrolls to its version, and whichever version
+ * you have scrolled to lights up its stop.
+ */
+function wirePath(count) {
+  const nodes = [...document.querySelectorAll('.log-node')];
+
+  const mark = index => {
+    for (const node of nodes) {
+      node.classList.toggle('current', Number(node.dataset.release) === index);
+    }
+  };
+
+  for (const node of nodes) {
+    node.addEventListener('click', () => {
+      const index = Number(node.dataset.release);
+      $('release-' + index).scrollIntoView({ behavior: 'smooth', block: 'start' });
+      mark(index);
+    });
+  }
+
+  mark(0);
+
+  // Whichever release is nearest the top of the window owns the road.
+  const watcher = new IntersectionObserver(entries => {
+    const visible = entries.filter(entry => entry.isIntersecting);
+    if (!visible.length) return;
+
+    const top = visible.reduce((best, entry) =>
+      entry.boundingClientRect.top < best.boundingClientRect.top ? entry : best);
+
+    mark(Number(top.target.id.replace('release-', '')));
+  }, { rootMargin: '-20px 0px -70% 0px', threshold: 0 });
+
+  for (let index = 0; index < count; index++) watcher.observe($('release-' + index));
+}
+
+// One burst, the first time everything required is finished.
+function celebrate() {
+  const colors = ['#9147ff', '#24d17e', '#f5a524', '#ff41a6', '#4ac9ff'];
+
+  for (let i = 0; i < 70; i++) {
+    const bit = document.createElement('div');
+    bit.className = 'confetti';
+    bit.style.left = Math.random() * 100 + 'vw';
+    bit.style.background = colors[i % colors.length];
+    bit.style.animationDuration = (2.4 + Math.random() * 1.8) + 's';
+    bit.style.animationDelay = (Math.random() * .5) + 's';
+    bit.style.setProperty('--spin', (Math.random() * 1080 - 540) + 'deg');
+    bit.addEventListener('animationend', () => bit.remove());
+    document.body.appendChild(bit);
+  }
+}
+
+let commandGroups = null;
+
+const WHO = {
+  everyone: ['everyone', 'Everyone'],
+  mods: ['mods', 'Mods'],
+  'mods + whitelisted viewers': ['whitelist', 'Mods + whitelist']
+};
+
+function renderCommands() {
+  const host = $('cmd-list');
+  const filter = $('cmd-search').value.trim().toLowerCase();
+
+  if (!commandGroups) {
+    host.innerHTML = '<div class="cmd-empty">Loading...</div>';
+    return;
+  }
+
+  const matches = command =>
+    !filter ||
+    command.name.includes(filter) ||
+    command.summary.toLowerCase().includes(filter) ||
+    command.aliases.some(alias => alias.includes(filter));
+
+  host.innerHTML = '';
+  let shown = 0;
+
+  for (const group of commandGroups) {
+    const commands = group.commands.filter(matches);
+    if (!commands.length) continue;
+
+    shown += commands.length;
+
+    const section = document.createElement('div');
+    section.className = 'cmd-group';
+    section.innerHTML = '<h4>' + escapeHtml(group.group) + '</h4>';
+
+    for (const command of commands) {
+      const [who, whoLabel] = WHO[command.audience] || WHO.everyone;
+
+      const card = document.createElement('div');
+      card.className = 'cmd';
+
+      const forms = (command.forms.length ? command.forms : [['', '']])
+        .map(([args, text]) =>
+          '<div class="cmd-form"><code>!' + escapeHtml(command.name) +
+          (args ? ' ' + escapeHtml(args) : '') + '</code>' +
+          (text ? '<span>' + escapeHtml(text) + '</span>' : '') + '</div>')
+        .join('');
+
+      card.innerHTML =
+        '<div class="cmd-name">!' + escapeHtml(command.name) + '</div>' +
+        '<span class="who ' + who + '">' + whoLabel + '</span>' +
+        (command.summary ? '<div class="cmd-summary">' + escapeHtml(command.summary) + '</div>' : '') +
+        '<div class="cmd-forms">' + forms + '</div>' +
+        (command.aliases.length
+          ? '<div class="cmd-alias">also: ' + command.aliases.map(a => '!' + escapeHtml(a)).join('  ') + '</div>'
+          : '');
+
+      section.appendChild(card);
+    }
+
+    host.appendChild(section);
+  }
+
+  if (!shown) host.innerHTML = '<div class="cmd-empty">Nothing matches "' + escapeHtml(filter) + '".</div>';
+}
+
+async function loadCommands() {
+  try {
+    commandGroups = (await api('/api/commands')).groups;
+  } catch (err) {
+    $('cmd-list').innerHTML = '<div class="cmd-empty">Could not load the command list.</div>';
+    return;
+  }
+  renderCommands();
+}
+
+$('cmd-search').addEventListener('input', renderCommands);
+
+$('btn-copy').addEventListener('click', async () => {
+  const input = $('widget-url');
+  try {
+    await navigator.clipboard.writeText(input.value);
+  } catch (err) {
+    input.select();
+    document.execCommand('copy');
+  }
+  $('btn-copy').textContent = 'Copied';
+  setTimeout(() => { $('btn-copy').textContent = 'Copy'; }, 1400);
+});
+
+loadCommands();
+loadChangelog();
+
+// Whatever the address bar asks for; otherwise the first thing still to do.
+(async () => {
+  const asked = location.hash.slice(1);
+  const status = await refreshStatus();
+
+  if (VIEWS.includes(asked)) {
+    showView(asked, { silent: true });
+  } else {
+    showView(REQUIRED.find(name => !done.has(name)) || 'themes', { silent: !status });
+  }
+})();
+
+statusTimer = setInterval(refreshStatus, 3000);
+</script>
+<script src="dialogs.js"></script>
+<script src="tooltips.js"></script>
+</body>
+</html>

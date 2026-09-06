@@ -48,4 +48,9 @@ function watchAliases() {
 
 watchAliases();
 
-module.exports = { setDefaultAliases, getAliases, onReload };
+/** What a command answers to before anyone renames anything. */
+function getDefaults(commandName) {
+    return defaultAliases[commandName] ?? [];
+}
+
+module.exports = { setDefaultAliases, getAliases, getDefaults, onReload };
