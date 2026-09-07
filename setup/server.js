@@ -22,6 +22,7 @@ const adminConfig = require('../services/adminConfig');
 const { readChangelog } = require('../services/changelog');
 const userSettings = require('../config/userSettings');
 const widgetLayout = require('../services/widgetLayout');
+const sceneThemes = require('../services/sceneThemes');
 const state = require('../core/state');
 
 const DEFAULT_PORT = DEFAULT_DASHBOARD_PORT;
@@ -204,40 +205,8 @@ function widgetStatus() {
     };
 }
 
-/**
- * Changes widget config through the widget server when it is up, so its cached
- * copy and its connected widgets stay in step. `npm run setup` on its own has
- * no widget server, and then the file is the only copy there is.
- *
- * `fallback` mutates the config object that gets written in that second case.
- */
-async function updateWidgetConfig(endpoint, body, fallback) {
-    try {
-        const res = await fetch(`${WIDGET_URL}${endpoint}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(body)
-        });
-
-        if (res.ok) return { live: true };
-
-        const failure = await res.json().catch(() => ({}));
-        throw new Error(failure.error || `Widget server refused the change (${res.status})`);
-    } catch (err) {
-        if (err instanceof TypeError || err.cause) {
-            const config = readWidgetConfig();
-            fallback(config);
-            fs.writeFileSync(WIDGET_CONFIG_FILE, JSON.stringify(config, null, 4));
-            return { live: false };
-        }
-        throw err;
-    }
-}
-
 function activateTheme(theme) {
-    return updateWidgetConfig('/api/widget/theme', { theme }, config => {
-        config.theme = theme;
-    });
+    return widgetLayout.activateTheme(theme);
 }
 
 function themeError(res, err) {
@@ -254,27 +223,6 @@ function themeError(res, err) {
         : 500;
 
     res.status(status).json({ error: err.message, code: err.code || 'error' });
-}
-
-/**
- * Saved !tr / !bc presets hold the scale the item had at the old resolution.
- * Left alone, recalling one after a resolution change would resize the widget
- * on screen, so they move by the same factor the scene item just did.
- */
-function rescaleWidgetPresets(factorX, factorY) {
-    if (factorX === 1 && factorY === 1) return 0;
-
-    let changed = 0;
-
-    for (const preset of Object.values(state.widgetPresets || {})) {
-        if (!preset) continue;
-        if (typeof preset.scaleX === 'number') preset.scaleX *= factorX;
-        if (typeof preset.scaleY === 'number') preset.scaleY *= factorY;
-        changed++;
-    }
-
-    if (changed) state.saveSettings();
-    return changed;
 }
 
 function buildStatus() {
@@ -522,22 +470,80 @@ function createApp() {
         }
 
         try {
-            // Make the item that size on the canvas, then let the usual sizing
-            // work out how many pixels to render it with.
-            const applied = await obs.setWidgetResolution({ width, height });
-            const presetsAdjusted = widgetLayout.rescalePresets(applied.factorX, applied.factorY);
+            // Sized for the design that was asked for, not for whatever theme
+            // happens to be live. Sizing for the live theme is what used to
+            // undo this the instant it was done - the fit button in the editor
+            // set the source and the old theme's numbers put it straight back.
+            const matched = await widgetLayout.reconcile({ design: { width, height } });
 
-            const matched = await widgetLayout.reconcile();
+            if (!matched.applied) {
+                res.status(400).json({ error: matched.message || 'OBS could not be updated.' });
+                return;
+            }
 
             res.json({
                 ok: true,
-                width: matched.applied ? matched.width : applied.width,
-                height: matched.applied ? matched.height : applied.height,
-                renderScale: matched.applied ? matched.renderScale : 1,
-                presetsAdjusted: presetsAdjusted + (matched.presetsAdjusted || 0)
+                width: matched.width,
+                height: matched.height,
+                displayedWidth: matched.displayedWidth,
+                displayedHeight: matched.displayedHeight,
+                renderScale: matched.renderScale,
+                refitted: matched.refitted
             });
         } catch (err) {
             res.status(400).json({ error: err.message });
+        }
+    });
+
+    /**
+     * What OBS is actually showing the widget at, for the theme the editor has
+     * open - including the saved !tr / !bc positions and whether they still
+     * hold for the size it is now.
+     */
+    app.get('/api/widget/fit', async (req, res) => {
+        try {
+            res.json(await widgetLayout.describeFit({
+                theme: typeof req.query.theme === 'string' ? req.query.theme : '',
+                width: Number(req.query.width),
+                height: Number(req.query.height)
+            }));
+        } catch (err) {
+            res.status(500).json({ error: err.message });
+        }
+    });
+
+    /**
+     * Which theme belongs to which OBS scene. Switching scenes in OBS then
+     * switches the widget with it.
+     */
+    app.get('/api/scene-themes', async (req, res) => {
+        try {
+            res.json({
+                mapping: sceneThemes.read(),
+                themes: await themeStore.listThemes(),
+                obs: await sceneThemes.listScenes().catch(err => ({ ok: false, error: err.message }))
+            });
+        } catch (err) {
+            res.status(500).json({ error: err.message });
+        }
+    });
+
+    app.put('/api/scene-themes', async (req, res) => {
+        try {
+            const { mapping, dropped } = await sceneThemes.write(req.body?.mapping);
+
+            // Applying it straight away means the change can be seen rather
+            // than taken on trust until the next scene switch.
+            let applied = null;
+            try {
+                applied = await sceneThemes.applyForScene(await obs.currentProgramScene());
+            } catch {
+                // OBS is not reachable; the mapping still saved.
+            }
+
+            res.json({ mapping, dropped, applied });
+        } catch (err) {
+            res.status(500).json({ error: err.message });
         }
     });
 
@@ -653,7 +659,10 @@ function createApp() {
                 reloaded = (await activateTheme(saved.name).catch(() => ({ live: false }))).live;
                 // Same design, possibly a new canvas size - and OBS needs to
                 // reload the page to show the change either way.
-                obsResult = await widgetLayout.reconcile();
+                const placed = await widgetLayout.restorePosition(saved.name);
+                obsResult = placed.reason === 'no_preset'
+                    ? await widgetLayout.reconcile()
+                    : placed;
             }
 
             res.json({ ...saved, reloaded, obs: obsResult });
@@ -689,9 +698,14 @@ function createApp() {
 
             // The new theme may be a different size, and an OBS source that
             // was suspended will not have heard the widget's own reload.
-            const obsResult = await widgetLayout.reconcile();
+            // Restoring this theme's saved position sizes the source too, in
+            // one pass; with no saved position there is only the sizing to do.
+            const placed = await widgetLayout.restorePosition(req.params.name);
+            const obsResult = placed.reason === 'no_preset'
+                ? await widgetLayout.reconcile()
+                : placed;
 
-            res.json({ active: req.params.name, live, obs: obsResult });
+            res.json({ active: req.params.name, live, obs: obsResult, placed });
         } catch (err) {
             themeError(res, err);
         }

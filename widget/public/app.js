@@ -1,6 +1,12 @@
 let THEME = "default";
 let RENDER_SCALE = 1;
 
+// Bumped by the widget server every time the theme is written, even when the
+// name has not changed. Saving edits to the theme already on screen is the
+// common case, and without this the widget kept the stylesheet it had - which
+// is why a design only "woke up" once the source was nudged in OBS.
+let REVISION = null;
+
 // The theme's own stylesheet, and nothing else. A theme can pull in web fonts
 // with their own <link>, and grabbing "the first stylesheet" used to overwrite
 // one of those - the font then vanished, because its @font-face rules went
@@ -46,6 +52,7 @@ async function refreshThemeFromServer() {
             applyTheme(config.effectiveTheme || config.theme);
         }
 
+        REVISION = config.revision ?? null;
         applyRenderScale(config.renderScale);
     } catch (err) {
         console.error("Failed to refresh theme config:", err);
@@ -56,13 +63,30 @@ const themeEvents = new EventSource("/api/widget/theme-events");
 
 themeEvents.onmessage = (event) => {
     try {
-        const { theme, renderScale } = JSON.parse(event.data);
+        const { theme, renderScale, revision } = JSON.parse(event.data);
 
-        // A resolution change needs a reload as much as a theme change does:
-        // the layout is rebuilt at the new size.
-        const scaleChanged = Number(renderScale) && Number(renderScale) !== RENDER_SCALE;
+        const changedTheme = Boolean(theme) && theme !== THEME;
 
-        if ((theme && theme !== THEME) || scaleChanged) {
+        // The theme's files were rewritten. Same name, new design - which the
+        // check above cannot see, because the name did not move.
+        const rewritten = revision != null && REVISION != null && revision !== REVISION;
+
+        REVISION = revision ?? REVISION;
+
+        // A zoom change used to reload too, on the grounds that the layout is
+        // rebuilt at the new size. It is - but `zoom` rebuilds it on its own,
+        // so the reload only bought a second of blank browser source every
+        // time a theme of a different size came up. Re-measuring the scrolling
+        // text is the one thing that does have to be redone by hand.
+        if (Number(renderScale) && Number(renderScale) !== RENDER_SCALE) {
+            applyRenderScale(renderScale);
+            if (!changedTheme && !rewritten) {
+                requestAnimationFrame(() => updateSong());
+                return;
+            }
+        }
+
+        if (changedTheme || rewritten) {
             if (theme) applyTheme(theme);
             setTimeout(() => {
                 window.location.reload();
@@ -78,8 +102,28 @@ let hideTimeout;
 let isPlaying = false;
 let currentSong = null;
 
+// Whether the first answer about what is playing has come back yet.
+let ready = false;
+
+/**
+ * Nothing is drawn until there is something to draw.
+ *
+ * A reload - a theme change, or OBS resizing the browser source - leaves the
+ * page up before the song is known: an empty panel, no artwork, no text, laid
+ * out at whatever size the stylesheet has loaded so far. On a scene switch
+ * that is a second or two of visibly wrong widget. Starting hidden turns that
+ * into the widget simply arriving, which is what the fade was always for.
+ */
+document.querySelector(".widget").classList.add("hidden");
+
 function showWidget() {
     const widget = document.querySelector(".widget");
+
+    // The page is served hidden so it cannot paint an empty panel before this
+    // script has run. Lifting that here means the theme's own fade is what
+    // brings the widget in, exactly as it does at every other moment.
+    const boot = document.getElementById("queueify-boot");
+    if (boot) boot.remove();
 
     clearTimeout(hideTimeout);
     widget.classList.remove("hidden");
@@ -145,8 +189,19 @@ async function loadThemeProperties() {
 
 
 async function updateSong() {
-    const res = await fetch("/api/widget/song");
-    const song = await res.json();
+    let song;
+
+    try {
+        const res = await fetch("/api/widget/song");
+        song = await res.json();
+    } catch (err) {
+        // Queueify restarting, or Spotify not answering. The interval tries
+        // again shortly; until then the widget keeps whatever it had rather
+        // than throwing on every tick.
+        console.error("Could not read what is playing:", err);
+        return;
+    }
+
     console.log("SONG:", song);
 
     currentSong = song;
@@ -177,21 +232,27 @@ async function updateSong() {
 
     }
 
-    const widget = document.querySelector(".widget");
-
     if (!song.isPlaying) {
         if (isPlaying) {
             isPlaying = false;
             scheduleHide();
         }
+
+        // A theme that never hides still wants to be on screen with nothing
+        // playing - but only once, and only after the first answer, so the
+        // page cannot flash an empty panel while it waits for one.
+        if (!ready && themeProperties.hideAfter === -1) showWidget();
+
+        ready = true;
         return;
     }
 
-
-    if (!isPlaying) {
+    if (!isPlaying || !ready) {
         isPlaying = true;
         showWidget();
     }
+
+    ready = true;
 
 
     if (!themeProperties.showProgress) {
@@ -370,21 +431,54 @@ async function init() {
     setInterval(updateProgress, 100);
 }
 
+/**
+ * m:ss, or h:mm:ss once a track runs past the hour. Spotify shows the same
+ * shape, so the widget reads the way the app people are looking at does.
+ */
+function clock(ms) {
+    const total = Math.max(0, Math.round(ms / 1000));
+    const seconds = total % 60;
+    const minutes = Math.floor(total / 60) % 60;
+    const hours = Math.floor(total / 3600);
+
+    const pad = value => String(value).padStart(2, "0");
+
+    return hours
+        ? `${hours}:${pad(minutes)}:${pad(seconds)}`
+        : `${minutes}:${pad(seconds)}`;
+}
+
+/** Themes generated before the clocks existed have no element to write to. */
+function setText(selector, text) {
+    const el = document.querySelector(selector);
+    if (el && el.textContent !== text) el.textContent = text;
+}
+
 function updateProgress() {
 
-    if (!themeProperties.showProgress) {
-        return;
-    }
-
+    // The clocks are their own parts of a theme, shown or hidden in the
+    // editor, so they are not tied to whether the bar is drawn.
     if (!currentSong || !currentSong.durationMs) {
+        setText(".elapsed", "");
+        setText(".duration", "");
         return;
     }
-
 
     let progressMs = currentSong.progressMs;
 
     if (currentSong.isPlaying) {
         progressMs += Date.now() - currentSong.fetchedAt;
+    }
+
+    // Spotify is polled every few seconds and the clock runs on in between, so
+    // without this the elapsed time sails past the end of a finished track.
+    progressMs = Math.min(Math.max(progressMs, 0), currentSong.durationMs);
+
+    setText(".elapsed", clock(progressMs));
+    setText(".duration", clock(currentSong.durationMs));
+
+    if (!themeProperties.showProgress) {
+        return;
     }
 
     const percent =

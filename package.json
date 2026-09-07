@@ -1,6 +1,6 @@
 {
   "name": "queueify",
-  "version": "40.0.0",
+  "version": "41.0.0",
   "description": "",
   "main": "index.js",
   "engines": {
@@ -18,7 +18,7 @@
   },
   "keywords": [],
   "author": "",
-  "license": "ISC",
+  "license": "MIT",
   "dependencies": {
     "axios": "^1.6.0",
     "dotenv": "^17.4.1",

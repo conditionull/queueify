@@ -658,6 +658,18 @@
         </svg>
         Open the theme editor
       </button></a></div>
+
+      <h3 style="margin:22px 0 6px">A theme per OBS scene</h3>
+      <p>Give a scene a theme and Queueify switches to it the moment OBS cuts to that scene -
+      a slim strip while you play, the big panel while you talk to chat. Scenes left on
+      <em>Leave as-is</em> change nothing, so this is safe to fill in one scene at a time.</p>
+
+      <div id="scene-themes"></div>
+      <div class="row" style="margin-top:10px">
+        <button id="btn-scene-themes-save" class="ghost">Save scene themes</button>
+        <button id="btn-scene-themes-reload" class="ghost" title="Ask OBS for its scenes again">Reload scenes</button>
+      </div>
+      <div id="scene-themes-notes"></div>
     </div>
   </section>
 
@@ -1195,7 +1207,7 @@ $('btn-quality').addEventListener('click', async () => {
     note('quality-notes', 'Done. The widget renders at ' + result.width + ' \u00d7 ' + result.height +
       ' for a ' + result.designWidth + ' \u00d7 ' + result.designHeight + ' design shown at ' +
       result.displayedWidth + ' \u00d7 ' + result.displayedHeight + ' in OBS.' +
-      (result.presetsAdjusted ? ' ' + result.presetsAdjusted + ' saved preset(s) were adjusted.' : ''), 'good');
+      '', 'good');
 
     await refreshStatus();
   } catch (err) {
@@ -1291,6 +1303,9 @@ function showView(name, options = {}) {
   }
 
   if (name === 'changelog') loadChangelog();
+  // Scenes and themes both change outside this page, so they are re-read every
+  // time the section is opened rather than once at startup.
+  if (name === 'themes') loadSceneThemes();
 
   updateNextBar();
   updateFinalCard();
@@ -1344,6 +1359,122 @@ const LABELS = {
   obs: 'OBS', canvas: 'Canvas videos', themes: 'Widget themes',
   admin: 'Admin Panel', commands: 'Chat commands', changelog: "What's new"
 };
+
+/* --------------------------------------------------- a theme per OBS scene */
+
+let sceneThemes = { mapping: {}, themes: [], obs: null };
+let loadingSceneThemes = false;
+
+/**
+ * The scene-to-theme table.
+ *
+ * Nothing here is compulsory, so an unmapped scene is the default and reads as
+ * "Leave as-is" rather than as an empty box waiting to be filled in.
+ */
+function renderSceneThemes() {
+  const host = $('scene-themes');
+  const obs = sceneThemes.obs;
+
+  if (!obs || !obs.ok) {
+    host.innerHTML = '<div class="note">' +
+      '<strong>Connect OBS first.</strong> Queueify needs OBS to tell it which scenes you have, ' +
+      'and to hear when you switch between them.' +
+      (obs && obs.error ? '<span class="why">' + escapeHtml(obs.error) + '</span>' : '') +
+      '</div>';
+    $('btn-scene-themes-save').disabled = true;
+    return;
+  }
+
+  if (!obs.scenes.length) {
+    host.innerHTML = '<div class="note">OBS has no scenes yet.</div>';
+    $('btn-scene-themes-save').disabled = true;
+    return;
+  }
+
+  $('btn-scene-themes-save').disabled = false;
+  host.innerHTML = '';
+
+  for (const scene of obs.scenes) {
+    const row = document.createElement('div');
+    row.className = 'field';
+
+    const label = document.createElement('label');
+    label.textContent = scene;
+
+    const select = document.createElement('select');
+    select.dataset.scene = scene;
+    select.title = 'The theme to switch to when OBS cuts to "' + scene + '"';
+
+    const none = document.createElement('option');
+    none.value = '';
+    none.textContent = 'Leave as-is';
+    select.appendChild(none);
+
+    for (const theme of sceneThemes.themes) {
+      const option = document.createElement('option');
+      option.value = theme.name;
+      option.textContent = theme.label + (theme.builtIn ? ' (built-in)' : '');
+      select.appendChild(option);
+    }
+
+    select.value = sceneThemes.mapping[scene] || '';
+
+    row.append(label, select);
+    host.appendChild(row);
+  }
+}
+
+async function loadSceneThemes() {
+  if (loadingSceneThemes) return;
+  loadingSceneThemes = true;
+
+  try {
+    sceneThemes = await api('/api/scene-themes');
+  } catch (err) {
+    sceneThemes = { mapping: {}, themes: [], obs: { ok: false, error: err.message } };
+  } finally {
+    loadingSceneThemes = false;
+  }
+
+  renderSceneThemes();
+}
+
+$('btn-scene-themes-reload').addEventListener('click', () => {
+  note('scene-themes-notes', '');
+  loadSceneThemes();
+});
+
+$('btn-scene-themes-save').addEventListener('click', async () => {
+  const mapping = {};
+  for (const select of document.querySelectorAll('#scene-themes select')) {
+    if (select.value) mapping[select.dataset.scene] = select.value;
+  }
+
+  const button = $('btn-scene-themes-save');
+  button.disabled = true;
+
+  try {
+    const result = await api('/api/scene-themes', {
+      method: 'PUT',
+      body: JSON.stringify({ mapping })
+    });
+
+    sceneThemes.mapping = result.mapping;
+
+    const count = Object.keys(result.mapping).length;
+    const applied = result.applied && result.applied.changed
+      ? ' Switched to "' + escapeHtml(result.applied.theme) + '" for the scene OBS is on now.'
+      : '';
+
+    note('scene-themes-notes', count
+      ? 'Saved. ' + count + ' scene' + (count === 1 ? '' : 's') + ' will switch theme automatically.' + applied
+      : 'Saved. No scene changes the theme any more.', 'good');
+  } catch (err) {
+    note('scene-themes-notes', escapeHtml(err.message), 'bad');
+  } finally {
+    button.disabled = false;
+  }
+});
 
 /* ------------------------------------------------------------- what's new */
 

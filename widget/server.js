@@ -28,6 +28,21 @@ function getActiveTheme() {
     return widgetConfig.theme || 'default';
 }
 
+/**
+ * Changes to a theme that keeps its name.
+ *
+ * Widgets reload when the theme name or the render scale changes, and neither
+ * of those moves when somebody saves edits to the theme already on screen.
+ * This does, so that save reaches OBS instead of waiting for the source to be
+ * nudged into reloading itself.
+ */
+let revision = 0;
+
+function bumpRevision() {
+    revision += 1;
+    return revision;
+}
+
 // Matching the widget to its size on the OBS canvas gives fractional zooms
 // (a 680px design shown at 850px is 1.25x), so this is not rounded.
 const MIN_RENDER_SCALE = 0.25;
@@ -66,6 +81,10 @@ app.get("/api/widget/config", async (req, res) => {
     res.json({
         ...widgetConfig,
         effectiveTheme: getActiveTheme(),
+        revision,
+        // How many widget pages are listening. Whoever is resizing the OBS
+        // source uses this to decide whether it also has to reload it by hand.
+        clients: themeClients.length,
         renderScale: getRenderScale(),
         width: Math.round(BASE_WIDTH * getRenderScale()),
         height: Math.round(BASE_HEIGHT * getRenderScale())
@@ -121,6 +140,7 @@ app.get("/api/widget/theme-events", (req, res) => {
 function notifyWidgetChange() {
     const payload = JSON.stringify({
         theme: getActiveTheme(),
+        revision,
         renderScale: getRenderScale()
     });
 
@@ -145,11 +165,15 @@ app.post("/api/widget/theme", express.json(), async (req, res) => {
         return res.status(500).json({ error: "Unable to save theme" });
     }
 
+    // Posted on every save of the live theme, not only when the name changes,
+    // so re-saving a design reloads the widgets showing it.
+    bumpRevision();
     notifyWidgetChange();
 
     res.json({
         success: true,
-        theme
+        theme,
+        revision
     });
 });
 
@@ -175,6 +199,7 @@ app.post("/api/widget/render-scale", express.json(), async (req, res) => {
 
     // Open widgets reload themselves, so the new size takes effect without the
     // user touching the browser source.
+    bumpRevision();
     notifyWidgetChange();
 
     res.json({
@@ -187,6 +212,31 @@ app.post("/api/widget/render-scale", express.json(), async (req, res) => {
 });
 
 app.use(nocache());
+
+/**
+ * The zoom, written into the page rather than fetched by it.
+ *
+ * app.js asks for the config and applies the zoom when the answer comes back,
+ * which leaves one or two frames where the design is drawn at 1x inside a
+ * browser source sized for 2x - the widget in the top-left corner with empty
+ * bars down two sides. Short, but a theme switch reloads the page, so it is
+ * exactly what you see every time you change scene. Putting it in the markup
+ * means the very first paint is already the right size.
+ */
+function withRenderScale(html, scale) {
+    // Two rules, because they have different lifetimes. The zoom stays; the
+    // hiding is lifted by app.js the moment there is a song to show, so the
+    // page cannot paint an empty panel before its own script has run. It needs
+    // !important because it is written above the theme's own stylesheet.
+    const style = '<style id="queueify-zoom">html{zoom:' + scale + '}' +
+        'body{margin:0;overflow:hidden}</style>' +
+        '<style id="queueify-boot">.widget{opacity:0!important}</style>';
+
+    // Every theme, generated or hand-written, opens with <head>.
+    return html.includes('<head>')
+        ? html.replace('<head>', '<head>' + style)
+        : style + html;
+}
 
 app.get("/", async (req, res) => {
     // The config has to be read before the theme is chosen. Without this the
@@ -201,7 +251,13 @@ app.get("/", async (req, res) => {
         return res.status(404).send("Theme HTML not found");
     }
 
-    res.sendFile(htmlPath);
+    try {
+        const html = await fsPromises.readFile(htmlPath, "utf8");
+        res.type("html").send(withRenderScale(html, getRenderScale()));
+    } catch (err) {
+        console.error("Failed to read theme HTML:", err.message);
+        res.status(500).send("Theme HTML could not be read");
+    }
 });
 
 app.use(express.static(path.join(__dirname, "public")));

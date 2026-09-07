@@ -40,7 +40,10 @@ Adding songs to playback queue requires Spotify Premium
 - Automatic management of Spotify access and refresh tokens
 - A setup dashboard that stays open while the bot runs, so accounts, OBS and the Spotify Canvas cookie can be changed without stopping anything
 - An Admin Panel for the queue settings, command aliases and every line Queueify says in chat
-- A visual theme editor: drag the album art, title, artist and progress bar around a canvas and save it as a real theme (`!theme <name>`)
+- A visual theme editor: drag the album art, title, artist, progress bar and the two song times around a canvas and save it as a real theme (`!theme <name>`)
+- The progress bar can be flanked by the time so far and the song's length - `0:04 ———— 3:07`
+- Any text can carry an outline in a colour of your choosing, so it stays readable over gameplay
+- A theme can belong to an OBS scene, and switches with it
 - Themes can be exported to a file and shared with anyone else running Queueify
 - The widget sizes itself to whatever space you give it in OBS, so it stays sharp at any size
 - Nothing needs a restart: credentials, settings, aliases, messages and themes are all re-read while the bot runs
@@ -52,7 +55,9 @@ See [CHANGELOG.md](CHANGELOG.md) for what has changed, or open **What's new** on
 ### Requirements
 
 - [Node.js 20 or newer](https://nodejs.org/en/download) (download the .msi for windows) - Queueify checks this on startup and says so if it is older
-- [OBS Studio](https://obsproject.com/download) (Streamlabs OBS etc. will prob work, didn't test it)
+- [OBS Studio](https://obsproject.com/download) - Queueify is tested in **OBS Studio** and in
+  **StreamElements OBS (SE.Live / OBS.Live)**. Streamlabs OBS and other forks will probably work
+  too, but they are not tested.
 - [Spotify Premium](https://www.spotify.com/premium/) account (required for adding songs to playback queue)
 
 ### Admin Panel
@@ -141,6 +146,20 @@ follow `SETUP_PORT`.
 
 ## Setup
 
+> [!IMPORTANT]
+> **New to this? The lines in grey boxes below are typed into a terminal, not into a file.**
+> A terminal is the window where you type commands and press <kbd>Enter</kbd> to run them.
+>
+> - **Windows** - press <kbd>Win</kbd>, type `powershell`, and open **Windows PowerShell**
+>   (**Terminal** works too). Right-clicking a folder in File Explorer and choosing
+>   **Open in Terminal** starts you off in that folder.
+> - **macOS** - press <kbd>Cmd</kbd>+<kbd>Space</kbd>, type `terminal`, and press <kbd>Enter</kbd>.
+> - **Linux** - your usual terminal emulator.
+>
+> Type (or paste) one line at a time and press <kbd>Enter</kbd> after each. `cd queueify` means
+> "go into the queueify folder" - every command after it has to be run from in there, so keep the
+> same window open. Nothing here needs Administrator rights.
+
 ### 1. Clone and install dependencies
 
 ```sh
@@ -220,20 +239,40 @@ a canvas, restyle them, and save — that writes a real theme folder under `widg
 it shows up in `!theme` straight away with no restart and no build step.
 
 - **Start from a layout** rather than a blank canvas: Classic, Spotlight, Ticker or Stacked.
-- Album art, title, artist and progress bar are always part of a theme, because the widget fills
-  them in. Hide one rather than deleting it if a design does not need it - including the
-  background panel, for a design that sits straight over gameplay.
-- 50 fonts, gradients, glow, UPPERCASE and italic, and colors that follow the album art.
+- Album art, title, artist, progress bar, time elapsed and song length are always part of a theme,
+  because the widget fills them in. Hide one rather than deleting it if a design does not need it -
+  including the background panel, for a design that sits straight over gameplay.
+- 50 fonts, gradients, glow, **outlines in any color**, UPPERCASE and italic, and colors that
+  follow the album art.
+- **The two song times** sit either side of the progress bar by default - `0:04` on the left,
+  `3:07` on the right - but they are ordinary parts, so move them, restyle them or hide them.
+  Themes made before they existed arrive with them hidden, so nothing you already have changes.
+- **Revert to last save** throws away everything since the last save in one step. Undo still
+  works, and undoes the revert itself if you press it by mistake.
 - Snapping like a design tool: edges and centers line up as you drag, resizing locks to another
   part's width or height, and moving locks to spacing you have already used. Hold <kbd>Ctrl</kbd>
   or <kbd>Shift</kbd> while dragging to turn it off.
 - The preview is drawn by the same code that writes the theme, with your currently playing song
-  when there is one, so what you see is what OBS gets.
+  when there is one - Canvas video included, when the theme asks for it and the track has one - so
+  what you see is what OBS gets.
 - **Export** a theme to a file and **Import** one someone sent you. An import arrives as a new
   theme, so nothing you already have is overwritten.
 - `default`, `minimal` and `swag` are hand-written and read-only, so there is always a known-good
   fallback. Duplicate one instead of editing it.
 - Themes you make live in `widget/themes/` and are left alone by updates.
+
+### A theme per OBS scene (optional)
+
+A slim strip while a game is on, the big panel while you talk to chat - and no `!theme` to
+remember on every transition.
+
+Open **Widget themes** on the dashboard, and under **A theme per OBS scene** pick a theme beside
+any scene. Queueify switches to it the moment OBS cuts to that scene. Scenes left on
+**Leave as-is** change nothing, so this is safe to fill in one scene at a time.
+
+The scene list comes from OBS, so the **OBS** step has to be connected first. `!theme` still wins
+for as long as you stay on the scene you typed it on; the next switch to a mapped scene takes
+over again.
 
 ### 4. Add Browser Source
 1. In OBS, add a `Browser` source
@@ -247,6 +286,10 @@ opening OBS never needs a manual **Refresh**.
 
 Set the source to `680` x `192` to start with; the numbers only matter until Queueify first
 connects to OBS.
+
+A theme is a shape as well as a size. Switch to one with different proportions - a tall corner
+panel where a wide strip used to be - and Queueify fits it into the space the old one had rather
+than stretching it to fill it, so it is never squashed or cropped.
 
 > [!NOTE]
 If you encounter any issues, report an issue here on github and I'll respond asap
@@ -267,6 +310,19 @@ The scene and source lists come from OBS itself. Changing them later takes effec
 on the next command, without stopping the bot.
 
 Viewers who may move the widget without being mods go in **Admin Panel → Settings → Whitelist**.
+
+Each theme gets its own saved position, so `!tr set` on one theme does not disturb another, and
+switching theme - by hand, or because the OBS scene changed - puts the widget back where that
+theme was framed.
+
+You do not have to use these at all. Queueify remembers where each theme's widget last was on the
+canvas, so dragging it where you want it in OBS survives switching theme and switching back.
+Typing `!tr` or `!bc` overrides that with the position you saved for the theme.
+
+A saved position survives a theme being resized. What it cannot survive is a theme changing
+*shape*: it no longer fits the space it was framed in, so Queueify keeps it in the same corner at
+a size you did not pick. The editor says so, and asks you to run `!tr set` / `!bc set` again once
+the layout is how you want it.
 
 > [!NOTE]
 if the OBS widget does not show on startup, `Refresh` the source in OBS

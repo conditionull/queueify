@@ -239,6 +239,9 @@ async function main() {
   widgetLayout.watchObsResizes();
   widgetLayout.refreshOnConnect();
 
+  // A theme can belong to an OBS scene; this is what notices the switch.
+  require('./services/sceneThemes').watch();
+
   if (getObsConfig().connectable) {
     try {
       await obs.connect();
@@ -249,9 +252,6 @@ async function main() {
 
       if (layout.applied && layout.changed) {
         console.log(`Widget now renders at ${layout.width} x ${layout.height}, matching its size in OBS.`);
-        if (layout.presetsAdjusted) {
-          console.log(`Adjusted ${layout.presetsAdjusted} saved !tr / !bc preset(s) to match.`);
-        }
       }
     } catch (err) {
       console.warn("Could not connect to OBS yet:", err.message);

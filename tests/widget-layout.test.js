@@ -116,42 +116,50 @@ test('a broken or missing theme falls back to the stock size rather than throwin
     }
 });
 
-test('saved presets move by the same factor the scene item did', async () => {
-    const { layout, sandbox } = freshLayout();
+/**
+ * Presets used to be rewritten every time the browser source was resized,
+ * because they stored a scale that only meant anything against one source
+ * size. Two themes' worth of resizes compounded, unevenly, and real saved
+ * presets ended up stretching the widget. Nothing touches them now.
+ */
+test('reconciling never rewrites a saved position', async () => {
+    const { layout, sandbox } = freshLayout({ obsConfigured: true });
+    fs.writeFileSync(process.env.QUEUEIFY_ENV_FILE,
+        ['OBS_WEBSOCKET_IP=127.0.0.1', 'OBS_WEBSOCKET_PORT=1',
+            'OBS_SCENE=Gaming', 'OBS_SOURCE=Queueify', ''].join('\n'));
 
     try {
         const state = require(statePath);
         state.widgetPresets = {
-            topright: { positionX: 10, positionY: 20, scaleX: 0.5, scaleY: 0.5 },
-            'bottomcenter:swag': { positionX: 4, positionY: 8, scaleX: 1, scaleY: 2 },
-            broken: null
+            'bottomcenter:swag': {
+                positionX: 700, positionY: 960,
+                width: 500, height: 141,
+                sourceWidth: 680, sourceHeight: 192,
+                scaleX: 0.735, scaleY: 0.735
+            }
         };
 
-        // The source doubled in size, so the item is half the scale it was.
-        const changed = layout.rescalePresets(0.5, 0.5);
+        const before = JSON.stringify(state.widgetPresets);
+        await layout.reconcile();
 
-        assert.strictEqual(changed, 2);
-        assert.strictEqual(state.widgetPresets.topright.scaleX, 0.25);
-        assert.strictEqual(state.widgetPresets['bottomcenter:swag'].scaleY, 1);
-        // Positions are untouched: only the scale changed.
-        assert.strictEqual(state.widgetPresets.topright.positionX, 10);
-
-        // core/state writes on a debounce; let it finish before the folder goes.
+        assert.strictEqual(JSON.stringify(state.widgetPresets), before);
         await new Promise(resolve => setTimeout(resolve, 250));
     } finally {
         cleanup(sandbox);
     }
 });
 
-test('an unchanged size leaves presets alone', async () => {
+test('a theme with no saved position of its own is left where it is', async () => {
     const { layout, sandbox } = freshLayout();
 
     try {
         const state = require(statePath);
-        state.widgetPresets = { topright: { scaleX: 0.75, scaleY: 0.75 } };
+        state.widgetPresets = { 'topright:other': { positionX: 1, positionY: 2, width: 10, height: 3 } };
 
-        assert.strictEqual(layout.rescalePresets(1, 1), 0);
-        assert.strictEqual(state.widgetPresets.topright.scaleX, 0.75);
+        const result = await layout.restorePosition('swag');
+
+        assert.strictEqual(result.applied, false);
+        assert.strictEqual(result.reason, 'no_preset');
         await new Promise(resolve => setTimeout(resolve, 250));
     } finally {
         cleanup(sandbox);
@@ -195,26 +203,36 @@ test('an unreachable OBS is reported, not thrown', async () => {
  */
 test('the rendered size is chosen so OBS never has to stretch or crush it', () => {
     const { sandbox } = freshLayout();
-    const { sourceSizeFor } = require(path.join(__dirname, '..', 'services', 'obs.js'));
+    const { renderSizeFor } = require(path.join(__dirname, '..', 'services', 'obs.js'));
+
+    // A footprint already the design's shape, so this is only about size.
+    const at = (shownWidth, design) => renderSizeFor({
+        displayedWidth: shownWidth,
+        displayedHeight: shownWidth * (design.height / design.width),
+        designWidth: design.width,
+        designHeight: design.height
+    }).width;
+
+    const wide = { width: 680, height: 192 };
 
     try {
         // Shown smaller than designed: render the design in full and let OBS
         // scale it down gently, rather than squashing the layout.
-        assert.strictEqual(sourceSizeFor(362, 680), 680);
-        assert.strictEqual(sourceSizeFor(297, 680), 680);
+        assert.strictEqual(at(362, wide), 680);
+        assert.strictEqual(at(297, wide), 680);
 
         // Shown at or above the design: render exactly that, 1:1.
-        assert.strictEqual(sourceSizeFor(680, 680), 680);
-        assert.strictEqual(sourceSizeFor(1360, 680), 1360);
-        assert.strictEqual(sourceSizeFor(2610, 680), 2610);
+        assert.strictEqual(at(680, wide), 680);
+        assert.strictEqual(at(1360, wide), 1360);
+        assert.strictEqual(at(2610, wide), 2610);
 
         // Shrunk to a fraction of the design, the render is capped so OBS is
         // not left throwing most of the pixels away.
-        assert.strictEqual(sourceSizeFor(100, 1920), 250);
+        assert.strictEqual(at(100, { width: 1920, height: 1080 }), 250);
 
         // Small themes are not blown up to a stock size.
-        assert.strictEqual(sourceSizeFor(400, 400), 400);
-        assert.strictEqual(sourceSizeFor(800, 400), 800);
+        assert.strictEqual(at(400, { width: 400, height: 400 }), 400);
+        assert.strictEqual(at(800, { width: 400, height: 400 }), 800);
     } finally {
         cleanup(sandbox);
     }

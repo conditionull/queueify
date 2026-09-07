@@ -439,6 +439,9 @@
     font-size: 12.5px; border-radius: 7px; padding: 8px 11px; margin-top: 10px;
     background: rgba(245,165,36,.09); border: 1px solid rgba(245,165,36,.28); color: #f5c47a;
   }
+  /* An aside inside a message needs its own line, or it runs straight on from
+     the sentence before it. */
+  .note .why { display: block; margin-top: 5px; font-size: 11.5px; line-height: 1.45; opacity: .82; }
   .note.bad  { background: rgba(245,86,108,.09); border-color: rgba(245,86,108,.28); color: #ff9dab; }
   .note.good { background: rgba(36,209,126,.09); border-color: rgba(36,209,126,.28); color: #82e9ba; }
 
@@ -556,6 +559,7 @@
       <button class="ghost" id="btn-refresh-song" style="padding:5px 10px;font-size:12px" title="Pull the song playing right now into the preview">Refresh song</button>
       <button class="ghost" id="btn-undo" style="padding:5px 10px;font-size:12px" title="Undo the last change (Ctrl+Z)">Undo</button>
       <button class="ghost" id="btn-redo" style="padding:5px 10px;font-size:12px" title="Redo (Ctrl+Shift+Z)">Redo</button>
+      <button class="ghost" id="btn-revert" style="padding:5px 10px;font-size:12px" title="Throw away every change since the last save, in one step">Revert to last save</button>
 
       <span style="margin-left:14px">Zoom</span>
       <select id="zoom" style="width:auto;padding:4px 6px;font-size:12px" title="Magnify the editing canvas. Does not change the theme.">
@@ -591,6 +595,14 @@
 
           <div class="progress-container">
             <div class="progress" id="progress"></div>
+          </div>
+
+          <div class="elapsed-wrapper">
+            <div class="elapsed" id="elapsed"></div>
+          </div>
+
+          <div class="duration-wrapper">
+            <div class="duration" id="duration"></div>
           </div>
         </div>
 
@@ -703,7 +715,9 @@ const MODULE_LABELS = {
   art: 'Album art / Canvas',
   title: 'Song title',
   artist: 'Artist',
-  progress: 'Progress bar'
+  progress: 'Progress bar',
+  elapsed: 'Time elapsed',
+  duration: 'Song length'
 };
 
 const ALBUM_COLORS = [
@@ -730,8 +744,9 @@ const state = {
   song: null,
   themes: [],
   active: null,
-  source: null,
-  obsReady: false,
+  // What OBS is actually doing with this design, straight from OBS. Null until
+  // it has been asked, and after any request that failed.
+  fit: null,
   fontCategories: {},
   presets: [],
   zoom: 1
@@ -763,8 +778,7 @@ function obsOutcome(result) {
   if (result && result.applied) {
     const resized = result.changed
       ? ' The browser source was resized to ' + result.width + ' \u00d7 ' + result.height +
-        ' and the scene item was scaled to match' +
-        (result.presetsAdjusted ? ', along with ' + result.presetsAdjusted + ' saved preset(s)' : '') + '.'
+        ' and the scene item was scaled to match.'
       : '';
     return { text: ' The widget was reloaded in OBS.' + resized, bad: false };
   }
@@ -859,6 +873,7 @@ function setDirty(dirty) {
   // Nothing to press if this theme is already the one on stream.
   $('btn-activate').hidden = live;
   $('btn-activate').disabled = !state.name;
+  updateRevertButton();
 }
 
 /**
@@ -896,6 +911,44 @@ function redo() {
   renderAll();
 }
 
+/**
+ * Back to the last save in one step, instead of counting undos.
+ *
+ * It goes on the undo stack like anything else, so pressing it by mistake is
+ * one Ctrl+Z away from being put back - which is why this sits alongside undo
+ * rather than replacing it.
+ */
+async function revertToSaved() {
+  if (state.baseline === null) {
+    note('This theme has never been saved, so there is nothing to go back to.', '');
+    return;
+  }
+
+  if (!state.dirty) {
+    note('Nothing has changed since the last save.', '');
+    return;
+  }
+
+  const sure = await askConfirm(
+    'Everything you have changed since the last save will go. Undo can bring it back.',
+    { title: 'Revert to last save?', confirm: 'Revert', cancel: 'Keep editing', danger: true }
+  );
+  if (!sure) return;
+
+  pushHistory();
+  state.model = JSON.parse(state.baseline);
+  $('theme-label').value = state.model.label;
+  markChanged();
+  renderAll();
+  note('Back to the last save. <kbd>Ctrl</kbd>+<kbd>Z</kbd> undoes this too.', 'good');
+}
+
+/** Nothing to revert to on an unsaved theme, and nothing to revert either. */
+function updateRevertButton() {
+  const button = $('btn-revert');
+  if (button) button.disabled = state.baseline === null || !state.dirty;
+}
+
 /* ------------------------------------------------------------ preview */
 
 let cssTimer = null;
@@ -924,7 +977,8 @@ function refreshCss() {
 
 function clearInlineBoxes() {
   for (const el of [$('cover'), $('canvas'), document.querySelector('.title-wrapper'),
-                    document.querySelector('.artist-wrapper'), document.querySelector('.progress-container')]) {
+                    document.querySelector('.artist-wrapper'), document.querySelector('.progress-container'),
+                    document.querySelector('.elapsed-wrapper'), document.querySelector('.duration-wrapper')]) {
     if (!el) continue;
     el.style.left = el.style.top = el.style.width = el.style.height = '';
   }
@@ -934,7 +988,9 @@ const ELEMENTS = {
   art: () => [$('cover'), $('canvas')],
   title: () => [document.querySelector('.title-wrapper')],
   artist: () => [document.querySelector('.artist-wrapper')],
-  progress: () => [document.querySelector('.progress-container')]
+  progress: () => [document.querySelector('.progress-container')],
+  elapsed: () => [document.querySelector('.elapsed-wrapper')],
+  duration: () => [document.querySelector('.duration-wrapper')]
 };
 
 /** Immediate feedback while dragging; the server CSS catches up on release. */
@@ -962,13 +1018,19 @@ function applySong(song) {
   root.style.setProperty('--album-light', palette.lightVibrant || '#ffffff');
   root.style.setProperty('--album-muted', palette.muted || 'rgba(255,255,255,.7)');
 
-  const cover = $('cover');
-  cover.src = song.cover || placeholderArt(palette);
-  cover.style.display = 'block';
-  $('canvas').style.display = 'none';
+  renderMedia();
 
-  const pct = song.durationMs ? Math.min(100, (song.progressMs / song.durationMs) * 100) : 38;
+  const durationMs = song.durationMs || 0;
+  const progressMs = Math.min(song.progressMs || 0, durationMs);
+
+  const pct = durationMs ? Math.min(100, (progressMs / durationMs) * 100) : 38;
   $('progress').style.width = pct + '%';
+
+  // The same clock the widget draws, so a box that fits "3:07" here fits it
+  // on stream. With nothing playing these fall back to a plausible length
+  // rather than 0:00, which would size the boxes too small.
+  $('elapsed').textContent = clock(durationMs ? progressMs : 99000);
+  $('duration').textContent = clock(durationMs || 254000);
 
   showScrolling();
 }
@@ -998,6 +1060,59 @@ function showScrolling() {
     measure('title', '.title-wrapper', '--scroll-distance');
     measure('artist', '.artist-wrapper', '--artist-distance');
   });
+}
+
+/**
+ * The album art box, showing whatever OBS would be showing.
+ *
+ * Spotify ships a short looping clip for a lot of tracks, and a theme set to
+ * "Canvas video when available" plays it instead of the cover. The preview
+ * used to draw the cover regardless, so the one setting whose whole point is
+ * what fills that box could not be seen here at all.
+ *
+ * The test is the same one widget/public/app.js makes: the theme has to ask
+ * for canvas, and the track playing has to have one.
+ */
+function renderMedia() {
+  const song = state.song || {};
+  const cover = $('cover');
+  const canvas = $('canvas');
+
+  const wantsCanvas = state.model && state.model.properties.media
+    && state.model.properties.media.mode === 'canvas';
+  const hasVideo = song.media && song.media.type === 'video' && song.media.url;
+
+  if (wantsCanvas && hasVideo) {
+    // Re-assigning the same source restarts the clip, which looks like a
+    // stutter every time anything else on the panel changes.
+    if (canvas.getAttribute('src') !== song.media.url) {
+      canvas.src = song.media.url;
+      canvas.play().catch(() => {
+        // Autoplay refused, or the clip is unreachable. The box stays empty
+        // rather than the preview breaking.
+      });
+    }
+
+    canvas.style.display = 'block';
+    cover.style.display = 'none';
+    return;
+  }
+
+  cover.src = song.cover || placeholderArt(song.palette || {});
+  cover.style.display = 'block';
+  canvas.style.display = 'none';
+}
+
+/** m:ss, or h:mm:ss past the hour - matching widget/public/app.js exactly. */
+function clock(ms) {
+  const total = Math.max(0, Math.round(ms / 1000));
+  const pad = value => String(value).padStart(2, '0');
+  const hours = Math.floor(total / 3600);
+  const minutes = Math.floor(total / 60) % 60;
+
+  return hours
+    ? hours + ':' + pad(minutes) + ':' + pad(total % 60)
+    : minutes + ':' + pad(total % 60);
 }
 
 function placeholderArt(palette) {
@@ -1128,51 +1243,79 @@ function positionOverlay() {
 }
 
 /**
- * OBS crops whatever falls outside the browser source, so a canvas larger than
- * the source is the one mistake that looks fine here and wrong on stream.
+ * What OBS is doing with this design, and only when that is worth saying.
+ *
+ * This used to compare the design against the *live* theme's size, which is a
+ * different theme's number. It warned about designs that were perfectly fine,
+ * kept quiet about ones that were not, and never changed its mind when a theme
+ * was switched. The report now comes from OBS itself, so it can only say
+ * things that are true - and says nothing at all when there is nothing wrong.
  */
 function checkFit() {
   const host = $('fit-warning');
-  const source = state.source;
+  const fit = state.fit;
 
-  if (!source) {
+  if (!fit) {
     host.innerHTML = '';
     return;
   }
 
   const { width, height } = state.model.canvas;
 
-  if (width <= source.width && height <= source.height) {
-    host.innerHTML = '';
-    return;
+  // The report was worked out for a particular design. Editing the canvas
+  // makes it stale, so ask again rather than showing an answer to the old
+  // question.
+  if (fit.design && (fit.design.width !== width || fit.design.height !== height)) {
+    scheduleFitRefresh();
   }
 
-  // Two things have to match: this design and the browser source in OBS. Say
-  // which is which, and offer to change either one - "shrink it" on its own
-  // reads like a chore with no explanation.
-  host.innerHTML = '<div class="note">' +
-    '<strong>Your design is bigger than the window OBS shows it in.</strong><br />' +
-    'This design is ' + width + ' × ' + height + '. Your OBS browser source is only ' +
-    source.width + ' × ' + source.height + ', so the extra ' +
-    Math.max(0, width - source.width) + 'px across and ' +
-    Math.max(0, height - source.height) + 'px down get cut off on stream.' +
-    '<div class="row" style="margin-top:9px">' +
-    (state.obsReady
-      ? '<button class="mini" id="btn-grow">Make the OBS window ' + width + ' × ' + height + '</button>'
-      : '') +
-    '<button class="mini" id="btn-fit">Shrink the design to ' + source.width + ' × ' + source.height + '</button>' +
-    '</div>' +
-    (state.obsReady ? '' : '<span class="why">Connect OBS on the dashboard and this can resize the browser source for you.</span>') +
-    '</div>';
+  const blocks = [];
 
-  $('btn-fit').addEventListener('click', () => {
-    commit(() => {
-      state.model.canvas.width = source.width;
-      state.model.canvas.height = source.height;
-    });
-    renderProps();
-    note('Design shrunk to ' + source.width + ' × ' + source.height + ', so all of it shows on stream.', 'good');
-  });
+  if (!fit.obsConfigured) {
+    // Without OBS nothing can be sized automatically, so the only helpful
+    // thing left is the number to type in. Only worth saying when it is not
+    // the size the setup instructions already gave.
+    if (width !== 680 || height !== 192) {
+      blocks.push('<div class="note">' +
+        '<strong>Set your OBS browser source to ' + width + ' × ' + height + '.</strong><br />' +
+        'This design is that size, and OBS crops whatever will not fit. ' +
+        'Connect OBS on the dashboard and Queueify does this for you, every time you change it.' +
+        '</div>');
+    }
+  } else if (!fit.connected) {
+    blocks.push('<div class="note">' +
+      '<strong>Queueify cannot reach OBS at the moment</strong>, so it cannot size the browser ' +
+      'source for this design. It will as soon as OBS is back.' +
+      (fit.message ? '<span class="why">' + escapeHtml(fit.message) + '</span>' : '') +
+      '</div>');
+  } else if (fit.live && !fit.matched) {
+    blocks.push('<div class="note">' +
+      '<strong>OBS is still showing this theme at its old size.</strong><br />' +
+      'The browser source is ' + fit.source.width + ' × ' + fit.source.height +
+      '; this design needs ' + fit.needed.width + ' × ' + fit.needed.height +
+      '. Saving does this for you - or do it now:' +
+      '<div class="row" style="margin-top:9px">' +
+      '<button class="mini" id="btn-grow">Resize the OBS browser source</button>' +
+      '</div></div>');
+  }
+
+  // A saved position survives the browser source being resized - it stores the
+  // rectangle it framed, not a scale. What it cannot survive is the design
+  // changing shape, because it no longer fits the space it was framed in.
+  const stale = (fit.presets || []).filter(preset => preset.stale);
+
+  for (const preset of stale) {
+    blocks.push('<div class="note">' +
+      '<strong>Run <code>' + preset.command + ' set</code> again once you are happy with this layout.</strong><br />' +
+      'You framed this theme at ' + preset.framedWidth + ' × ' + preset.framedHeight +
+      ', a different shape from the ' + width + ' × ' + height +
+      ' it is now. Queueify will keep it at ' + escapeHtml(preset.holds) +
+      ', but at a size you did not pick.' +
+      '<span class="why">Type it in your own chat with the theme on stream, framed how you want it.</span>' +
+      '</div>');
+  }
+
+  host.innerHTML = blocks.join('');
 
   const grow = $('btn-grow');
   if (!grow) return;
@@ -1186,17 +1329,52 @@ function checkFit() {
         body: JSON.stringify({ width, height })
       });
 
-      state.source = { width, height };
-      checkFit();
-
       note('Your OBS browser source is now ' + result.width + ' × ' + result.height +
-        ' and the scene item was scaled to keep the same size on stream.' +
-        (result.presetsAdjusted ? ' Saved !tr / !bc presets were adjusted too.' : ''), 'good');
+        (result.refitted
+          ? ', and the widget was reshaped to suit this design rather than stretched into the space the last one had.'
+          : ' and the scene item was scaled to keep the same size on stream.') +
+        '', 'good');
+
+      await loadFit();
     } catch (err) {
       grow.disabled = false;
       note(err.message, 'bad');
     }
   });
+}
+
+/**
+ * Asks OBS what it is doing with the design as it stands.
+ *
+ * Debounced, because it is triggered by editing the canvas size - which is a
+ * number field somebody holds an arrow key on.
+ */
+let fitTimer = null;
+let fitPending = false;
+
+function scheduleFitRefresh() {
+  if (fitPending) return;
+  fitPending = true;
+  clearTimeout(fitTimer);
+  fitTimer = setTimeout(() => { fitPending = false; loadFit(); }, 600);
+}
+
+async function loadFit() {
+  const { width, height } = state.model ? state.model.canvas : {};
+
+  try {
+    const query = new URLSearchParams({
+      theme: state.name || '',
+      width: String(width || ''),
+      height: String(height || '')
+    });
+
+    state.fit = await api('/api/widget/fit?' + query.toString());
+  } catch {
+    state.fit = null;
+  }
+
+  checkFit();
 }
 
 /* ------------------------------------------------------- drag / resize */
@@ -1832,6 +2010,8 @@ const FIELD_TIPS = {
   'Opacity': 'How see-through this part is. 1 is solid.',
   'Glow': 'A halo around the letters, so text stays readable over busy gameplay.',
   'Glow color': 'The color of that halo.',
+  'Outline': 'A hard edge around every letter. Reads over anything; 0 turns it off.',
+  'Outline color': 'The color of that edge. Black or the album dark tone are the safe choices.',
   'Corner radius': 'How rounded the corners are. 0 is square.',
   'Shadow': 'A soft shadow behind the artwork.',
   'Fit': 'Album art is square: fill the box (cropping) or fit inside it (letterboxed).',
@@ -2038,8 +2218,8 @@ function sliderInput(target, key, { min, max, step = 1 } = {}) {
   const set = value => {
     const had = Number(target[key]);
     commit(() => { target[key] = Number(value); });
-    // Turning a glow on (or off) adds or removes its color field.
-    if (key === 'glow' && (had === 0) !== (Number(value) === 0)) renderProps();
+    // Turning a glow or an outline on (or off) adds or removes its color field.
+    if ((key === 'glow' || key === 'outline') && (had === 0) !== (Number(value) === 0)) renderProps();
   };
 
   range.addEventListener('input', () => { box.value = range.value; set(range.value); });
@@ -2300,10 +2480,14 @@ function renderProps() {
       checkboxInput('UPPERCASE', module, 'uppercase'),
       checkboxInput('Italic', module, 'italic'),
       field('Glow', sliderInput(module, 'glow', { min: 0, max: 40 }),
-        'A halo around the letters. Reads well on busy gameplay; 0 turns it off.')
+        'A halo around the letters. Reads well on busy gameplay; 0 turns it off.'),
+      field('Outline', sliderInput(module, 'outline', { min: 0, max: 12, step: 0.5 }),
+        'A hard edge drawn around every letter - the one thing that keeps text readable ' +
+        'over gameplay that keeps changing colour. 0 turns it off.')
     );
 
     if (module.glow) section.body.append(field('Glow color', colorInput(module, 'glowColor')));
+    if (module.outline) section.body.append(field('Outline color', colorInput(module, 'outlineColor')));
   }
 
   // The old "Hidden" tickbox was easy to miss; this is a switch that says
@@ -2312,15 +2496,24 @@ function renderProps() {
   host.append(section, themeProps());
 }
 
+/** The one setting that changes what fills the art box, so it redraws it. */
+function mediaInput(props) {
+  const select = selectInput(props.media, 'mode', [
+    ['canvas', 'Canvas video when available'],
+    ['cover', 'Album cover only']
+  ]);
+
+  select.addEventListener('change', renderMedia);
+  return select;
+}
+
 function themeProps() {
   const props = state.model.properties;
   const section = group('Behaviour', { note: 'applies to the whole theme' });
 
   section.body.append(
-    field('Album art', selectInput(props.media, 'mode', [
-      ['canvas', 'Canvas video when available'],
-      ['cover', 'Album cover only']
-    ]), 'Spotify ships a short looping video for some tracks. "Album cover only" always shows the artwork.'),
+    field('Album art', mediaInput(props), 'Spotify ships a short looping video for some tracks. ' +
+      '"Album cover only" always shows the artwork.'),
 
     checkboxInput('Show progress bar', props, 'showProgress'),
 
@@ -2385,6 +2578,7 @@ async function openTheme(name) {
     select('canvas');
     renderAll();
     await loadThemes('');
+    await loadFit();
     return;
   }
 
@@ -2397,6 +2591,7 @@ async function openTheme(name) {
   select('canvas');
   renderAll();
   await loadThemes(name);
+  await loadFit();
 }
 
 $('theme-open').addEventListener('change', async event => {
@@ -2547,6 +2742,7 @@ $('btn-save').addEventListener('click', async () => {
     markSaved();
     await loadThemes(saved.name);
     renderAll();
+    await loadFit();
 
     if (saved.obs) {
       const outcome = obsOutcome(saved.obs);
@@ -2575,6 +2771,7 @@ $('btn-activate').addEventListener('click', async () => {
     const result = await api('/api/themes/' + encodeURIComponent(state.name) + '/activate', { method: 'POST' });
     await loadThemes(state.name);
     markChanged();
+    await loadFit();
 
     const outcome = obsOutcome(result.obs);
     note('"' + escapeHtml(state.name) + '" is live.' + outcome.text, outcome.bad ? '' : 'good');
@@ -2613,6 +2810,7 @@ for (const swatch of document.querySelectorAll('.swatch')) {
 $('btn-refresh-song').addEventListener('click', loadSong);
 $('btn-undo').addEventListener('click', undo);
 $('btn-redo').addEventListener('click', redo);
+$('btn-revert').addEventListener('click', revertToSaved);
 
 $('btn-back').addEventListener('click', async event => {
   if (!state.dirty) return;
@@ -2631,19 +2829,6 @@ window.addEventListener('beforeunload', event => {
   event.preventDefault();
   event.returnValue = '';
 });
-
-async function loadSourceSize() {
-  try {
-    const status = await api('/api/status');
-    // baseWidth/baseHeight are the layout size; the sharpness multiplier does
-    // not change how much of the design fits.
-    state.source = { width: status.widget.baseWidth, height: status.widget.baseHeight };
-    state.obsReady = Boolean(status.obs && status.obs.configured);
-    checkFit();
-  } catch {
-    state.source = null;
-  }
-}
 
 (async () => {
   try {
@@ -2670,7 +2855,7 @@ async function loadSourceSize() {
     await openTheme('');
     note(err.message, 'bad');
   }
-  await Promise.all([loadSong(), loadSourceSize()]);
+  await Promise.all([loadSong(), loadFit()]);
   setInterval(loadSong, 15000);
 })();
 </script>

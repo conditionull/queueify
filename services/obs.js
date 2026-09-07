@@ -1,5 +1,6 @@
 const { OBSWebSocket, EventSubscription } = require("obs-websocket-js");
 const { getObsConfig, getDashboardUrl } = require("../config/liveEnv");
+const widgetPresets = require("./widgetPresets");
 
 const obs = new OBSWebSocket();
 
@@ -179,96 +180,33 @@ async function moveSource(x, y) {
 }
 
 /**
- * Resizes the widget's browser source and shrinks the scene item by the same
- * factor, so the widget keeps its on-screen size while being drawn with more
- * pixels. Returns the factor stored transforms need multiplying by.
- *
- * OBS renders a browser source at exactly its configured size; enlarging the
- * item afterwards just stretches that bitmap. Giving the page more pixels to
- * draw into is the only way to stay sharp when the widget is big on screen.
- */
-async function setWidgetResolution({ width, height }) {
-    const config = await ensureConnected();
-    const sceneItemId = await resolveSceneItem(config);
-
-    const { inputKind } = await obs.call('GetInputSettings', { inputName: config.source });
-
-    if (!/browser/i.test(inputKind || '')) {
-        throw obsError(
-            'obs_not_browser_source',
-            `"${config.source}" is a ${inputKind || 'non-browser'} source, so its render size cannot be set here.`,
-            config
-        );
-    }
-
-    const { sceneItemTransform: before } = await obs.call('GetSceneItemTransform', {
-        sceneName: config.scene,
-        sceneItemId
-    });
-
-    // Already the right size: touching it would only make OBS re-render.
-    if (before.sourceWidth === width && before.sourceHeight === height) {
-        return {
-            scene: config.scene,
-            source: config.source,
-            width,
-            height,
-            previousWidth: width,
-            previousHeight: height,
-            factorX: 1,
-            factorY: 1,
-            unchanged: true,
-            bounded: Boolean(before.boundsType && before.boundsType !== 'OBS_BOUNDS_NONE')
-        };
-    }
-
-    // sourceWidth is the browser source's own pixel size, which is what the
-    // scale is relative to - not what the item measures on the canvas.
-    const previousWidth = before.sourceWidth || width;
-    const previousHeight = before.sourceHeight || height;
-    const factorX = previousWidth / width;
-    const factorY = previousHeight / height;
-
-    await obs.call('SetInputSettings', {
-        inputName: config.source,
-        inputSettings: { width, height }
-    });
-
-    // A bounded item is sized by its bounding box, so its footprint already
-    // survives the resize; only a free-scaled item needs compensating.
-    const bounded = before.boundsType && before.boundsType !== 'OBS_BOUNDS_NONE';
-
-    if (!bounded) {
-        await obs.call('SetSceneItemTransform', {
-            sceneName: config.scene,
-            sceneItemId,
-            sceneItemTransform: {
-                scaleX: (before.scaleX || 1) * factorX,
-                scaleY: (before.scaleY || 1) * factorY
-            }
-        });
-    }
-
-    return {
-        scene: config.scene,
-        source: config.source,
-        width,
-        height,
-        previousWidth,
-        previousHeight,
-        factorX,
-        factorY,
-        bounded: Boolean(bounded)
-    };
-}
-
-/**
  * Calls back once OBS has accepted a connection - at startup, and again every
  * time OBS is closed and reopened while the bot runs.
  */
 function onConnected(listener) {
     obs.on('Identified', listener);
     return () => obs.off('Identified', listener);
+}
+
+/**
+ * Calls back whenever OBS cuts to a different scene.
+ *
+ * This is what lets a theme belong to a scene: gameplay gets the slim strip,
+ * the chatting scene gets the big panel, and switching between them in OBS is
+ * the whole gesture.
+ */
+function onProgramSceneChanged(listener) {
+    const handler = event => listener(event?.sceneName);
+
+    obs.on('CurrentProgramSceneChanged', handler);
+    return () => obs.off('CurrentProgramSceneChanged', handler);
+}
+
+/** The scene OBS is showing right now, so a mapping can be applied on startup. */
+async function currentProgramScene() {
+    await ensureConnected();
+    const { currentProgramSceneName } = await obs.call('GetCurrentProgramScene');
+    return currentProgramSceneName;
 }
 
 /**
@@ -327,42 +265,87 @@ function clampSize(value, fallback) {
     return Math.min(Math.max(Math.round(value), MIN_SOURCE_SIZE), MAX_SOURCE_SIZE);
 }
 
-/**
- * Sizes the browser source for a widget being shown at `displayed` size, given
- * the size its theme was designed at.
- *
- * Two ways to get this wrong, and both look bad:
- *
- * - Render fewer pixels than the design and the layout is squashed - a 38px
- *   title drawn at 20px, on fractional pixel positions. That reads as blurry.
- * - Render far more than is shown and OBS has to throw most of them away with
- *   a bilinear filter, which is what makes text look fried.
- *
- * So: never render below the design size, never more than twice what is shown,
- * and let the scene item's scale take up whatever slack is left. Shown bigger
- * than designed, the page simply renders bigger and the item stays at 1:1.
- */
 // How much bigger than the displayed size the page may be rendered. Past this
 // OBS's downscale starts to bite; below it, extra pixels only sharpen things.
 const SUPERSAMPLE_LIMIT = 2.5;
 
-function sourceSizeFor(displayed, design) {
-    // Render the design at full size, or bigger if the widget is shown bigger.
-    // Anything less squashes the layout, which is what "blurry" really was.
-    const ideal = Math.max(design, displayed);
+// How far the footprint's shape may drift from the design's before it counts
+// as a different shape rather than rounding.
+const ASPECT_TOLERANCE = 0.01;
 
-    // The one exception: a widget shrunk to a fraction of its design would
-    // leave OBS throwing most of the pixels away, so cap how far that goes.
-    const capped = Math.min(ideal, displayed * SUPERSAMPLE_LIMIT);
+/**
+ * How many pixels to render the design with, and how big it should end up on
+ * the canvas - both in the design's own proportions.
+ *
+ * Sizing each axis on its own was the bug behind "the theme is cut off" and
+ * "it goes weird until I nudge it". The footprint on the canvas belongs to
+ * whatever design was there before, so a tall theme dropped into a wide slot
+ * got a wide, short browser source: the page then drew 300 x 406 into 680 x
+ * 406 and OBS squashed the lot back down to 680 x 192.
+ *
+ * So the design's ratio is what decides, on both counts. A footprint of a
+ * different shape is refitted - the design goes *inside* the space the old one
+ * had, never spilling past it - and one factor sizes both axes, so the page is
+ * only ever asked to render the shape it was drawn at.
+ */
+function renderSizeFor({ displayedWidth, displayedHeight, designWidth, designHeight }) {
+    const designW = designWidth > 0 ? designWidth : displayedWidth;
+    const designH = designHeight > 0 ? designHeight : displayedHeight;
 
-    return clampSize(capped, design);
+    let shownWidth = displayedWidth > 0 ? displayedWidth : designW;
+    let shownHeight = displayedHeight > 0 ? displayedHeight : designH;
+
+    const wantedRatio = designW / designH;
+    const shownRatio = shownWidth / shownHeight;
+    const refitted = Math.abs(shownRatio - wantedRatio) > wantedRatio * ASPECT_TOLERANCE;
+
+    if (refitted) {
+        const fit = Math.min(shownWidth / designW, shownHeight / designH);
+        shownWidth = designW * fit;
+        shownHeight = designH * fit;
+    }
+
+    // One factor, both axes. The page is zoomed by this same number, so the
+    // design always fills its browser source exactly - which is what stops
+    // anything being cropped no matter how small the widget is on screen.
+    let factor = shownWidth / designW;
+
+    // Never below the design's own size, or the layout is drawn squashed;
+    // never more than SUPERSAMPLE_LIMIT times what is shown, or OBS throws
+    // most of the pixels away and the text goes crunchy.
+    factor = factor >= 1 ? factor : Math.min(1, factor * SUPERSAMPLE_LIMIT);
+
+    // Held inside what OBS accepts for a browser source, still in one piece:
+    // clamping the two axes separately is what would bend the ratio again.
+    factor = Math.min(factor, MAX_SOURCE_SIZE / Math.max(designW, designH));
+    factor = Math.max(factor, MIN_SOURCE_SIZE / Math.min(designW, designH));
+
+    return {
+        width: Math.round(designW * factor),
+        height: Math.round(designH * factor),
+        displayedWidth: shownWidth,
+        displayedHeight: shownHeight,
+        factor,
+        refitted
+    };
 }
 
 /**
  * Gives the browser source the right number of pixels for the size the widget
  * is displayed at, and sets the scene item's scale to suit.
+ *
+ * `place` is the rectangle the widget belongs in - a saved `!tr` / `!bc`
+ * position - and when it is given, that rather than wherever the last theme
+ * left the item is what gets matched.
+ *
+ * Doing both here, rather than resizing and then repositioning, is not tidiness.
+ * OBS applies a browser source resize asynchronously: read `sourceWidth` back
+ * straight afterwards and it is still the old number, so a scale worked out
+ * from it is wrong by exactly the ratio of the two themes. That was the widget
+ * "slightly shifting" after a scene change. The scale here is worked out
+ * against the size the source is being set to, which needs no reading back.
  */
-async function matchWidgetToScreen({ designWidth, designHeight } = {}) {
+async function matchWidgetToScreen({ designWidth, designHeight, place = null } = {}) {
     const placement = await getWidgetPlacement();
     const config = getObsConfig();
 
@@ -376,23 +359,64 @@ async function matchWidgetToScreen({ designWidth, designHeight } = {}) {
         );
     }
 
-    const width = sourceSizeFor(placement.displayedWidth, designWidth || placement.displayedWidth);
-    const height = sourceSizeFor(placement.displayedHeight, designHeight || placement.displayedHeight);
+    // Where the widget should end up: the rectangle a saved position framed,
+    // or the one it already occupies.
+    const target = place || {
+        x: placement.transform.positionX,
+        y: placement.transform.positionY,
+        width: placement.displayedWidth,
+        height: placement.displayedHeight,
+        alignment: placement.transform.alignment,
+        kind: null
+    };
 
-    // Whatever is left over after the source has been sized is the item's job.
-    const wantedScaleX = placement.displayedWidth / width;
-    const wantedScaleY = placement.displayedHeight / height;
+    const fit = renderSizeFor({
+        displayedWidth: target.width,
+        displayedHeight: target.height,
+        designWidth,
+        designHeight
+    });
+
+    const { width, height } = fit;
+
+    // Whatever is left over after the source has been sized is the item's job -
+    // as one scale, worked out against the whole number of pixels the source is
+    // actually being given. Dividing each axis by its own ideal rounds
+    // differently on each, and sends OBS a scale that is very slightly uneven:
+    // enough, over a few theme switches, to be visible.
+    const scale = Math.min(fit.displayedWidth / width, fit.displayedHeight / height);
+    const displayedWidth = width * scale;
+    const displayedHeight = height * scale;
+
+    // A widget that has to change size keeps the edges its command is named
+    // for, rather than its top-left corner - otherwise it creeps away from the
+    // bottom of the screen every time the design changes shape.
+    const anchored = widgetPresets.anchorAt(target, displayedWidth, displayedHeight, target.kind);
+
+    const inPlace =
+        Math.abs(anchored.x - placement.transform.positionX) < 0.5 &&
+        Math.abs(anchored.y - placement.transform.positionY) < 0.5;
 
     const alreadyMatched =
         placement.sourceWidth === width &&
         placement.sourceHeight === height &&
+        !fit.refitted &&
+        inPlace &&
         (placement.bounded || (
-            Math.abs(placement.scaleX - wantedScaleX) < 0.002 &&
-            Math.abs(placement.scaleY - wantedScaleY) < 0.002
+            Math.abs(placement.scaleX - scale) < 0.002 &&
+            Math.abs(placement.scaleY - scale) < 0.002
         ));
 
     if (alreadyMatched) {
-        return { ...placement, width, height, unchanged: true, factorX: 1, factorY: 1 };
+        return {
+            ...placement,
+            width,
+            height,
+            positionX: placement.transform.positionX,
+            positionY: placement.transform.positionY,
+            unchanged: true,
+            refitted: false
+        };
     }
 
     await obs.call('SetInputSettings', {
@@ -400,23 +424,42 @@ async function matchWidgetToScreen({ designWidth, designHeight } = {}) {
         inputSettings: { width, height }
     });
 
-    // A bounded item is sized by its box, so OBS keeps its footprint for us.
-    if (!placement.bounded) {
-        await obs.call('SetSceneItemTransform', {
-            sceneName: placement.scene,
-            sceneItemId: placement.sceneItemId,
-            sceneItemTransform: { scaleX: wantedScaleX, scaleY: wantedScaleY }
-        });
+    // One write, and the numbers in it are worked out against the size the
+    // source is being set to just above - never against a size read back from
+    // OBS, which would still be the old one.
+    const sceneItemTransform = {
+        positionX: anchored.x,
+        positionY: anchored.y
+    };
+
+    if (placement.bounded) {
+        // A bounding box keeps the item's footprint for us, so normally there
+        // is nothing to do. The exception is a box of the wrong shape: OBS
+        // will happily stretch the new design to fill it, which is the squash
+        // this whole function exists to avoid.
+        sceneItemTransform.boundsWidth = displayedWidth;
+        sceneItemTransform.boundsHeight = displayedHeight;
+    } else {
+        sceneItemTransform.scaleX = scale;
+        sceneItemTransform.scaleY = scale;
     }
+
+    await obs.call('SetSceneItemTransform', {
+        sceneName: placement.scene,
+        sceneItemId: placement.sceneItemId,
+        sceneItemTransform
+    });
 
     return {
         ...placement,
         width,
         height,
+        positionX: anchored.x,
+        positionY: anchored.y,
+        displayedWidth,
+        displayedHeight,
         unchanged: false,
-        // Saved presets hold the scale that went with the old source size.
-        factorX: (placement.sourceWidth || width) / width,
-        factorY: (placement.sourceHeight || height) / height
+        refitted: fit.refitted
     };
 }
 
@@ -515,11 +558,12 @@ module.exports = {
     moveSource,
     getTransform,
     setTransform,
-    setWidgetResolution,
     getWidgetPlacement,
     matchWidgetToScreen,
-    sourceSizeFor,
+    renderSizeFor,
     onSceneItemTransformChanged,
+    onProgramSceneChanged,
+    currentProgramScene,
     onConnected,
     refreshWidgetSource,
     testConnection,

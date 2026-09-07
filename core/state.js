@@ -139,6 +139,10 @@ const state = {
     activeTrack: null,
     cooldowns: new Map(),
     widgetPresets: settings.widgetPresets ?? {},
+    // Where each theme's widget was last seen on the OBS canvas, however it
+    // got there - a !tr / !bc preset, or somebody dragging it. Presets say
+    // where a theme belongs; this remembers where it actually was.
+    widgetPositions: settings.widgetPositions ?? {},
 
     saveBlacklist() {
         saveJSON(BLACKLIST_FILE, {
@@ -164,7 +168,8 @@ const state = {
             broadcasterId: this.broadcasterId,
             previousSpotifyRewardId: this.previousSpotifyRewardId,
             activeWidgetPosition: this.activeWidgetPosition,
-            widgetPresets: this.widgetPresets
+            widgetPresets: this.widgetPresets,
+            widgetPositions: this.widgetPositions
         });
     },
 

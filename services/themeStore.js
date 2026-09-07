@@ -17,13 +17,24 @@ const path = require('path');
 
 const THEMES_DIR = process.env.QUEUEIFY_THEMES_DIR || path.join(__dirname, '..', 'widget', 'themes');
 
-const MODEL_VERSION = 1;
+// 2 added the two time labels either side of the progress bar, and an outline
+// on every piece of text. A model still saved as 1 predates both, so its time
+// labels start hidden - an old theme must not suddenly grow two numbers.
+const MODEL_VERSION = 2;
 const NAME_PATTERN = /^[a-z0-9][a-z0-9-]{0,30}$/;
 
-// The four modules the widget runtime knows how to fill. They are always
-// present in a generated theme - hiding one is a flag, not a deletion, so the
-// elements app.js queries never go missing.
-const MODULE_TYPES = ['art', 'title', 'artist', 'progress'];
+// The modules the widget runtime knows how to fill. They are always present in
+// a generated theme - hiding one is a flag, not a deletion, so the elements
+// app.js queries never go missing.
+const MODULE_TYPES = ['art', 'title', 'artist', 'progress', 'elapsed', 'duration'];
+
+// The two clocks either side of the bar: how far into the song you are, and
+// how long it runs for. app.js writes the text; they are otherwise ordinary
+// text modules, so they get the same fonts, colors and outline as the title.
+const TIME_TYPES = ['elapsed', 'duration'];
+
+// Everything that is text, and so takes the text settings below.
+const TEXT_TYPES = ['title', 'artist', ...TIME_TYPES];
 
 const CANVAS_LIMITS = { width: [120, 1920], height: [40, 1080] };
 
@@ -174,7 +185,7 @@ function googleFonts(model) {
     const used = new Map();
 
     for (const module of model.modules) {
-        if (module.type !== 'title' && module.type !== 'artist') continue;
+        if (!TEXT_TYPES.includes(module.type)) continue;
         if (module.hidden) continue;
 
         const font = FONTS[module.font];
@@ -211,19 +222,39 @@ function defaultModule(type) {
                 type, hidden: false, x: 200, y: 46, w: 456, h: 36,
                 font: 'system', fontSize: 26, fontWeight: 700, color: '#ffffff',
                 letterSpacing: 0, align: 'left', opacity: 1,
-                uppercase: false, italic: false, glow: 0, glowColor: 'var(--album-vibrant)'
+                uppercase: false, italic: false, glow: 0, glowColor: 'var(--album-vibrant)',
+                outline: 0, outlineColor: '#000000'
             };
         case 'artist':
             return {
                 type, hidden: false, x: 200, y: 88, w: 456, h: 26,
                 font: 'system', fontSize: 17, fontWeight: 500, color: 'var(--album-light)',
                 letterSpacing: 0, align: 'left', opacity: 0.85,
-                uppercase: false, italic: false, glow: 0, glowColor: 'var(--album-vibrant)'
+                uppercase: false, italic: false, glow: 0, glowColor: 'var(--album-vibrant)',
+                outline: 0, outlineColor: '#000000'
             };
         case 'progress':
             return {
-                type, hidden: false, x: 200, y: 132, w: 456, h: 6,
+                type, hidden: false, x: 246, y: 132, w: 364, h: 6,
                 radius: 999, trackColor: 'rgba(255,255,255,0.18)', fillColor: 'var(--album-vibrant)'
+            };
+        // The clocks sit level with the middle of the bar rather than under
+        // it: 0:04 [========] 3:07 is the shape people already know.
+        case 'elapsed':
+            return {
+                type, hidden: false, x: 200, y: 124, w: 40, h: 22,
+                font: 'system', fontSize: 12, fontWeight: 600, color: 'var(--album-light)',
+                letterSpacing: 0, align: 'right', opacity: 0.75,
+                uppercase: false, italic: false, glow: 0, glowColor: 'var(--album-vibrant)',
+                outline: 0, outlineColor: '#000000'
+            };
+        case 'duration':
+            return {
+                type, hidden: false, x: 616, y: 124, w: 40, h: 22,
+                font: 'system', fontSize: 12, fontWeight: 600, color: 'var(--album-light)',
+                letterSpacing: 0, align: 'left', opacity: 0.75,
+                uppercase: false, italic: false, glow: 0, glowColor: 'var(--album-vibrant)',
+                outline: 0, outlineColor: '#000000'
             };
         default:
             throw new ThemeError(`Unknown module type "${type}"`);
@@ -290,13 +321,23 @@ function normalizeModel(input, { label } = {}) {
         }
     }
 
+    // A theme saved before the time labels existed has no opinion about them,
+    // and quietly adding two numbers to somebody's finished design would be a
+    // change they never asked for. So they arrive hidden, ready to be turned
+    // on, and only for models that predate them.
+    const savedVersion = Number(raw.version);
+    const predatesTimes = Number.isFinite(savedVersion) && savedVersion < 2;
+
     const modules = MODULE_TYPES.map(type => {
         const fallback = defaultModule(type);
         const module = byType.get(type) || {};
+        const missing = !byType.has(type);
 
         const common = {
             type,
-            hidden: Boolean(module.hidden),
+            hidden: missing && predatesTimes && TIME_TYPES.includes(type)
+                ? true
+                : Boolean(module.hidden),
             x: Math.round(number(module.x, fallback.x, -canvas.width, canvas.width * 2)),
             y: Math.round(number(module.y, fallback.y, -canvas.height, canvas.height * 2)),
             w: Math.round(number(module.w, fallback.w, 4, canvas.width * 2)),
@@ -335,7 +376,12 @@ function normalizeModel(input, { label } = {}) {
             uppercase: Boolean(module.uppercase),
             italic: Boolean(module.italic),
             glow: Math.round(number(module.glow, fallback.glow, 0, 40)),
-            glowColor: color(module.glowColor, fallback.glowColor)
+            glowColor: color(module.glowColor, fallback.glowColor),
+            // An outline is what keeps white text readable over a bright
+            // game. Half of it is painted outside the glyph, so the width the
+            // user picks is doubled when the CSS is written.
+            outline: number(module.outline, fallback.outline, 0, 12),
+            outlineColor: color(module.outlineColor, fallback.outlineColor)
         };
     });
 
@@ -387,6 +433,16 @@ function textRules(selector, module) {
         ? `\n    filter: drop-shadow(0 0 ${module.glow}px ${module.glowColor}) drop-shadow(0 0 ${Math.round(module.glow / 2)}px ${module.glowColor});`
         : '';
 
+    // -webkit-text-stroke centres the stroke on the glyph edge, so half of it
+    // eats into the letter. `paint-order` puts the stroke down first and the
+    // fill over the top, which is what an outline is meant to look like -
+    // otherwise a 3px outline visibly thins the text it is protecting.
+    const outline = module.outline
+        ? `
+    paint-order: stroke fill;
+    -webkit-text-stroke: ${module.outline * 2}px ${module.outlineColor};`
+        : '';
+
     return `${selector} {
     position: absolute;
 ${box(module)}
@@ -407,7 +463,7 @@ ${selector} > * {
     letter-spacing: ${module.letterSpacing}px;
     text-transform: ${module.uppercase ? 'uppercase' : 'none'};
     opacity: ${module.opacity};
-    white-space: nowrap;
+    white-space: nowrap;${outline}
 }`;
 }
 
@@ -451,6 +507,8 @@ function generateCss(model) {
     const title = moduleOf(model, 'title');
     const artist = moduleOf(model, 'artist');
     const progress = moduleOf(model, 'progress');
+    const elapsed = moduleOf(model, 'elapsed');
+    const duration = moduleOf(model, 'duration');
 
     return `/* Generated by the Queueify theme editor - edit the theme there, not here.
    Hand edits are overwritten the next time the theme is saved. */
@@ -533,6 +591,24 @@ ${box(progress)}
     transition: width .25s linear;
 }
 
+/* How far into the song, and how long it runs for. app.js writes both. */
+
+${textRules('.elapsed-wrapper', elapsed)}
+
+.elapsed {
+    display: inline-block;
+    /* Digits change every second; a proportional font would jiggle the label
+       about as 1s and 4s swap places. */
+    font-variant-numeric: tabular-nums;
+}
+
+${textRules('.duration-wrapper', duration)}
+
+.duration {
+    display: inline-block;
+    font-variant-numeric: tabular-nums;
+}
+
 /* Long text scrolls instead of being cut off. app.js measures each line and
    sets --scroll-distance (title) and --artist-distance (artist) per song, and
    only marks the ones that actually overflow. */
@@ -607,6 +683,14 @@ function generateHtml(name, model) {
         <div class="progress-container">
             <div class="progress"></div>
         </div>
+
+        <div class="elapsed-wrapper">
+            <div class="elapsed"></div>
+        </div>
+
+        <div class="duration-wrapper">
+            <div class="duration"></div>
+        </div>
     </div>
 
     <script src="/app.js"></script>
@@ -648,7 +732,9 @@ const PRESETS = {
                 glow: 18, glowColor: 'var(--album-light)'
             });
             Object.assign(moduleOf(model, 'artist'), { x: 222, y: 98, w: 476, h: 28, fontSize: 18, opacity: 0.9 });
-            Object.assign(moduleOf(model, 'progress'), { x: 222, y: 150, w: 476, h: 8, fillColor: 'var(--album-light)' });
+            Object.assign(moduleOf(model, 'progress'), { x: 272, y: 150, w: 376, h: 8, fillColor: 'var(--album-light)' });
+            Object.assign(moduleOf(model, 'elapsed'), { x: 222, y: 143, w: 42, h: 22, fontSize: 13 });
+            Object.assign(moduleOf(model, 'duration'), { x: 656, y: 143, w: 42, h: 22, fontSize: 13 });
 
             return model;
         }
@@ -670,7 +756,9 @@ const PRESETS = {
                 x: 86, y: 14, w: 460, h: 26, fontSize: 18, fontWeight: 700, letterSpacing: 0.5
             });
             Object.assign(moduleOf(model, 'artist'), { x: 86, y: 40, w: 460, h: 20, fontSize: 13, opacity: 0.75 });
-            Object.assign(moduleOf(model, 'progress'), { x: 86, y: 64, w: 460, h: 4 });
+            Object.assign(moduleOf(model, 'progress'), { x: 122, y: 64, w: 388, h: 4 });
+            Object.assign(moduleOf(model, 'elapsed'), { x: 86, y: 57, w: 32, h: 18, fontSize: 11 });
+            Object.assign(moduleOf(model, 'duration'), { x: 514, y: 57, w: 32, h: 18, fontSize: 11 });
 
             return model;
         }
@@ -691,7 +779,11 @@ const PRESETS = {
             Object.assign(moduleOf(model, 'artist'), {
                 x: 20, y: 322, w: 260, h: 24, fontSize: 15, align: 'center', opacity: 0.8
             });
-            Object.assign(moduleOf(model, 'progress'), { x: 40, y: 360, w: 220, h: 6 });
+            Object.assign(moduleOf(model, 'progress'), { x: 40, y: 358, w: 220, h: 6 });
+            // 300px across is too narrow to flank a bar and still read, so
+            // these tuck under its ends instead.
+            Object.assign(moduleOf(model, 'elapsed'), { x: 40, y: 368, w: 46, h: 18, fontSize: 12, align: 'left' });
+            Object.assign(moduleOf(model, 'duration'), { x: 214, y: 368, w: 46, h: 18, fontSize: 12, align: 'right' });
 
             return model;
         }
@@ -866,6 +958,8 @@ module.exports = {
     PRESETS,
     listPresets,
     MODULE_TYPES,
+    TIME_TYPES,
+    TEXT_TYPES,
     MODEL_VERSION,
     FONTS,
     FONT_CATEGORIES,

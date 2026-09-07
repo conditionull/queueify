@@ -15,6 +15,9 @@ queue-blacklist.json
 
 config/settings.js
 
+# Which theme belongs to which OBS scene - one person's scene names.
+config/scene-themes.json
+
 # Themes made in the editor belong to whoever made them, not to the project.
 # The three hand-written ones ship with it.
 widget/themes/*

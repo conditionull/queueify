@@ -1,4 +1,6 @@
 const obs = require("../services/obs");
+const widgetPresets = require("../services/widgetPresets");
+const widgetLayout = require("../services/widgetLayout");
 const { reportObsFailure } = require("../services/obsFeedback");
 const settings = require("../config/userSettings");
 const state = require("../core/state");
@@ -17,7 +19,7 @@ async function getCurrentTheme() {
 }
 
 function getThemePresetName(theme) {
-    return theme ? `bottomcenter:${theme}` : "bottomcenter";
+    return widgetPresets.nameFor("bottomcenter", theme);
 }
 
 module.exports = {
@@ -60,22 +62,31 @@ module.exports = {
         }
 
         const theme = await getCurrentTheme();
-        const presetName = getThemePresetName(theme);
-        const preset = state.widgetPresets[presetName] || state.widgetPresets.bottomcenter;
 
-        if (!preset) {
+        // Recorded before placing, not after: wherever the widget lands is
+        // remembered against whichever mode is in force, and this command is
+        // the moment that mode becomes "bottomcenter".
+        state.activeWidgetPosition = "bottomcenter";
+
+        // Not setTransform on the saved preset: its scale was measured against
+        // a browser source size that has since been recomputed for this theme.
+        // Only the rectangle it framed still means anything, and the scale to
+        // land in it is worked out along with the source size, in one pass.
+        const placed = await widgetLayout.restorePosition(theme, { kind: "bottomcenter" });
+
+        if (placed.reason === 'no_preset') {
             sayMessage(client, channel, 'widget.bottomMissing', { theme });
             return;
         }
 
-        try {
-            await obs.setTransform(preset);
-        } catch (err) {
+        if (!placed.applied) {
+            const err = placed.error
+                || Object.assign(new Error(placed.message || 'OBS could not be updated.'), { code: placed.reason });
+
             if (reportObsFailure(client, channel, username, err)) return;
             throw err;
         }
 
-        state.activeWidgetPosition = "bottomcenter";
         state.saveSettings();
     }
 };

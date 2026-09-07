@@ -1,14 +1,5 @@
-const obs = require("../services/obs");
-const state = require("../core/state");
+const widgetLayout = require("../services/widgetLayout");
 const { sayMessage } = require('../services/messages');
-
-function getPresetName(theme, currentPosition) {
-    if (currentPosition === "bottomcenter") {
-        return `bottomcenter:${theme}`;
-    }
-
-    return `topright:${theme}`;
-}
 
 module.exports = {
     name: "theme",
@@ -58,6 +49,11 @@ module.exports = {
             return;
         }
 
+        // Where the outgoing theme sat is only knowable before the switch, and
+        // it is exactly what coming back to it needs. This command talks to the
+        // widget server directly, so it has to do this for itself.
+        await widgetLayout.rememberPosition(config.theme).catch(() => {});
+
         const themeRes = await fetch(
             "http://localhost:3001/api/widget/theme",
             {
@@ -80,16 +76,11 @@ module.exports = {
         }
 
         try {
-            const currentTransform = await obs.getTransform();
-            const currentPosition = state.activeWidgetPosition || "topright";
-            const presetName = getPresetName(theme, currentPosition);
-            const preset = state.widgetPresets[presetName] || state.widgetPresets[currentPosition];
-
-            if (preset) {
-                await obs.setTransform(preset);
-            } else {
-                await obs.setTransform(currentTransform);
-            }
+            // Sizing the source and framing the widget are one pass: the scale
+            // that lands it in its saved rectangle depends on the size the
+            // source is about to become, which OBS cannot be asked for yet.
+            const placed = await widgetLayout.restorePosition(theme);
+            if (placed.reason === 'no_preset') await widgetLayout.reconcile();
         } catch (err) {
             // The theme itself changed; only the OBS repositioning failed, so
             // this stays out of chat - but the reason still has to be legible.

@@ -7,6 +7,81 @@ the dashboard shows this same list under **What's new**, at
 Newest version at the top. Nothing is ever removed: a new release goes above
 the others and pushes them down.
 
+## 41.0.0
+
+### New
+
+- **The song's time on the progress bar.** How far into the track you are on one side, how long it
+  runs for on the other - `0:04 ———— 3:07`. They are ordinary parts of a theme, so they can be
+  dragged, restyled or hidden like anything else. Themes made before this arrive with them off, so
+  nothing you have already designed changes.
+- **An outline on any text.** A hard edge around every letter, in any colour, on the title, the
+  artist and both times. It is what keeps white text readable over gameplay that keeps changing
+  colour, where a glow alone is not enough.
+- **A theme per OBS scene.** Give a scene a theme in **Widget themes** on the dashboard and
+  Queueify switches to it the moment OBS cuts to that scene. Scenes you leave alone change nothing.
+- **Revert to last save.** One button in the theme editor to throw away everything since the last
+  save, instead of counting undos. It goes on the undo stack, so pressing it by mistake is one
+  <kbd>Ctrl</kbd>+<kbd>Z</kbd> away from being put back.
+- **A warning when `!tr` / `!bc` no longer fit.** Changing a design's *shape* means its saved
+  widget position can no longer frame it exactly. The editor says which one to set again, and
+  names only the positions actually saved for that theme.
+
+### Fixed
+
+- **Switching theme no longer flashes a half-drawn widget.** Changing scene reloads the page, and
+  the first frame of that reload was the design at 1x inside a browser source sized for 2x - the
+  widget in one corner with empty bars beside it - followed by an empty panel until Spotify
+  answered. The page now arrives already at the right zoom and stays hidden until there is a song
+  to draw, so it fades in correct instead of settling into place. A zoom change no longer forces a
+  reload at all, and the OBS source is only reloaded by hand when no widget is listening to reload
+  itself: three reloads per scene switch became one.
+- **The theme editor shows the Canvas video.** The preview drew the album cover whatever the theme
+  said, so "Canvas video when available" - the one setting whose entire job is what fills that box
+  - could not be seen at all. It now plays the clip for the track you are listening to, and swaps
+  back the moment you choose "Album cover only".
+
+- **Themes of a different shape are no longer squashed or cut off in OBS.** A tall theme dropped
+  into the space a wide one had was given a wide, short browser source and crushed to fit it. The
+  design's own proportions now decide both the size the page renders at and the space it takes on
+  the canvas, so a theme is fitted into the room it had rather than stretched into it.
+- **Saving a theme reaches OBS straight away.** Editing the theme already on screen used to leave
+  the widget showing the old design until the source was nudged in OBS. The widget now reloads on
+  every save, not only when the theme's name changes.
+- **The editor's size warning tells the truth.** It compared the design against a *different*
+  theme's size, so it warned about designs that were fine, stayed quiet about ones that were not,
+  and never changed its mind after switching theme. It now asks OBS what the browser source
+  actually is, and says nothing when there is nothing wrong.
+- **"Make the OBS window this size" sticks.** It sized the source for the theme on stream rather
+  than the one being edited, which undid the change the instant it was made.
+- **Saved `!tr` / `!bc` positions survive a theme switch.** A position was stored as a *scale*,
+  which only means anything against the browser source size it was measured at - and Queueify
+  resizes that source every time the theme changes. Switching to another scene's theme and back
+  therefore left the widget visibly out of place, needing the command typed again. A position now
+  stores the rectangle it framed on the OBS canvas, and the scale to land in it is worked out
+  fresh each time, so it comes back exactly where it was.
+- **Saved positions are no longer quietly rewritten.** Every resize used to multiply every saved
+  scale by the factor it had just changed by. Across two themes' worth of switches that compounded
+  unevenly: real saved positions ended up with their horizontal and vertical scale 30% apart,
+  stretching the widget. Nothing touches a saved position now, and the damaged ones repair
+  themselves, because the scale in them is no longer read.
+- **A widget you positioned by hand stays where you put it.** With no `!tr` / `!bc` position
+  saved, a theme switch fitted the design into whatever rectangle the other theme had left - and
+  fitting only ever shrinks, so the widget got a little smaller on every single switch, all
+  stream. Queueify now remembers where each theme's widget actually was, however it got there, and
+  puts it back. `!tr` and `!bc` still mean their own saved positions when you type them.
+- **Switching theme puts the widget back where that theme was framed.** OBS holds a scene item by
+  its top-left corner, so a widget that changes size creeps away from the bottom or the right.
+  `!theme`, a scene switch and **Use on stream** all restore the theme's own saved position - and
+  do it in the same pass that sizes the browser source, because OBS applies a source resize
+  asynchronously: sizing first and repositioning afterwards read the old pixel count back and
+  landed the widget slightly off, every time.
+- **The scale sent to OBS is one number, not two.** Dividing each axis by its own ideal size
+  rounds differently on each, which sent a very slightly uneven scale - enough to show after a few
+  theme switches.
+- **The licence is stated once.** `package.json` said ISC while the README and `LICENSE` said MIT.
+  It is MIT.
+
 ## 40.0.0
 
 ### New

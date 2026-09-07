@@ -11,6 +11,10 @@ const modules = [
     path.join(__dirname, '..', 'setup', 'envFile.js'),
     path.join(__dirname, '..', 'config', 'liveEnv.js'),
     path.join(__dirname, '..', 'services', 'themeStore.js'),
+    // Both of these read the widget config file path at load time, and the
+    // theme routes now go through them to put a theme on screen.
+    path.join(__dirname, '..', 'services', 'widgetLayout.js'),
+    path.join(__dirname, '..', 'services', 'sceneThemes.js'),
     path.join(__dirname, '..', 'setup', 'server.js')
 ];
 
@@ -38,7 +42,7 @@ async function withServer(run) {
 
     for (const modulePath of modules) delete require.cache[require.resolve(modulePath)];
 
-    const { createApp } = require(modules[3]);
+    const { createApp } = require(modules[modules.length - 1]);
     const server = await new Promise(resolve => {
         const s = createApp().listen(0, '127.0.0.1', () => resolve(s));
     });
