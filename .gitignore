@@ -28,7 +28,12 @@ widget/themes/*
 .DS_Store
 .parcel-cache
 .vscode
-.github/
+
+# Workflows have to reach GitHub to run at all. Everything else under
+# .github stays local - copilot-instructions.md is not published.
+.github/*
+!.github/workflows/
+!.github/claude-review.md
 
 # Local packaging tool and the tester instructions it bundles
 zip.js

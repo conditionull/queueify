@@ -1,0 +1,66 @@
+name: CI
+
+# Runs on every pull request, including ones from forks. Deliberately given
+# nothing: a fork PR gets a read-only token and no secrets, so a test file that
+# arrives with a PR cannot reach anything of yours. Keep it that way - anything
+# that needs a secret belongs in its own workflow that never runs PR code.
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+# A new push to the same PR makes the previous run pointless.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Node ${{ matrix.node }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    strategy:
+      fail-fast: false
+      matrix:
+        # package.json asks for >=20. 22 is the current LTS.
+        node: ['20', '22']
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+
+      # The suite needs the runtime dependencies and node:test, nothing else.
+      # Skipping devDependencies avoids Playwright downloading a browser on
+      # every run - it is only there for the screenshot script.
+      - run: npm ci --omit=dev
+
+      - run: npm test
+
+  # The one check branch protection requires.
+  #
+  # Requiring "Node 20" and "Node 22" directly would mean editing the ruleset
+  # every time the matrix changes - and a required check that stops reporting
+  # blocks every merge until somebody notices. This job's name never changes,
+  # so the matrix underneath it can.
+  tests:
+    name: Tests
+    runs-on: ubuntu-latest
+    needs: test
+    # Has to run even when the matrix failed, or the check is skipped rather
+    # than red - and a skipped check is not a failed one.
+    if: always()
+
+    steps:
+      - name: Check every Node version passed
+        if: needs.test.result != 'success'
+        run: |
+          echo "Test matrix result: ${{ needs.test.result }}"
+          exit 1
