@@ -43,12 +43,49 @@ Ordered. Do not spend a review on the bottom of the list.
    and chained; new persisted fields have to be loaded *and* saved, and settle
    before a test's sandbox is removed.
 5. **Themes are user data.** A change to the theme model in
-   `services/themeStore.js` must not alter a theme somebody already saved.
-   `MODEL_VERSION` plus a fallback in `normalizeModel` is how that is handled -
-   check both are present when a field is added.
+   `services/themeStore.js` must not alter a theme somebody already saved. See
+   the must-check below - this one has been missed before.
 6. **Tests.** New behaviour needs a test; changed behaviour needs its test
    changed rather than deleted. `npm test` is the check that runs on the PR, so
    do not re-run it - read whether the tests describe the new behaviour.
+
+## Must-check: a new field in the theme model
+
+Run this one mechanically, every time. It is the finding this guide has already
+failed to produce once.
+
+**Trigger** — the diff adds a key to anything `normalizeModel` returns in
+`services/themeStore.js`: under `properties`, under `canvas`, or on a module.
+
+**Then both of these must also be in the diff:**
+
+- `MODEL_VERSION` bumped
+- a branch in `normalizeModel` keyed on the *saved* version, so a theme written
+  before the field keeps behaving as it did
+
+**If either is missing, that is a finding, and a serious one.** Every theme the
+user has already saved changes behaviour the next time it loads, without being
+asked. Themes are the one thing in this repository people spend real time on.
+
+Say it even when:
+
+- the field looks harmless
+- **nothing reads the field yet** - it still ships, and the version can only be
+  bumped once. "This field is unused" is a different, much smaller observation;
+  do not report it *instead* of this one
+- the default looks like a no-op. `foo: propsIn.foo !== false` defaults to
+  `true`, so every existing theme gains the behaviour
+
+Worked example of the bug, taken from a real pull request:
+
+```js
+// services/themeStore.js, inside normalizeModel
+hideWhenPaused: propsIn.hideWhenPaused !== false,
+```
+
+`MODEL_VERSION` unchanged, no version branch. Every saved theme silently starts
+hiding itself when playback pauses. The correct shape is how the time labels
+were added - see `TIME_TYPES` and `predatesTimes` in the same function.
 
 ## What not to comment on
 
