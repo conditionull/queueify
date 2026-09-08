@@ -12,11 +12,16 @@ on:
 
 jobs:
   claude-review:
-    # Optional: Filter by PR author
-    # if: |
-    #   github.event.pull_request.user.login == 'external-contributor' ||
-    #   github.event.pull_request.user.login == 'new-developer' ||
-    #   github.event.pull_request.author_association == 'FIRST_TIME_CONTRIBUTOR'
+    # Branches pushed to this repository only, never a fork.
+    #
+    # GitHub does not hand secrets to a workflow triggered by a pull request
+    # from a fork, so this could not authenticate there anyway - it would just
+    # fail and leave a confusing red cross on somebody's first contribution.
+    # Saying so here skips it cleanly, and keeps the token to this repository.
+    #
+    # Tests and Secret scan still run on fork pull requests: they need no
+    # secrets, which is exactly why they were built that way.
+    if: github.event.pull_request.head.repo.full_name == github.repository
 
     runs-on: ubuntu-latest
     permissions:
