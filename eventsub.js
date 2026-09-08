@@ -24,9 +24,19 @@ async function twitchGet(endpoint) {
 }
 
 async function getBroadcasterId() {
-    const data = await twitchGet(`users?login=${USERNAME}`);
-    if (!data.data?.length) throw new Error(`Broadcaster username "${USERNAME}" not found`);
-    return data.data[0].id;
+    const data = await twitchGet(`users?login=${encodeURIComponent(USERNAME)}`);
+
+    if (!data.data?.length) {
+        throw new Error(`Broadcaster username "${USERNAME}" not found`);
+    }
+
+    const broadcaster = data.data[0];
+
+    if (!['affiliate', 'partner'].includes(broadcaster.broadcaster_type)) {
+        return null;
+    }
+
+    return broadcaster.id;
 }
 
 /**
@@ -118,6 +128,15 @@ module.exports = function startEventSub(client) {
 
     async function setupSession(sessionId, socketGeneration) {
         const broadcasterId = await getBroadcasterId();
+
+        if (!broadcasterId) {
+            console.log(
+                'Channel Points unavailable - song requests from chat only.'
+            );
+            stopped = true;
+            return;
+        }
+
         if (socketGeneration !== generation) return;
 
         let changed = false;
