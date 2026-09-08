@@ -56,6 +56,15 @@ somebody already made that mistake.
 
 Bullet points do not end in a full stop.
 
+## Going deeper
+
+The rules above are the short version. `agents/skills/` has the detail, worth
+reading before the kind of work it covers:
+
+- `sandboxed-tests.md` — the env-var overrides and the order they have to be set in
+- `visual-verification.md` — how to actually look at a widget change, including the first painted frame
+- `persisted-state.md` — theme versioning, and why a stored value must not be a derived one
+
 ## Reviewing a pull request
 
 See `.github/claude-review.md` for what to prioritise and how to write the
