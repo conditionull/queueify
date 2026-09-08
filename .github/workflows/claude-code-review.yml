@@ -34,20 +34,47 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 1
+          # Full history, so the review can diff against the base branch. At
+          # depth 1 there is nothing to compare against.
+          fetch-depth: 0
 
       - name: Run Claude Code Review
         id: claude-review
         uses: anthropics/claude-code-action@v1
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          plugin_marketplaces: 'https://github.com/anthropics/claude-code.git'
-          plugins: 'code-review@claude-code-plugins'
-          prompt: '/code-review:code-review --comment ${{ github.repository }}/pull/${{ github.event.pull_request.number }}'
+
+          # A direct instruction rather than the code-review plugin.
+          #
+          # The plugin ran fine - twenty turns, no permission denials - and
+          # posted nothing twice, including on a pull request carrying three
+          # deliberate bugs. Its review level is an argument nobody passed, and
+          # with none given it reuses the last level typed, which in a fresh
+          # container does not exist. Rather than guess at its argument order,
+          # this says plainly what to do and points at the repository's own
+          # review guide.
+          prompt: |
+            Review pull request #${{ github.event.pull_request.number }} in this repository.
+
+            Read `.github/claude-review.md` first and follow it. It says what
+            matters in this codebase, what to ignore, and how to write the reply.
+            `CLAUDE.md` has the rules those priorities come from.
+
+            The changes under review are the diff between the base branch and
+            this one:
+
+                git diff origin/${{ github.event.pull_request.base.ref }}...HEAD
+
+            Post each finding as an inline comment on the line it applies to,
+            with `mcp__github_inline_comment__create_inline_comment`. Name the
+            input or state that makes it go wrong - a finding you cannot
+            demonstrate is not one. Correctness first; this repository drives a
+            live overlay on somebody's stream.
+
           # Sonnet, not the default Opus. A PR review is not worth Opus, and
           # this draws on the same plan limits as an interactive session.
           # "Extra" in the model picker is the xhigh effort level.
-          claude_args: '--model claude-sonnet-5 --effort xhigh --allowedTools "mcp__github_inline_comment__create_inline_comment"'
+          claude_args: '--model claude-sonnet-5 --effort xhigh --allowedTools "mcp__github_inline_comment__create_inline_comment,Bash(git diff:*),Bash(git log:*),Bash(git show:*)"'
           # See https://github.com/anthropics/claude-code-action/blob/main/docs/usage.md
           # or https://code.claude.com/docs/en/cli-reference for available options
 
