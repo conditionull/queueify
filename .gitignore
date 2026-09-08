@@ -20,6 +20,7 @@ config/scene-themes.json
 
 # Themes made in the editor belong to whoever made them, not to the project.
 # The three hand-written ones ship with it.
+widget/config.json
 widget/themes/*
 !widget/themes/default/
 !widget/themes/minimal/

@@ -133,6 +133,7 @@ module.exports = function startEventSub(client) {
             console.log(
                 'Channel Points unavailable - song requests from chat only.'
             );
+            stopped = true;
             return;
         }
 
