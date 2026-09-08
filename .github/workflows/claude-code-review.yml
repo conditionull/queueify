@@ -12,11 +12,16 @@ on:
 
 jobs:
   claude-review:
-    # Optional: Filter by PR author
-    # if: |
-    #   github.event.pull_request.user.login == 'external-contributor' ||
-    #   github.event.pull_request.user.login == 'new-developer' ||
-    #   github.event.pull_request.author_association == 'FIRST_TIME_CONTRIBUTOR'
+    # Branches pushed to this repository only, never a fork.
+    #
+    # GitHub does not hand secrets to a workflow triggered by a pull request
+    # from a fork, so this could not authenticate there anyway - it would just
+    # fail and leave a confusing red cross on somebody's first contribution.
+    # Saying so here skips it cleanly, and keeps the token to this repository.
+    #
+    # Tests and Secret scan still run on fork pull requests: they need no
+    # secrets, which is exactly why they were built that way.
+    if: github.event.pull_request.head.repo.full_name == github.repository
 
     runs-on: ubuntu-latest
     permissions:
@@ -39,7 +44,10 @@ jobs:
           plugin_marketplaces: 'https://github.com/anthropics/claude-code.git'
           plugins: 'code-review@claude-code-plugins'
           prompt: '/code-review:code-review --comment ${{ github.repository }}/pull/${{ github.event.pull_request.number }}'
-          claude_args: '--allowedTools "mcp__github_inline_comment__create_inline_comment"'
+          # Sonnet, not the default Opus. A PR review is not worth Opus, and
+          # this draws on the same plan limits as an interactive session.
+          # "Extra" in the model picker is the xhigh effort level.
+          claude_args: '--model claude-sonnet-5 --effort xhigh --allowedTools "mcp__github_inline_comment__create_inline_comment"'
           # See https://github.com/anthropics/claude-code-action/blob/main/docs/usage.md
           # or https://code.claude.com/docs/en/cli-reference for available options
 

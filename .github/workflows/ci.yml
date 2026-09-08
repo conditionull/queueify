@@ -44,23 +44,41 @@ jobs:
 
       - run: npm test
 
+  # Refuses a credential that has reached the repository - a token pasted into
+  # a source file, or an ignored file that has become tracked. Needs no
+  # dependencies and no secrets of its own, so it is safe on a fork PR.
+  secrets:
+    name: Secret scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - run: node scripts/check-secrets.js
+
   # The one check branch protection requires.
   #
   # Requiring "Node 20" and "Node 22" directly would mean editing the ruleset
   # every time the matrix changes - and a required check that stops reporting
   # blocks every merge until somebody notices. This job's name never changes,
-  # so the matrix underneath it can.
+  # so the jobs underneath it can.
   tests:
     name: Tests
     runs-on: ubuntu-latest
-    needs: test
-    # Has to run even when the matrix failed, or the check is skipped rather
+    needs: [test, secrets]
+    # Has to run even when something failed, or the check is skipped rather
     # than red - and a skipped check is not a failed one.
     if: always()
 
     steps:
-      - name: Check every Node version passed
-        if: needs.test.result != 'success'
+      - name: Check everything passed
+        if: needs.test.result != 'success' || needs.secrets.result != 'success'
         run: |
-          echo "Test matrix result: ${{ needs.test.result }}"
+          echo "tests:   ${{ needs.test.result }}"
+          echo "secrets: ${{ needs.secrets.result }}"
           exit 1

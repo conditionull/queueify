@@ -12,6 +12,7 @@
     "setup": "node setup.js",
     "twitch-login": "node twitch-login.js",
     "test": "node --test",
+    "check:secrets": "node scripts/check-secrets.js",
     "screenshot": "node scripts/export-widget-screenshot.js",
     "setup:sandbox": "node setup-sandbox.js",
     "zip": "node zip.js"
