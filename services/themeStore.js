@@ -391,6 +391,9 @@ function normalizeModel(input, { label } = {}) {
     const properties = {
         media: { mode: pick(propsIn.media?.mode, ['canvas', 'cover'], 'canvas') },
         showProgress: propsIn.showProgress !== false,
+        // Fade the widget out while playback is paused rather than leaving a
+        // frozen progress bar on screen.
+        hideWhenPaused: propsIn.hideWhenPaused !== false,
         updateInterval: Math.round(number(propsIn.updateInterval, 5000, 1000, 60000)),
         // -1 means "never hide", which is why the floor is not 0.
         hideAfter: Math.round(number(propsIn.hideAfter, 5, -1, 3600)),

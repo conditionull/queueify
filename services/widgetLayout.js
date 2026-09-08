@@ -544,6 +544,45 @@ function refreshOnConnect() {
     });
 }
 
+/**
+ * Pulls the widget back onto the canvas if it has been dragged off the edge.
+ *
+ * Easy to do by accident while framing a shot, and the widget then renders
+ * partly or entirely outside what viewers see.
+ */
+async function nudgeOnScreen({ canvasWidth = 1920, canvasHeight = 1080 } = {}) {
+    if (!getObsConfig().configured) {
+        return { applied: false, reason: 'obs_not_configured' };
+    }
+
+    // Make sure the source is the right size for the live theme first, so the
+    // numbers below describe the widget as it will actually be shown.
+    await reconcile();
+
+    const placement = await obs.getWidgetPlacement();
+    const design = requiredSize();
+
+    const scaleX = placement.displayedWidth / placement.sourceWidth;
+    const scaleY = placement.displayedHeight / placement.sourceHeight;
+
+    const x = Math.min(Math.max(placement.transform.positionX, 0), canvasWidth - placement.displayedWidth);
+    const y = Math.min(Math.max(placement.transform.positionY, 0), canvasHeight - placement.displayedHeight);
+
+    if (x === placement.transform.positionX && y === placement.transform.positionY) {
+        return { applied: true, moved: false };
+    }
+
+    await obs.setTransform({
+        ...placement.transform,
+        positionX: x,
+        positionY: y,
+        scaleX,
+        scaleY
+    });
+
+    return { applied: true, moved: true, x, y, designWidth: design.designWidth };
+}
+
 /** Reloads the widget in OBS without changing anything else. */
 async function refresh() {
     if (!getObsConfig().configured) {
@@ -575,6 +614,7 @@ module.exports = {
     presetsFor,
     describeFit,
     reconcile,
+    nudgeOnScreen,
     refresh,
     watchObsResizes,
     refreshOnConnect
