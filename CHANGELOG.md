@@ -7,6 +7,17 @@ the dashboard shows this same list under **What's new**, at
 Newest version at the top. Nothing is ever removed: a new release goes above
 the others and pushes them down.
 
+## 41.0.2
+
+### Fixed
+
+- **Spamming `!q` no longer queues the same song several times.** Requests sent inside the same
+  second all passed the cooldown check, because the cooldown was only written a second after the
+  song was added. One request per person is in flight at a time now, and the cooldown is recorded
+  the moment Spotify accepts the track. Redeems blocked this way are still refunded. A chat request
+  and a redeem also share one cooldown, instead of the same person being tracked under two names.
+  Found and fixed by [meislucas](https://github.com/meislucas).
+
 ## 41.0.0
 
 ### New
