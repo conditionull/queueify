@@ -3,6 +3,8 @@ const syncQueue = require("./syncQueue.js")
 const { sayMessage } = require('./messages');
 const refundRedeem = require('./refundRedeem');
 
+const activeQueueRequests = new Set();
+
 async function rejectRequest({ client, channel, key, values = {}, isRedeem, redemptionId, broadcasterId, state }) {
     if (isRedeem && redemptionId) {
         const refunded = await refundRedeem(redemptionId, broadcasterId, state.spotifyRewardId);
@@ -16,7 +18,7 @@ async function rejectRequest({ client, channel, key, values = {}, isRedeem, rede
     sayMessage(client, channel, key, values);
 }
 
-async function queueSong({
+async function queueSongInternal({
     client,
     channel,
     username,
@@ -47,8 +49,9 @@ async function queueSong({
         return;
     }
 
-    const lastUsed = state.cooldowns.get(username);
+    const cooldownKey = String(username).trim().toLowerCase();
     const cooldownMs = state.cooldownSeconds * 1000;
+    const lastUsed = state.cooldowns.get(cooldownKey);
 
     if (lastUsed) {
         const remaining = cooldownMs - (Date.now() - lastUsed);
@@ -155,9 +158,12 @@ async function queueSong({
     const result = await addToQueue(url, state.maxSongLength, state.allowExplicit, track);
     const status = typeof result === "string" ? result : result.status;
 
+    if (status === "ok") {
+        state.cooldowns.set(cooldownKey, Date.now());
+    }
+
     setTimeout(async () => {
         if (status === "ok") {
-            state.cooldowns.set(username, Date.now());
             state.addPendingTrack(result.track, username);
             state.rememberRecentRequest(username, result.track.id);
             sayMessage(client, channel, 'queue.added', {
@@ -192,6 +198,46 @@ async function queueSong({
             });
         }
     }, 1000);
+}
+
+//function call to avoid a race condition and allow multiple requests at once
+async function queueSong(args) {
+    const {
+        client,
+        channel,
+        username,
+        state,
+        isRedeem = false,
+        redemptionId = null,
+        broadcasterId = state.broadcasterId
+    } = args;
+
+    const cooldownKey = String(username).trim().toLowerCase();
+
+    if (activeQueueRequests.has(cooldownKey)) {
+        if (isRedeem && redemptionId) {
+            await rejectRequest({
+                client,
+                channel,
+                key: "queue.requestPending",
+                values: { username },
+                isRedeem,
+                redemptionId,
+                broadcasterId,
+                state
+            });
+        }
+
+        return;
+    }
+
+    activeQueueRequests.add(cooldownKey);
+
+    try {
+        return await queueSongInternal(args);
+    } finally {
+        activeQueueRequests.delete(cooldownKey);
+    }
 }
 
 module.exports = queueSong;
