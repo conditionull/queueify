@@ -16,7 +16,11 @@ the others and pushes them down.
   song was added. One request per person is in flight at a time now, and the cooldown is recorded
   the moment Spotify accepts the track. Redeems blocked this way are still refunded. A chat request
   and a redeem also share one cooldown, instead of the same person being tracked under two names.
-  Found and fixed by [meislucas](https://github.com/meislucas).
+  By [meislucas](https://github.com/meislucas).
+- **A channel without channel points no longer reconnects in a loop.** Startup asked Twitch for the
+  reward list whatever the channel was, and Twitch refuses that for anyone who is not an Affiliate
+  or Partner - so setup failed, reconnected and failed again. It checks the channel type first now
+  and says once that requests are chat-only. By [meislucas](https://github.com/meislucas).
 
 ## 41.0.0
 
