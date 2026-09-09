@@ -7,6 +7,21 @@ the dashboard shows this same list under **What's new**, at
 Newest version at the top. Nothing is ever removed: a new release goes above
 the others and pushes them down.
 
+## 41.0.2
+
+### Fixed
+
+- **Spamming `!q` no longer queues the same song several times.** Requests sent inside the same
+  second all passed the cooldown check, because the cooldown was only written a second after the
+  song was added. One request per person is in flight at a time now, and the cooldown is recorded
+  the moment Spotify accepts the track. Redeems blocked this way are still refunded. A chat request
+  and a redeem also share one cooldown, instead of the same person being tracked under two names.
+  By [meislucas](https://github.com/meislucas)
+- **A channel without channel points no longer reconnects in a loop.** Startup asked Twitch for the
+  reward list whatever the channel was, and Twitch refuses that for anyone who is not an Affiliate
+  or Partner - so setup failed, reconnected and failed again. It checks the channel type first now
+  and says once that requests are chat-only. By [meislucas](https://github.com/meislucas)
+
 ## 41.0.0
 
 ### New

@@ -11,6 +11,21 @@ const REMOTE_COMMIT_URL = 'https://api.github.com/repos/conditionull/queueify/co
 const CHANGELOG_URL = 'https://github.com/conditionull/queueify/blob/main/CHANGELOG.md';
 const UPDATE_BOX_LINE = '────────────────────────────────────────────────────────────';
 
+/**
+ * The subject line of a commit, cut to fit the box.
+ *
+ * GitHub hands back the whole message, body and all - a merge commit or a
+ * squash carries every bullet of the branch it came from. Pushed into the
+ * notice unchanged that is a wall of text spilling out of a 60-column box, so
+ * take the first line only and trim it to what fits beside the label.
+ */
+function summarise(commitMessage) {
+    const subject = String(commitMessage).split(/\r?\n/)[0].trim();
+    const room = UPDATE_BOX_LINE.length - '  Latest change: '.length;
+
+    return subject.length > room ? `${subject.slice(0, room - 1).trimEnd()}…` : subject;
+}
+
 function printUpdateNotice(url = DEFAULT_UPDATE_URL, commitMessage = null) {
     const lines = [
         '',
@@ -20,11 +35,17 @@ function printUpdateNotice(url = DEFAULT_UPDATE_URL, commitMessage = null) {
     ];
 
     if (commitMessage) {
-        lines.push(`${COLOR_PINK}  Latest change: ${commitMessage}${COLOR_RESET}`);
+        lines.push(`${COLOR_PINK}  Latest change: ${summarise(commitMessage)}${COLOR_RESET}`);
     }
 
     // The commit line is one change; the changelog is the whole story.
     lines.push(`${COLOR_PINK}  What's new: ${CHANGELOG_URL}${COLOR_RESET}`);
+
+    // Queueify is installed by cloning, so an update is a pull - not a
+    // re-download. Say so: the link above looks like a download page, and
+    // somebody who has never used git will not guess the three commands.
+    lines.push(`${COLOR_PINK}  To update: git pull, then npm install, then npm start${COLOR_RESET}`);
+
     lines.push(`${COLOR_PINK}${UPDATE_BOX_LINE}${COLOR_RESET}`, '');
 
     console.log(lines.join('\n'));
