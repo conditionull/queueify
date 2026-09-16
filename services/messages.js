@@ -55,6 +55,9 @@ const defaultMessages = {
     playback: {
         currentLookupFailed: 'Couldn\'t check the current Spotify song. Is Spotify running?',
         nothingPlaying: 'No Spotify track is currently playing.', currentSong: 'Current song: {{name}} - {{artists}} DinoDance',
+        // Only used when Queueify is certain this is the song it queued for
+        // that person - otherwise currentSong above is said instead.
+        currentSongQueuedBy: 'Current song: {{name}} - {{artists}}, queued by @{{queuedBy}} DinoDance',
         skipped: 'Skipped to the next track! DinoDance',
         skipFailed: 'Couldn\'t skip the Spotify track; check that Spotify is playing on an active device.'
     },

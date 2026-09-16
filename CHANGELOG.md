@@ -7,6 +7,56 @@ the dashboard shows this same list under **What's new**, at
 Newest version at the top. Nothing is ever removed: a new release goes above
 the others and pushes them down.
 
+## 42.0.0
+
+### New
+
+- **A Stats page**, at <http://127.0.0.1:3002/stats.html>. Nothing to set up, but it only counts
+  from this version on - nothing was being kept before it. It shows:
+  - Songs queued, hours of music, unique artists, unique requesters
+  - Top requesters, most requested songs, most requested artists
+  - Why requests were turned away, by reason
+  - Chat requests vs channel point redeems
+  - Busiest hour of the day, and the decade mix
+  - Signature song per person - the one they request most that others do not
+  - Listening twins, and longest streak of streams in a row
+  - Longest, shortest, oldest, newest, most obscure and best known song
+  - Artists asked for exactly once, ever
+  - One row per stream, split on gaps of three hours or more
+
+  The four groups sit behind pills across the top, so each one is a screenful rather than a single
+  long scroll. **Queueify** in the corner of any page is the way back to the dashboard.
+- **The Admin Panel is laid out the same way.** Settings, Commands and Chat messages are pills above
+  the page rather than a list down the side, and the side is just the way to everywhere else.
+- **`!np` says which user queued the song.** Only when Queueify is certain it is the track it queued for
+  that person - if the song came from your own playlist, or came round again later, it names the
+  song and leaves it there rather than crediting the wrong viewer. The wording is yours to change in
+  **Admin Panel → Chat messages**. Scrubbing around inside the song is fine - it stays the same play
+  and the same person. Restarting the bot mid-song drops the credit until the next request or
+  `!queue`.
+- **Every command can have a cooldown**, set in **Admin Panel → Commands**. Each one shows its
+  current wait beside its aliases; click it for a global wait (the whole chat) and a per-user wait
+  (each person), so a room cannot take turns holding a command down. Mods are never held up, and a
+  `0` turns either off. Being turned down is silent - saying "wait 12 seconds" to everyone asking
+  would turn one person spamming into the bot spamming. Only `!np` starts with a wait, because it
+  is the one that reaches Spotify; everything else is off until you set it.
+
+### Fixed
+
+- **Every number in the panel steps when you hold the button down.** The `-` and `+` beside a
+  number moved it one at a time and no faster, which is a lot of clicking on a field that runs to
+  3600. Holding one now repeats and speeds up the longer it is held, so a field can be crossed in a
+  couple of seconds and still landed on exactly by letting go early. The waits in the theme editor
+  do the same.
+- **Dragging the playhead backwards no longer loses who queued the song, or counts it as played
+  twice.** Any jump backwards was read as the track starting over, which credited nobody for the
+  rest of the song and recorded a second play in the stats. Only a jump back to the very start
+  counts as a replay now - which is still how the same song queued by two people gets credited to
+  each of them in turn.
+
+Your stats stay on your machine: the dashboard is loopback-only, nothing is uploaded, and the
+record is left out of the packaged build.
+
 ## 41.0.2
 
 ### Fixed
@@ -52,8 +102,8 @@ the others and pushes them down.
   reload at all, and the OBS source is only reloaded by hand when no widget is listening to reload
   itself: three reloads per scene switch became one.
 - **The theme editor shows the Canvas video.** The preview drew the album cover whatever the theme
-  said, so "Canvas video when available" - the one setting whose entire job is what fills that box
-  - could not be seen at all. It now plays the clip for the track you are listening to, and swaps
+  said, so "Canvas video when available" - the one setting whose entire job is what fills that box -
+  could not be seen at all. It now plays the clip for the track you are listening to, and swaps
   back the moment you choose "Album cover only".
 
 - **Themes of a different shape are no longer squashed or cut off in OBS.** A tall theme dropped

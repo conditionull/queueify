@@ -20,6 +20,7 @@ const { getObsConfig, getLiveValue, DEFAULT_DASHBOARD_PORT } = require('../confi
 const themeStore = require('../services/themeStore');
 const adminConfig = require('../services/adminConfig');
 const { readChangelog } = require('../services/changelog');
+const analytics = require('../services/analytics');
 const userSettings = require('../config/userSettings');
 const widgetLayout = require('../services/widgetLayout');
 const sceneThemes = require('../services/sceneThemes');
@@ -596,9 +597,20 @@ function createApp() {
         }
     });
 
+    // The Commands tab saves in one go, so this takes both the aliases and the
+    // waits. Cooldowns go first: they are validated in memory and cannot half
+    // apply, where writing the alias file can.
     app.put('/api/admin/aliases', async (req, res) => {
         try {
-            res.json({ ok: true, aliases: await adminConfig.writeAliases(req.body?.aliases || {}) });
+            const cooldowns = req.body?.cooldowns
+                ? adminConfig.writeCommandCooldowns(req.body.cooldowns)
+                : undefined;
+
+            res.json({
+                ok: true,
+                aliases: await adminConfig.writeAliases(req.body?.aliases || {}),
+                cooldowns
+            });
         } catch (err) {
             adminError(res, err);
         }
@@ -811,6 +823,45 @@ function createApp() {
                 return;
             }
             res.status(500).json({ error: `Could not write .env: ${err.message}` });
+        }
+    });
+
+    /* ------------------------------------------------------------- stats */
+
+    /**
+     * The request log, counted up.
+     *
+     * Read straight off disk on every request - the bot is appending to the
+     * same file while this serves it, and there is no restart in between. All
+     * three answer with an empty-but-well-formed shape when nothing has been
+     * recorded yet, so a brand new install renders as "nothing yet" rather
+     * than as an error.
+     *
+     * These sit inside createApp() so they are behind guardLoopbackOnly: the
+     * log names every viewer who has ever made a request, and it stays on this
+     * machine.
+     */
+    app.get('/api/stats/overview', (req, res) => {
+        try {
+            res.json(analytics.getOverview());
+        } catch (err) {
+            res.status(500).json({ error: `Could not read the request log: ${err.message}` });
+        }
+    });
+
+    app.get('/api/stats/leaderboards', (req, res) => {
+        try {
+            res.json(analytics.getLeaderboards());
+        } catch (err) {
+            res.status(500).json({ error: `Could not read the request log: ${err.message}` });
+        }
+    });
+
+    app.get('/api/stats/sessions', (req, res) => {
+        try {
+            res.json({ sessions: analytics.getSessions() });
+        } catch (err) {
+            res.status(500).json({ error: `Could not read the request log: ${err.message}` });
         }
     });
 

@@ -2,6 +2,7 @@ const { addToQueue, getTrackId, getTrack } = require("../spotify.js");
 const syncQueue = require("./syncQueue.js")
 const { sayMessage } = require('./messages');
 const refundRedeem = require('./refundRedeem');
+const history = require('./history');
 
 const activeQueueRequests = new Set();
 
@@ -12,10 +13,11 @@ async function rejectRequest({ client, channel, key, values = {}, isRedeem, rede
             ...values,
             refundSuffix: refunded ? ' (points refunded)' : ''
         });
-        return;
+        return refunded;
     }
 
     sayMessage(client, channel, key, values);
+    return undefined;
 }
 
 async function queueSongInternal({
@@ -26,26 +28,41 @@ async function queueSongInternal({
     state,
     isRedeem = false,
     redemptionId = null,
-    broadcasterId = state.broadcasterId
+    broadcasterId = state.broadcasterId,
+    requester
 }) {
+    // Every branch below ends in one of these. Outcome names match the message
+    // keys so the two stay greppable together, and nothing here is awaited -
+    // a log that cannot be written must not hold up a song.
+    const log = (outcome, extra = {}) => history.recordRequest({
+        outcome,
+        source: isRedeem ? 'redeem' : 'chat',
+        requester,
+        username,
+        ...extra
+    });
+
     const synced = await syncQueue(state);
 
     if (!synced) {
         sayMessage(client, channel, 'queue.spotifyQueueCheckFailed', { username });
 
+        let refunded;
         if (isRedeem && redemptionId) {
-            await refundRedeem(redemptionId, broadcasterId, state.spotifyRewardId);
+            refunded = await refundRedeem(redemptionId, broadcasterId, state.spotifyRewardId);
         }
 
+        log('syncFailed', { input: url, refunded });
         return;
     }
 
     if (!state.queueEnabled) {
-        await rejectRequest({
+        const refunded = await rejectRequest({
             client, channel, key: 'queue.closed', values: { username },
             isRedeem, redemptionId, broadcasterId, state
         });
 
+        log('queueClosed', { input: url, refunded });
         return;
     }
 
@@ -58,11 +75,12 @@ async function queueSongInternal({
 
         if (remaining > 0) {
             const seconds = Math.ceil(remaining / 1000);
-            await rejectRequest({
+            const refunded = await rejectRequest({
                 client, channel, key: 'queue.cooldown', values: { username, seconds },
                 isRedeem, redemptionId, broadcasterId, state
             });
 
+            log('cooldown', { input: url, refunded });
             return;
         }
     }
@@ -70,18 +88,21 @@ async function queueSongInternal({
     const trackId = getTrackId(url);
 
     if (!trackId) {
-        await rejectRequest({
+        const refunded = await rejectRequest({
             client, channel, key: 'queue.invalidUrl', values: { username },
             isRedeem, redemptionId, broadcasterId, state
         });
 
+        // The track is genuinely unknown here, so what they pasted is the only
+        // record of what went wrong.
+        log('invalidUrl', { input: url, refunded });
         return;
     }
 
     const track = await getTrack(url);
 
     if (!track) {
-        await rejectRequest({
+        const refunded = await rejectRequest({
             client,
             channel,
             username,
@@ -92,6 +113,8 @@ async function queueSongInternal({
             broadcasterId,
             state
         });
+
+        log('notFound', { input: url, refunded });
         return;
     }
 
@@ -100,7 +123,7 @@ async function queueSongInternal({
     );
 
     if (blockedArtist) {
-        await rejectRequest({
+        const refunded = await rejectRequest({
             client,
             channel,
             key: 'queue.blockedArtist',
@@ -110,11 +133,15 @@ async function queueSongInternal({
             broadcasterId,
             state
         });
+
+        // Which artist, specifically: a track can have several and only one of
+        // them is the reason this was turned away.
+        log('blockedArtist', { track, refunded, blockedArtistName: blockedArtist.name });
         return;
     }
 
     if (state.blockedSongs.has(track.id)) {
-        await rejectRequest({
+        const refunded = await rejectRequest({
             client,
             channel,
             key: 'queue.blockedSong',
@@ -124,6 +151,8 @@ async function queueSongInternal({
             broadcasterId,
             state
         });
+
+        log('blockedSong', { track, refunded });
         return;
     }
 
@@ -135,9 +164,10 @@ async function queueSongInternal({
             state.repeatBlockSeconds * 1000 - (Date.now() - requestedAt);
 
         const seconds = Math.max(1, Math.ceil(remaining / 1000));
+        let refunded;
 
         if (isRedeem && redemptionId) {
-            const refunded = await refundRedeem(
+            refunded = await refundRedeem(
                 redemptionId,
                 broadcasterId,
                 state.spotifyRewardId
@@ -152,6 +182,7 @@ async function queueSongInternal({
             sayMessage(client, channel, 'queue.recent', { username, seconds, refundSuffix: '' });
         }
 
+        log('recentlyRequested', { track, refunded });
         return;
     }
 
@@ -170,23 +201,33 @@ async function queueSongInternal({
                 username,
                 count: state.pendingQueue.length
             });
+
+            // Logged here rather than next to addToQueue above, so a request
+            // Spotify ends up refusing is never recorded as a success. The
+            // queue depth is only true at this moment and cannot be worked out
+            // from the log afterwards, so it is stored rather than derived.
+            log('ok', { track, queuePosition: state.pendingQueue.length });
         } else if (status === "toolong") {
-            await rejectRequest({
+            const refunded = await rejectRequest({
                 client, channel, key: 'queue.tooLong',
                 values: { username, maxSeconds: state.maxSongLength },
                 isRedeem, redemptionId, broadcasterId, state
             });
+
+            log('tooLong', { track, refunded });
         } else if (status === "explicit") {
-            await rejectRequest({
+            const refunded = await rejectRequest({
                 client, channel, key: 'queue.explicit', values: { username },
                 isRedeem, redemptionId, broadcasterId, state
             });
+
+            log('explicit', { track, refunded });
         } else if (status === "failed") {
             if (result.message) {
                 console.error(`Failed to add song for @${username}:`, result.message);
             }
 
-            await rejectRequest({
+            const refunded = await rejectRequest({
                 client,
                 channel,
                 key: 'queue.addFailed',
@@ -196,6 +237,8 @@ async function queueSongInternal({
                 broadcasterId,
                 state
             });
+
+            log('addFailed', { track, refunded });
         }
     }, 1000);
 }
@@ -206,17 +249,21 @@ async function queueSong(args) {
         client,
         channel,
         username,
+        url,
         state,
         isRedeem = false,
         redemptionId = null,
-        broadcasterId = state.broadcasterId
+        broadcasterId = state.broadcasterId,
+        requester
     } = args;
 
     const cooldownKey = String(username).trim().toLowerCase();
 
     if (activeQueueRequests.has(cooldownKey)) {
+        let refunded;
+
         if (isRedeem && redemptionId) {
-            await rejectRequest({
+            refunded = await rejectRequest({
                 client,
                 channel,
                 key: "queue.requestPending",
@@ -227,6 +274,17 @@ async function queueSong(args) {
                 state
             });
         }
+
+        // Chat is told nothing here, but it still happened - somebody spamming
+        // the command is exactly the kind of thing worth being able to see.
+        history.recordRequest({
+            outcome: 'requestPending',
+            source: isRedeem ? 'redeem' : 'chat',
+            requester,
+            username,
+            input: url,
+            refunded
+        });
 
         return;
     }

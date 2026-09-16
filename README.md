@@ -40,6 +40,7 @@ Adding songs to playback queue requires Spotify Premium
 - Automatic management of Spotify access and refresh tokens
 - A setup dashboard that stays open while the bot runs, so accounts, OBS and the Spotify Canvas cookie can be changed without stopping anything
 - An Admin Panel for the queue settings, command aliases and every line Queueify says in chat
+- A **Stats page** counting every request ever made - top requesters, songs and artists, why requests get turned away, and a row per stream
 - A visual theme editor: drag the album art, title, artist, progress bar and the two song times around a canvas and save it as a real theme (`!theme <name>`)
 - The progress bar can be flanked by the time so far and the song's length - `0:04 ———— 3:07`
 - Any text can carry an outline in a colour of your choosing, so it stays readable over gameplay
@@ -68,13 +69,38 @@ used to edit by hand:
 - **Settings** - cooldown, repeat block, maximum song length, whether chat and channel point
   requests are on, explicit tracks, whether the queue is open, and who may move the widget.
   Exactly what the chat commands do, applied immediately.
-- **Commands** - rename any command or give it extra aliases, with a reset to the original.
+- **Commands** - rename any command or give it extra aliases, with a reset to the original. Each
+  command also carries a cooldown: a global one for the whole chat and a per-user one, both `0` by
+  default except `!np`. Mods are never held up.
 - **Chat messages** - every line Queueify says, grouped and searchable. A message that drops a
   placeholder it needs is refused rather than going out broken.
 
 Everything is written to the same files as before (`queue-settings.json`,
 `config/aliases.json`, `config/messages.json`, `config/settings.js`), so editing those by hand
 still works if you prefer.
+<details>
+  <summary><strong>Queue Stats</strong></summary>
+
+<http://127.0.0.1:3002/stats.html> counts up every song request Queueify has handled.
+ <br />It starts recording from version 42.0.0 onward - there is nothing to set up on your end!
+
+Four groups behind pills across the top - Overview, People, Music and Streams:
+
+- Songs queued, hours of music, unique artists, unique requesters
+- Top requesters, most requested songs, most requested artists
+- Why requests were turned away, by reason - cooldown, too long, just played, blocked, and the rest
+- Chat requests vs channel point redeems
+- Busiest hour of the day, and the decade mix
+- Signature song per person - the one they request most that others do not
+- Listening twins - who shares the most artists with who
+- Longest streak of streams in a row with a request
+- Longest, shortest, oldest and newest song; most obscure and best known
+- Artists asked for exactly once, ever
+- One row per stream, split on gaps of three hours or more
+
+The record lives in `queue-history.jsonl`. It never leaves your machine, the dashboard is
+loopback-only, and it is left out of the packaged build.
+</details>
 
 ### Chat messages and command aliases
 

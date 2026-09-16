@@ -26,7 +26,7 @@ module.exports = {
     name: 'queue',
     aliases: ['q', 'sr', 'add'],
 
-    async execute({ client, channel, username, args, state, cooldowns }) {
+    async execute({ client, channel, username, tags, args, state, cooldowns }) {
         const cleanedArgs = args.map(cleanArg).filter(arg => arg.trim());
 
         if (cleanedArgs.length > 0 && !state.chatEnabled) {
@@ -65,7 +65,17 @@ module.exports = {
             username,
             url,
             state,
-            cooldowns
+            cooldowns,
+            // For the request log only. `username` still drives the cooldown
+            // key and every chat message; this is extra, not a replacement.
+            // The id is the only part that survives somebody renaming.
+            requester: {
+                userId: tags?.['user-id'] ?? null,
+                userLogin: tags?.username ?? username,
+                userName: tags?.['display-name'] ?? username,
+                sub: Boolean(tags?.subscriber),
+                mod: Boolean(tags?.mod)
+            }
         });
     }
 };

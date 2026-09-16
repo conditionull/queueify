@@ -4,6 +4,9 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Queueify Admin</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@800&display=swap">
 <style>
   :root {
     --bg: #0b0c0f;
@@ -66,16 +69,16 @@
     display: flex; flex-direction: column; gap: 4px;
   }
 
+  /* Nunito for the wordmark only, with a real fallback so it still reads if
+     the font cannot be fetched - this is a local tool and may be offline. */
   .brand {
-    display: flex; align-items: center; gap: 9px;
+    display: block;
     padding: 2px 8px 18px;
-    font-size: 15px; font-weight: 650; letter-spacing: -.01em;
+    font-family: Nunito, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    font-size: 17px; font-weight: 800; letter-spacing: -.01em;
+    color: var(--text); text-decoration: none;
   }
-  .brand .mark {
-    width: 22px; height: 22px; border-radius: 6px;
-    background: linear-gradient(140deg, var(--accent), #b58cff);
-    display: grid; place-items: center; font-size: 12px; color: #fff;
-  }
+  .brand:hover { color: #fff; text-decoration: none; }
 
   .side .label {
     padding: 14px 8px 6px;
@@ -96,7 +99,35 @@
 
   .side .foot { margin-top: auto; padding: 10px 8px 0; font-size: 12px; color: var(--faint); }
 
-  .main { min-width: 0; padding: 30px 34px 120px; max-width: 940px; }
+  .main { min-width: 0; padding: 0 34px 120px; }
+  .inner { margin: 0 auto; max-width: 1020px; }
+
+  /* The sections float above the content and stay there while the page
+     scrolls, so moving between them never means going back to the top. The
+     fade underneath lets a card pass behind it without a hard edge. */
+  .pillbar {
+    position: sticky; top: 0; z-index: 10;
+    display: flex; justify-content: center;
+    padding: 20px 0 16px;
+    background: linear-gradient(var(--bg) 62%, rgba(11, 12, 15, 0));
+  }
+
+  .pills {
+    display: flex; gap: 2px;
+    background: var(--surface); border: 1px solid var(--line);
+    border-radius: 999px; padding: 4px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, .45);
+  }
+  .pills button {
+    font: inherit; font-size: 13px; font-weight: 600;
+    padding: 8px 18px; border-radius: 999px;
+    border: 0; background: none; color: var(--muted);
+    cursor: pointer; white-space: nowrap;
+    transition: background .16s, color .16s;
+  }
+  .pills button:hover { color: var(--text); }
+  .pills button.active { background: var(--accent); color: #fff; }
+
 
   .page-head { margin-bottom: 26px; }
   .page-head h1 { margin: 0 0 6px; font-size: 22px; font-weight: 650; letter-spacing: -.02em; }
@@ -129,6 +160,9 @@
   .row .name { font-size: 13.5px; font-weight: 550; }
   .row .why { display: block; margin-top: 3px; color: var(--faint); font-size: 12.5px; font-weight: 400; }
   .row .control { display: flex; align-items: center; gap: 8px; justify-content: flex-end; }
+  /* The text field is the one thing here that should give up room when the
+     buttons beside it need it. */
+  .row .control input[type="text"] { min-width: 0; flex: 1 1 auto; }
   .row .unit { color: var(--faint); font-size: 12.5px; }
 
   input[type="text"], input[type="number"], input[type="password"], textarea, select {
@@ -188,6 +222,9 @@
     border-radius: 8px; padding: 8px 14px; cursor: pointer;
     background: var(--accent); color: #fff; border: 1px solid transparent;
     transition: background .15s, opacity .15s;
+    /* The control column is a fixed width and these sit in a row of three:
+       without this a two-word label breaks across lines and the row grows. */
+    white-space: nowrap; flex: none;
   }
   button.btn:hover:not(:disabled) { background: #8c70ff; }
   button.btn:disabled { opacity: .45; cursor: default; }
@@ -234,6 +271,31 @@
   .savebar .status { flex: 1; font-size: 13px; color: var(--muted); }
   .savebar .status.error { color: #ff9dab; }
 
+  /* --------------------------------------------------- cooldown dialog */
+
+  dialog.cooldowns {
+    border: 1px solid var(--line); border-radius: var(--radius);
+    background: var(--surface); color: var(--text);
+    padding: 0; width: min(420px, calc(100vw - 32px));
+  }
+  dialog.cooldowns::backdrop { background: rgba(0, 0, 0, .55); }
+  dialog.cooldowns header { padding: 16px 20px; border-bottom: 1px solid var(--line-soft); }
+  dialog.cooldowns h3 { margin: 0 0 4px; font-size: 15px; font-weight: 650; }
+  dialog.cooldowns header p { margin: 0; color: var(--faint); font-size: 12.5px; }
+  dialog.cooldowns .pair { display: flex; gap: 14px; padding: 18px 20px; }
+  dialog.cooldowns .field { flex: 1; min-width: 0; }
+  dialog.cooldowns .field label {
+    display: block; margin-bottom: 7px;
+    font-size: 13px; font-weight: 600;
+  }
+  dialog.cooldowns .field .with-unit { display: flex; align-items: center; gap: 7px; }
+  dialog.cooldowns .field input { width: 100%; }
+  dialog.cooldowns .hint { padding: 0 20px 4px; margin: 0; color: var(--faint); font-size: 12.5px; }
+  dialog.cooldowns footer {
+    display: flex; justify-content: flex-end; gap: 9px;
+    padding: 14px 20px; border-top: 1px solid var(--line-soft);
+  }
+
   .toast {
     position: fixed; right: 22px; bottom: 84px; z-index: 30;
     background: var(--surface-2); border: 1px solid var(--line);
@@ -252,36 +314,33 @@
     .side { position: static; height: auto; flex-direction: row; flex-wrap: wrap; }
     .side .label, .side .foot { display: none; }
     .savebar { left: 0; }
-    .main { padding: 22px 18px 120px; }
+    .main { padding: 0 18px 120px; }
+    .pillbar { padding: 14px 0 12px; }
+    .pills { width: 100%; overflow-x: auto; }
+    .pills button { flex: 1; padding: 8px 12px; }
     .row { grid-template-columns: 1fr; }
     .row .control { justify-content: flex-start; }
   }
 </style>
+<!-- Loaded before the page script: number fields are built during the
+     first render, and they ask for holdRepeat as they are made. -->
+<script src="stepper.js"></script>
 </head>
 <body>
 
 <div class="shell">
   <aside class="side">
-    <div class="brand"><span class="mark">Q</span> Queueify</div>
-
-    <div class="label">Configure</div>
-    <button class="nav active" data-view="settings">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-1.8-.3 1.6 1.6 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1A1.6 1.6 0 0 0 9 19.4a1.6 1.6 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.6 1.6 0 0 0 .3-1.8 1.6 1.6 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1A1.6 1.6 0 0 0 4.6 9a1.6 1.6 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.6 1.6 0 0 0 1.8.3H9a1.6 1.6 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.6 1.6 0 0 0 1 1.5 1.6 1.6 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0-.3 1.8V9a1.6 1.6 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1z"/></svg>
-      Settings
-    </button>
-    <button class="nav" data-view="aliases">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
-      Commands
-    </button>
-    <button class="nav" data-view="messages">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M21 11.5a8.4 8.4 0 0 1-9 8.4L3 21l1.1-9A8.4 8.4 0 1 1 21 11.5z"/></svg>
-      Chat messages
-    </button>
+    <!-- The wordmark is the way back to the dashboard. -->
+    <a class="brand" href="/">Queueify</a>
 
     <div class="label">Elsewhere</div>
     <a class="nav" href="/">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
       Setup dashboard
+    </a>
+    <a class="nav" href="/stats.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 3v18h18"/><path d="M7 15l4-5 3 3 5-7"/></svg>
+      Stats
     </a>
     <a class="nav" href="/editor.html">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M2 2l7.5 7.5"/><circle cx="11" cy="11" r="2"/></svg>
@@ -292,7 +351,17 @@
   </aside>
 
   <main class="main">
-    <div id="view"></div>
+    <div class="inner">
+      <div class="pillbar">
+        <nav class="pills">
+          <button class="active" data-view="settings">Settings</button>
+          <button data-view="aliases">Commands</button>
+          <button data-view="messages">Chat messages</button>
+        </nav>
+      </div>
+
+      <div id="view"></div>
+    </div>
   </main>
 </div>
 
@@ -456,7 +525,8 @@ async function renderSettings() {
       button.textContent = label;
       button.title = hint;
       button.tabIndex = -1;
-      button.addEventListener('click', () => set(Number(input.value) + delta));
+      // Held down it repeats and speeds up - these run to 3600.
+      holdRepeat(button, steps => set(Number(input.value) + delta * steps));
       return button;
     };
 
@@ -578,10 +648,131 @@ async function saveSettings() {
 
 /* ------------------------------------------------------------- aliases */
 
+/**
+ * A 0-3600 second box with - and + beside it.
+ *
+ * The settings page builds its steppers against a field definition; this is the
+ * same control for a value standing on its own, and both repeat when held.
+ */
+function cooldownStepper(value) {
+  const wrap = document.createElement('div');
+  wrap.className = 'stepper';
+
+  const input = document.createElement('input');
+  input.type = 'number';
+  input.min = 0;
+  input.max = 3600;
+  input.step = 1;
+  input.value = value;
+
+  const set = next => {
+    const clamped = Math.max(0, Math.min(3600, Math.round(Number(next))));
+    input.value = Number.isFinite(clamped) ? clamped : 0;
+  };
+
+  // Held to the limits when they leave it, not while typing, so a half-typed
+  // number is not snatched away mid-keystroke.
+  input.addEventListener('change', () => set(input.value));
+
+  const nudge = (label, delta, hint) => {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.textContent = label;
+    button.title = hint;
+    button.tabIndex = -1;
+    holdRepeat(button, steps => set(Number(input.value) + delta * steps));
+    return button;
+  };
+
+  wrap.append(nudge('−', -1, 'Less'), input, nudge('+', 1, 'More'));
+  wrap.get = () => Math.max(0, Math.min(3600, Math.round(Number(input.value) || 0)));
+  wrap.focus = () => { input.focus(); input.select(); };
+
+  return wrap;
+}
+
+/**
+ * The two waits for one command, in a dialog.
+ *
+ * A modal rather than two more boxes on the row: the row's controls are 236px
+ * wide and already hold the alias field and a Reset, and the labels only make
+ * sense written out, which there is no room for twenty-odd times over.
+ *
+ * Resolves to the new pair, or null if it was cancelled. Nothing is saved here
+ * - it edits the draft, and the savebar writes it like every other change.
+ */
+function editCooldowns(command, current) {
+  return new Promise(resolve => {
+    const dialog = document.createElement('dialog');
+    dialog.className = 'cooldowns';
+
+    dialog.innerHTML =
+      '<header>' +
+        '<h3>!' + escapeHtml(command.name) + '</h3>' +
+        '<p>' + escapeHtml(command.summary || '') + '</p>' +
+      '</header>' +
+      '<div class="pair">' +
+        '<div class="field"><label>Global cooldown</label>' +
+          '<div class="with-unit" data-slot="global"><span class="unit">secs</span></div></div>' +
+        '<div class="field"><label>Per-user cooldown</label>' +
+          '<div class="with-unit" data-slot="user"><span class="unit">secs</span></div></div>' +
+      '</div>' +
+      '<p class="hint">Global is the whole chat, per-user is each person. 0 turns one off. ' +
+        'Mods are never held up, and being turned down is silent.</p>' +
+      '<footer>' +
+        '<button class="btn ghost" data-act="cancel">Cancel</button>' +
+        '<button class="btn" data-act="ok">Done</button>' +
+      '</footer>';
+
+    // The same stepper the settings page uses, so every number in the panel
+    // has - and + and repeats when held.
+    const build = which => {
+      const control = cooldownStepper(current[which] ?? 0);
+      const slot = dialog.querySelector(`[data-slot="${which}"]`);
+      slot.insertBefore(control, slot.firstChild);
+      return control;
+    };
+
+    const globalControl = build('global');
+    const userControl = build('user');
+
+    let answer = null;
+
+    dialog.querySelector('[data-act="cancel"]').addEventListener('click', () => dialog.close());
+    dialog.querySelector('[data-act="ok"]').addEventListener('click', () => {
+      answer = { global: globalControl.get(), user: userControl.get() };
+      dialog.close();
+    });
+
+    // Clicking the backdrop is a cancel, same as the confirm dialog.
+    dialog.addEventListener('click', event => {
+      if (event.target === dialog) dialog.close();
+    });
+
+    dialog.addEventListener('close', () => {
+      dialog.remove();
+      resolve(answer);
+    });
+
+    document.body.appendChild(dialog);
+    dialog.showModal();
+    globalControl.focus();
+  });
+}
+
+function cooldownLabel({ global, user }) {
+  if (!global && !user) return 'No wait';
+  if (global && user) return `${global}s / ${user}s`;
+  return global ? `${global}s chat` : `${user}s each`;
+}
+
 async function renderAliases() {
   const data = await api('/api/admin/aliases');
   state.loaded.aliases = data;
   state.draft.aliases = Object.fromEntries(data.commands.map(command => [command.name, [...command.aliases]]));
+  state.draft.cooldowns = Object.fromEntries(
+    data.commands.map(command => [command.name, { ...command.cooldowns }])
+  );
 
   const view = $('view');
   view.innerHTML = '';
@@ -627,7 +818,20 @@ async function renderAliases() {
         setDirty(true);
       });
 
-      const element = row('!' + command.name, command.summary, [input, reset]);
+      const wait = document.createElement('button');
+      wait.className = 'btn ghost small';
+      wait.textContent = cooldownLabel(state.draft.cooldowns[command.name]);
+      wait.title = 'How often !' + command.name + ' may be run';
+      wait.addEventListener('click', async () => {
+        const picked = await editCooldowns(command, state.draft.cooldowns[command.name]);
+        if (!picked) return;
+
+        state.draft.cooldowns[command.name] = picked;
+        wait.textContent = cooldownLabel(picked);
+        setDirty(true);
+      });
+
+      const element = row('!' + command.name, command.summary, [input, wait, reset]);
       element.dataset.search = (command.name + ' ' + command.summary + ' ' + command.aliases.join(' ')).toLowerCase();
       section.body.appendChild(element);
     }
@@ -656,7 +860,7 @@ async function renderAliases() {
 async function saveAliases() {
   await api('/api/admin/aliases', {
     method: 'PUT',
-    body: JSON.stringify({ aliases: state.draft.aliases })
+    body: JSON.stringify({ aliases: state.draft.aliases, cooldowns: state.draft.cooldowns })
   });
 
   toast('Saved. Chat answers to these straight away.');
@@ -788,7 +992,7 @@ async function show(name) {
   state.view = name;
   setDirty(false);
 
-  for (const button of document.querySelectorAll('.nav[data-view]')) {
+  for (const button of document.querySelectorAll('.pills button[data-view]')) {
     button.classList.toggle('active', button.dataset.view === name);
   }
 
@@ -801,7 +1005,7 @@ async function show(name) {
   }
 }
 
-for (const button of document.querySelectorAll('.nav[data-view]')) {
+for (const button of document.querySelectorAll('.pills button[data-view]')) {
   button.addEventListener('click', () => show(button.dataset.view));
 }
 

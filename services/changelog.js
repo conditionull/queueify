@@ -13,6 +13,7 @@ const path = require('path');
  *     ## 40.0.0                <- a release
  *     ### New                  <- a group inside it
  *     - Something that changed  <- an entry, **bold** allowed
+ *       - and a list inside it  <- indented, so it stays part of that entry
  */
 
 const CHANGELOG_FILE = process.env.QUEUEIFY_CHANGELOG_FILE
@@ -41,10 +42,26 @@ function parse(markdown) {
     let release = null;
     let group = null;
     let entry = null;
+    // The nested bullet currently being read, so a wrapped line lands on the
+    // sub-item rather than being tacked onto the end of its parent.
+    let child = null;
 
     const finishEntry = () => {
-        if (entry) entry.html = renderInline(entry.lines.join(' ').trim());
+        if (entry) {
+            const lead = renderInline(entry.lines.join(' ').trim());
+            // The list goes inside the parent's own <li>, so the page keeps
+            // rendering entries as plain strings and needs no changes.
+            const nested = entry.children.length
+                ? '<ul>' + entry.children
+                    .map(lines => '<li>' + renderInline(lines.join(' ').trim()) + '</li>')
+                    .join('') + '</ul>'
+                : '';
+
+            entry.html = lead + nested;
+        }
+
         entry = null;
+        child = null;
     };
 
     for (const raw of String(markdown).split(/\r?\n/)) {
@@ -72,6 +89,15 @@ function parse(markdown) {
 
         const bullet = line.match(/^[-*]\s+(.+)$/);
         if (bullet && release) {
+            // Indented, so it is a list *inside* the entry above it rather than
+            // another headline change. Without this, ten sub-points read as ten
+            // separate features on the What's new page.
+            if (/^\s/.test(raw) && entry) {
+                child = [bullet[1]];
+                entry.children.push(child);
+                continue;
+            }
+
             finishEntry();
 
             // A release that lists entries without a group still gets one, so
@@ -81,14 +107,14 @@ function parse(markdown) {
                 release.groups.push(group);
             }
 
-            entry = { lines: [bullet[1]] };
+            entry = { lines: [bullet[1]], children: [] };
             group.entries.push(entry);
             continue;
         }
 
         // A wrapped bullet: markdown lets a list item run over several lines.
         if (line && entry) {
-            entry.lines.push(line);
+            (child || entry.lines).push(line);
             continue;
         }
 

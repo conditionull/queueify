@@ -267,3 +267,52 @@ test('a refusal from Twitch leaves the setting as it was', async () => {
         cleanup(sandbox);
     }
 });
+
+test('every setting the panel offers is one the bot actually reads', () => {
+    // A field left in QUEUE_FIELDS after the state behind it was removed still
+    // renders a control, and writing it goes nowhere. It has happened once
+    // already, and nothing else would have caught it.
+    const { admin, sandbox } = freshAdmin();
+
+    try {
+        const state = require(statePath);
+
+        for (const key of Object.keys(admin.QUEUE_FIELDS)) {
+            assert.ok(key in state,
+                `Settings offers "${key}" but core/state has no such property`);
+        }
+
+        // And the other way: what it reads back is what the control shows.
+        const values = admin.readQueueSettings();
+        for (const key of Object.keys(admin.QUEUE_FIELDS)) {
+            assert.notStrictEqual(values[key], undefined, `"${key}" reads back as undefined`);
+        }
+    } finally {
+        cleanup(sandbox);
+    }
+});
+
+test('a command wait is saved and read back through the panel', async () => {
+    const { admin, sandbox } = freshAdmin();
+
+    try {
+        const before = admin.readAliases().find(command => command.name === 'active');
+        assert.deepStrictEqual(before.cooldowns, { global: 3, user: 20 },
+            '!np is the one command that ships with a wait');
+
+        admin.writeCommandCooldowns({ active: { global: 0, user: 45 } });
+
+        const after = admin.readAliases().find(command => command.name === 'active');
+        assert.deepStrictEqual(after.cooldowns, { global: 0, user: 45 });
+
+        assert.throws(() => admin.writeCommandCooldowns({ active: { global: 99999, user: 0 } }),
+            /between 0 and 3600/);
+        assert.throws(() => admin.writeCommandCooldowns({ nosuch: { global: 1, user: 1 } }),
+            /no command called/);
+    } finally {
+        // saveSettings is debounced by 100ms; removing the sandbox first makes
+        // the write fail against a directory that has gone.
+        await new Promise(resolve => setTimeout(resolve, 250));
+        cleanup(sandbox);
+    }
+});

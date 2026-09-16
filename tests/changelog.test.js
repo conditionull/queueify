@@ -57,6 +57,45 @@ test('a release is read into groups and entries, wrapped lines and all', () => {
     assert.deepStrictEqual(releases[1].groups[0].entries, ['The first one.']);
 });
 
+test('an indented list stays inside the entry it belongs to', () => {
+    const [release] = parse([
+        '## 3.0.0',
+        '',
+        '### New',
+        '',
+        '- **A stats page.** It shows:',
+        '  - One thing',
+        '  - Another thing that wraps',
+        '    onto a second line',
+        '- A separate feature.'
+    ].join('\n'));
+
+    const { entries } = release.groups[0];
+
+    // Two headline entries, not five: the sub-points are not features.
+    assert.strictEqual(entries.length, 2);
+    assert.strictEqual(entries[1], 'A separate feature.');
+
+    assert.strictEqual(entries[0],
+        '<strong>A stats page.</strong> It shows:'
+        + '<ul><li>One thing</li><li>Another thing that wraps onto a second line</li></ul>',
+        'the wrapped line belongs to the sub-point, not to the parent');
+});
+
+test('the shipped changelog keeps its sub-points out of the feature list', () => {
+    delete require.cache[require.resolve(changelogPath)];
+    const [current] = require(changelogPath).readChangelog();
+
+    for (const group of current.groups) {
+        for (const entry of group.entries) {
+            // A stray "- " at the start of a wrapped line splits an entry in
+            // two, which reads as a feature that begins mid-sentence.
+            assert.ok(!/^[a-z]/.test(entry.replace(/<[^>]+>/g, '')),
+                `an entry starts mid-sentence, so a wrapped line was read as a bullet: ${entry}`);
+        }
+    }
+});
+
 test('a changelog entry cannot smuggle markup into the page', () => {
     const [release] = parse('## 1.0.0\n\n- <img src=x onerror=alert(1)> and `code` too.\n');
     const [entry] = release.groups[0].entries;

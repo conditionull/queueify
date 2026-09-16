@@ -506,6 +506,9 @@
 
   .hidden { display: none !important; }
 </style>
+<!-- Loaded before the page script: number fields are built during the
+     first render, and they ask for holdRepeat as they are made. -->
+<script src="stepper.js"></script>
 </head>
 <body>
 
@@ -2193,7 +2196,8 @@ function numberInput(target, key, { min, max, step = 1 } = {}) {
     button.textContent = label;
     button.title = hint;
     button.tabIndex = -1;   // tabbing should land on the number, not the arrows
-    button.addEventListener('click', () => apply(Number(input.value) + delta));
+    // Held down it repeats and speeds up, in whatever this field's step is.
+    holdRepeat(button, steps => apply(Number(input.value) + delta * steps));
     return button;
   };
 

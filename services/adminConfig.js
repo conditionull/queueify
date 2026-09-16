@@ -7,6 +7,7 @@ const setRewardEnabled = require('./setRewardEnabled');
 const aliases = require('./aliases');
 const userSettings = require('../config/userSettings');
 const { buildCatalogue } = require('./commandCatalogue');
+const commandCooldowns = require('./commandCooldowns');
 
 /**
  * Reading and writing the things the bot is configured with, for the admin
@@ -181,8 +182,49 @@ function readAliases() {
         summary: command.summary,
         defaults: aliases.getDefaults(command.name),
         aliases: command.aliases,
-        customised: Array.isArray(saved[command.name])
+        customised: Array.isArray(saved[command.name]),
+        cooldowns: commandCooldowns.limitsFor(state, command.name)
     }));
+}
+
+// A wait is in seconds, and an hour is already far longer than anything
+// sensible - the upper bound is only here to catch a typo.
+const MAX_COOLDOWN_SECONDS = 3600;
+
+/**
+ * How often each command may be run.
+ *
+ * Stored for every command the panel sends, zeros included: a 0 is somebody
+ * deciding a command needs no wait, which has to survive a restart rather than
+ * falling back to the built-in default.
+ */
+function writeCommandCooldowns(input = {}) {
+    const known = new Set(buildCatalogue().flatMap(group => group.commands).map(command => command.name));
+    const cleaned = {};
+
+    for (const [name, pair] of Object.entries(input)) {
+        if (!known.has(name)) throw new ConfigError(`There is no command called "${name}".`);
+
+        const limits = {};
+
+        for (const which of ['global', 'user']) {
+            const value = Number(pair?.[which] ?? 0);
+
+            if (!Number.isFinite(value) || value < 0 || value > MAX_COOLDOWN_SECONDS) {
+                const label = which === 'global' ? 'Global cooldown' : 'Per-user cooldown';
+                throw new ConfigError(`${label} for !${name} must be between 0 and ${MAX_COOLDOWN_SECONDS}.`);
+            }
+
+            limits[which] = Math.round(value);
+        }
+
+        cleaned[name] = limits;
+    }
+
+    state.commandCooldowns = { ...state.commandCooldowns, ...cleaned };
+    state.saveSettings();
+
+    return state.commandCooldowns;
 }
 
 async function writeAliases(input = {}) {
@@ -301,6 +343,7 @@ module.exports = {
     writeWhitelist,
     readAliases,
     writeAliases,
+    writeCommandCooldowns,
     readMessages,
     writeMessages
 };

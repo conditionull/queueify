@@ -1,0 +1,756 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Queueify Stats</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@800&display=swap">
+<style>
+  :root {
+    --bg: #0b0c0f;
+    --surface: #12141a;
+    --surface-2: #171a21;
+    --line: #23262f;
+    --line-soft: #1b1e25;
+    --text: #e9eaee;
+    --muted: #9aa0ad;
+    --faint: #6b7280;
+    --accent: #7c5cff;
+    --accent-soft: rgba(124, 92, 255, .16);
+    --green: #2fb87a;
+    --amber: #d9a441;
+    --red: #e5566d;
+    --radius: 10px;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  a { color: #a894ff; text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  /* The same faint grid the other pages use, so this reads as part of the
+     same tool rather than as something bolted on. Decoration only. */
+  body::before {
+    content: '';
+    position: fixed; inset: 0; z-index: 0; pointer-events: none;
+    background-image:
+      linear-gradient(to right, rgba(255, 255, 255, .04) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(255, 255, 255, .04) 1px, transparent 1px);
+    background-size: 46px 46px;
+    -webkit-mask-image: radial-gradient(130% 105% at 50% -5%, #000 0%, rgba(0, 0, 0, .55) 55%, transparent 100%);
+    mask-image: radial-gradient(130% 105% at 50% -5%, #000 0%, rgba(0, 0, 0, .55) 55%, transparent 100%);
+  }
+
+  /* ------------------------------------------------------------ layout */
+
+  .shell {
+    display: grid; grid-template-columns: 232px minmax(0, 1fr); min-height: 100vh;
+    position: relative; z-index: 1;
+  }
+
+  .side {
+    border-right: 1px solid var(--line);
+    background: var(--surface);
+    padding: 20px 14px;
+    position: sticky; top: 0; height: 100vh;
+    display: flex; flex-direction: column; gap: 4px;
+  }
+
+  /* Nunito for the wordmark only, with a real fallback so it still reads if
+     the font cannot be fetched - this is a local tool and may be offline. */
+  .brand {
+    display: block; padding: 2px 8px 18px;
+    font-family: Nunito, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    font-size: 17px; font-weight: 800; letter-spacing: -.01em;
+    color: var(--text); text-decoration: none;
+  }
+  .brand:hover { color: #fff; text-decoration: none; }
+
+  .side .label {
+    padding: 14px 8px 6px;
+    font-size: 11px; font-weight: 600; letter-spacing: .07em;
+    text-transform: uppercase; color: var(--faint);
+  }
+
+  .nav {
+    display: flex; align-items: center; gap: 9px;
+    padding: 8px 9px; border-radius: 8px;
+    color: var(--muted); font-size: 13.5px; font-weight: 500;
+    border: 1px solid transparent; text-decoration: none;
+  }
+  .nav:hover { background: var(--surface-2); color: var(--text); text-decoration: none; }
+  .nav svg { width: 15px; height: 15px; flex: none; opacity: .9; }
+
+  .side .foot { margin-top: auto; padding: 10px 8px 0; font-size: 12px; color: var(--faint); }
+
+  .main { min-width: 0; padding: 0 28px 100px; }
+  .inner { margin: 0 auto; max-width: 1020px; }
+
+  /* The groups float above the cards and stay there while the page scrolls, so
+     moving between them never means going back to the top. The fade underneath
+     is what lets a card pass behind it without a hard edge. */
+  .pillbar {
+    position: sticky; top: 0; z-index: 10;
+    display: grid; grid-template-columns: 1fr auto 1fr;
+    align-items: center; gap: 12px;
+    padding: 20px 0 16px;
+    background: linear-gradient(var(--bg) 62%, rgba(11, 12, 15, 0));
+  }
+
+  .pills {
+    grid-column: 2;
+    display: flex; gap: 2px;
+    background: var(--surface); border: 1px solid var(--line);
+    border-radius: 999px; padding: 4px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, .45);
+  }
+  .pills button {
+    font: inherit; font-size: 13px; font-weight: 600;
+    padding: 8px 18px; border-radius: 999px;
+    border: 0; background: none; color: var(--muted);
+    cursor: pointer; white-space: nowrap;
+    transition: background .16s, color .16s;
+  }
+  .pills button:hover { color: var(--text); }
+  .pills button.active { background: var(--accent); color: #fff; }
+
+  .bar-actions { grid-column: 3; justify-self: end; display: flex; align-items: center; gap: 12px; }
+
+  .page-head { margin-bottom: 22px; }
+  .page-head h1 { margin: 0 0 6px; font-size: 22px; font-weight: 650; letter-spacing: -.02em; }
+  .page-head p { margin: 0; color: var(--muted); font-size: 13.5px; max-width: 62ch; }
+
+  .ghost {
+    background: none; border: 1px solid var(--line);
+    color: var(--muted); border-radius: 999px;
+    padding: 7px 14px; font-size: 12.5px; cursor: pointer; flex: none;
+  }
+  .ghost:hover { color: var(--text); border-color: var(--accent); }
+
+  /* ------------------------------------------------------------- cards */
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    margin-bottom: 16px;
+    overflow: hidden;
+  }
+  .card > header {
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--line-soft);
+    display: flex; align-items: baseline; gap: 10px;
+    /* In a narrow column the title and its note cannot sit side by side. Let
+       the note drop to its own line whole, rather than both of them breaking
+       in the middle of a phrase. */
+    flex-wrap: wrap;
+  }
+  .card > header h2 { margin: 0; font-size: 14.5px; font-weight: 600; letter-spacing: -.01em; }
+  .card > header .sub { color: var(--faint); font-size: 12.5px; flex: 1 1 auto; min-width: 0; }
+  .card > .body { padding: 16px 18px; }
+
+  /* align-items:start so a short card sits at its own height instead of being
+     stretched to match the tall one beside it. */
+  .grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 16px; align-items: start; margin-bottom: 16px;
+  }
+  .grid .card { margin-bottom: 0; }
+  /* Two up rather than three, for the cards that are long lists. */
+  .grid.pair { grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); }
+
+  /* Ranked cards vary a lot in height, and in a grid the whole row is as tall
+     as the longest one - a short card leaves a hole beside it. These flow into
+     columns instead and pack, which only works because they are independent
+     lists where reading down a column is as good as reading across. The
+     Overview keeps its grid: the pairings there are deliberate. */
+  /* line-height:0 on the container because the cards below are inline blocks,
+     and an inline box otherwise adds a line's worth of space on top of the
+     margin - which is what made these gaps wider than every other gap here. */
+  .masonry { columns: 3 300px; column-gap: 16px; line-height: 0; }
+  /* inline-block, not the default block: a block card's bottom margin is
+     dropped where it meets a column break, which puts two cards flush against
+     each other. As an atomic inline block the margin always survives. */
+  .masonry .card {
+    break-inside: avoid;
+    display: inline-block; width: 100%; vertical-align: top;
+    margin: 0 0 16px; line-height: 1.5;
+  }
+
+  /* --------------------------------------------------------- stat tiles */
+
+  .tiles {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 12px; margin-bottom: 22px;
+  }
+  .tile {
+    background: var(--surface); border: 1px solid var(--line);
+    border-radius: var(--radius); padding: 15px 16px;
+  }
+  .tile .n {
+    font-size: 25px; font-weight: 650; letter-spacing: -.03em;
+    font-variant-numeric: tabular-nums; line-height: 1.15;
+  }
+  .tile .k { font-size: 12.5px; color: var(--muted); margin-top: 3px; }
+  .tile .s { font-size: 11.5px; color: var(--faint); margin-top: 5px; }
+
+  /* --------------------------------------------------------- bar charts */
+
+  .bars { display: flex; flex-direction: column; gap: 9px; }
+  .bar { display: grid; grid-template-columns: minmax(90px, 30%) 1fr auto; align-items: center; gap: 12px; }
+  .bar .lbl { font-size: 12.5px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .bar .track { background: var(--surface-2); border-radius: 999px; height: 8px; overflow: hidden; }
+  /* display:block matters: a bare span is inline, and an inline element
+     ignores the width and height this is drawn with entirely. */
+  .bar .fill {
+    display: block; height: 100%; border-radius: 999px;
+    background: linear-gradient(90deg, var(--accent), #b58cff);
+  }
+  .bar .val { font-size: 12.5px; color: var(--faint); font-variant-numeric: tabular-nums; min-width: 2.5em; text-align: right; }
+
+  /* Hour-of-day: 24 columns, so it reads as a shape rather than a list. */
+  .hours { display: flex; align-items: flex-end; gap: 3px; height: 108px; }
+  .hours .h { flex: 1; background: var(--surface-2); border-radius: 3px 3px 0 0; position: relative; min-height: 2px; }
+  .hours .h.on { background: linear-gradient(180deg, #b58cff, var(--accent)); }
+  .hour-axis { display: flex; justify-content: space-between; margin-top: 7px; font-size: 11px; color: var(--faint); }
+
+  .split { display: flex; height: 10px; border-radius: 999px; overflow: hidden; background: var(--surface-2); }
+  .split span { display: block; height: 100%; }
+  .legend { display: flex; gap: 16px; margin-top: 11px; font-size: 12.5px; color: var(--muted); }
+  .legend i { display: inline-block; width: 9px; height: 9px; border-radius: 3px; margin-right: 6px; }
+
+  /* ------------------------------------------------------------- lists */
+
+  .rank { display: flex; flex-direction: column; }
+  .rank .row {
+    display: grid; grid-template-columns: 22px 1fr auto;
+    align-items: baseline; gap: 11px;
+    padding: 8px 0; border-bottom: 1px solid var(--line-soft);
+  }
+  .rank .row:last-child { border-bottom: none; }
+  .rank .i { color: var(--faint); font-size: 12px; font-variant-numeric: tabular-nums; }
+  .rank .name { font-size: 13.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .rank .name small { color: var(--faint); display: block; font-size: 11.5px; }
+  .rank .v { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th {
+    text-align: left; font-size: 11px; text-transform: uppercase;
+    letter-spacing: .06em; color: var(--faint); font-weight: 600;
+    padding: 0 10px 9px 0; border-bottom: 1px solid var(--line);
+  }
+  td { padding: 10px 10px 10px 0; border-bottom: 1px solid var(--line-soft); vertical-align: top; }
+  tr:last-child td { border-bottom: none; }
+  td.num { font-variant-numeric: tabular-nums; color: var(--muted); }
+  .table-wrap { overflow-x: auto; }
+
+  .fact { font-size: 13.5px; }
+  .fact strong { display: block; font-size: 15px; font-weight: 600; margin-bottom: 2px; }
+  .fact span { color: var(--muted); }
+  .fact em { display: block; color: var(--faint); font-style: normal; font-size: 12px; margin-top: 5px; }
+
+  .empty { color: var(--muted); font-size: 13.5px; }
+  .empty strong { color: var(--text); display: block; margin-bottom: 5px; font-size: 15px; }
+
+  .view { display: none; }
+  .view.active { display: block; }
+
+  @media (max-width: 860px) {
+    .shell { grid-template-columns: 1fr; }
+    .side {
+      position: static; height: auto;
+      flex-direction: row; flex-wrap: wrap; align-items: center;
+    }
+    .side .label, .side .foot { display: none; }
+    .brand { padding: 0 8px 0 0; }
+    .main { padding: 0 16px 80px; }
+    /* The pills need the width once the Refresh button stops fitting beside
+       them, so they take the row and it drops underneath. */
+    .pillbar { grid-template-columns: 1fr; justify-items: center; padding: 14px 0 12px; }
+    .pills { grid-column: 1; width: 100%; overflow-x: auto; }
+    .pills button { flex: 1; padding: 8px 12px; }
+    .bar-actions { grid-column: 1; }
+  }
+
+</style>
+</head>
+<body>
+
+<div class="shell">
+  <aside class="side">
+    <!-- The wordmark is the way back to the dashboard, so there is no logo
+         tile and no separate "home" item. -->
+    <a class="brand" href="/">Queueify</a>
+
+    <div class="label">Elsewhere</div>
+    <a class="nav" href="/">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+      Setup dashboard
+    </a>
+    <a class="nav" href="/admin.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-1.8-.3 1.6 1.6 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1A1.6 1.6 0 0 0 9 19.4a1.6 1.6 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.6 1.6 0 0 0 .3-1.8 1.6 1.6 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1A1.6 1.6 0 0 0 4.6 9a1.6 1.6 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.6 1.6 0 0 0 1.8.3H9a1.6 1.6 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.6 1.6 0 0 0 1 1.5 1.6 1.6 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0-.3 1.8V9a1.6 1.6 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1z"/></svg>
+      Admin Panel
+    </a>
+    <a class="nav" href="/editor.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M2 2l7.5 7.5"/><circle cx="11" cy="11" r="2"/></svg>
+      Theme editor
+    </a>
+
+    <div class="foot" id="since">Counted from the request log.</div>
+  </aside>
+
+  <main class="main">
+    <div class="inner">
+      <div class="pillbar">
+        <nav class="pills">
+          <button class="active" data-view="overview">Overview</button>
+          <button data-view="people">People</button>
+          <button data-view="music">Music</button>
+          <button data-view="streams">Streams</button>
+        </nav>
+        <div class="bar-actions">
+          <button class="ghost" onclick="refresh()">Refresh</button>
+        </div>
+      </div>
+
+      <div class="view active" id="view-overview"></div>
+      <div class="view" id="view-people"></div>
+      <div class="view" id="view-music"></div>
+      <div class="view" id="view-streams"></div>
+    </div>
+  </main>
+</div>
+
+<script>
+/**
+ * Queueify's stats page.
+ *
+ * Read-only: it counts up the request log and shows it. There is nothing to
+ * save here, so there is no savebar and no unsaved-changes guard, which is the
+ * one way this page departs from admin.html.
+ */
+
+const $ = id => document.getElementById(id);
+
+function escapeHtml(value) {
+  return String(value ?? '').replace(/[&<>"']/g, c => (
+    { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
+  ));
+}
+
+async function api(path) {
+  const res = await fetch(path);
+  if (!res.ok) throw new Error(`${path} answered ${res.status}`);
+  return res.json();
+}
+
+/* ----------------------------------------------------------- formatting */
+
+function number(value) {
+  return Number(value || 0).toLocaleString();
+}
+
+function percent(ratio) {
+  return `${Math.round((ratio || 0) * 100)}%`;
+}
+
+/** Long spans read as hours; a single stream's worth reads as minutes. */
+function duration(ms) {
+  const totalMinutes = Math.round((ms || 0) / 60000);
+  if (totalMinutes < 60) return `${totalMinutes} min`;
+
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  if (hours < 48) return minutes ? `${hours}h ${minutes}m` : `${hours}h`;
+
+  return `${Math.floor(hours / 24)}d ${hours % 24}h`;
+}
+
+function trackTime(ms) {
+  const seconds = Math.round((ms || 0) / 1000);
+  return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
+}
+
+function date(iso) {
+  if (!iso) return '-';
+  return new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
+function dateTime(iso) {
+  if (!iso) return '-';
+  return new Date(iso).toLocaleString(undefined, {
+    day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'
+  });
+}
+
+// The outcome names are the ones the log stores, which are the same ones the
+// chat messages are keyed on. This is the only place they become English.
+const REJECTION_LABELS = {
+  cooldown: 'Asked again too soon',
+  queueClosed: 'Queue was closed',
+  recentlyRequested: 'Song was just played',
+  tooLong: 'Song was too long',
+  explicit: 'Explicit songs are off',
+  blockedArtist: 'Artist is blocked',
+  blockedSong: 'Song is blocked',
+  invalidUrl: 'Not a Spotify link',
+  notFound: 'No such song',
+  addFailed: 'Spotify refused it',
+  syncFailed: 'Could not reach Spotify',
+  requestPending: 'Already had one in flight'
+};
+
+function rejectionLabel(outcome) {
+  return REJECTION_LABELS[outcome] || outcome;
+}
+
+/* -------------------------------------------------------------- pieces */
+
+function card(title, sub, bodyHtml) {
+  return `<section class="card">
+    <header><h2>${escapeHtml(title)}</h2>${sub ? `<span class="sub">${escapeHtml(sub)}</span>` : ''}</header>
+    <div class="body">${bodyHtml}</div>
+  </section>`;
+}
+
+function tile(n, k, s) {
+  return `<div class="tile">
+    <div class="n">${escapeHtml(n)}</div>
+    <div class="k">${escapeHtml(k)}</div>
+    ${s ? `<div class="s">${escapeHtml(s)}</div>` : ''}
+  </div>`;
+}
+
+/** A ranked list. `rows` are already in order; this only draws them. */
+function rankList(rows, name, value, sub) {
+  if (!rows || !rows.length) return '<p class="empty">Nothing yet.</p>';
+
+  return `<div class="rank">${rows.map((row, index) => `
+    <div class="row">
+      <span class="i">${index + 1}</span>
+      <span class="name">${escapeHtml(name(row))}${sub && sub(row) ? `<small>${escapeHtml(sub(row))}</small>` : ''}</span>
+      <span class="v">${escapeHtml(value(row))}</span>
+    </div>`).join('')}</div>`;
+}
+
+/** Horizontal bars, scaled against the biggest one rather than the total. */
+function barList(rows, label, value) {
+  if (!rows || !rows.length) return '<p class="empty">Nothing yet.</p>';
+
+  const max = Math.max(...rows.map(value), 1);
+
+  return `<div class="bars">${rows.map(row => `
+    <div class="bar">
+      <span class="lbl">${escapeHtml(label(row))}</span>
+      <span class="track"><span class="fill" style="width:${(value(row) / max) * 100}%"></span></span>
+      <span class="val">${number(value(row))}</span>
+    </div>`).join('')}</div>`;
+}
+
+function factCard(title, sub, track, note) {
+  if (!track) return card(title, sub, '<p class="empty">Nothing yet.</p>');
+
+  return card(title, sub, `<div class="fact">
+    <strong>${escapeHtml(track.name)}</strong>
+    <span>${escapeHtml(track.artists || '')}</span>
+    ${note ? `<em>${escapeHtml(note(track))}</em>` : ''}
+  </div>`);
+}
+
+function nothingYet(what) {
+  return `<div class="card"><div class="body"><p class="empty">
+    <strong>Nothing to count yet.</strong>
+    ${escapeHtml(what)} Queueify starts keeping a record the first time somebody
+    requests a song, so come back after a stream.
+  </p></div></div>`;
+}
+
+/* --------------------------------------------------------------- views */
+
+async function renderOverview() {
+  const data = await api('/api/stats/overview');
+
+  $('since').textContent = data.since
+    ? `Counted since ${date(data.since)}.`
+    : 'Counted from the request log.';
+
+  if (data.empty) {
+    $('view-overview').innerHTML = head('Overview', 'Every song request since Queueify started keeping count.')
+      + nothingYet('');
+    return;
+  }
+
+  const t = data.totals;
+  const sources = data.sources.chat + data.sources.redeem;
+  const busiest = data.hours.indexOf(Math.max(...data.hours));
+  const peak = Math.max(...data.hours, 1);
+
+  const tiles = `<div class="tiles">
+    ${tile(number(t.accepted), 'Songs queued', `${percent(data.acceptanceRate)} of requests got in`)}
+    ${tile(duration(data.queuedMs), 'Of music', 'Total length of everything queued')}
+    ${tile(number(t.viewers), 'People', `${number(t.artists)} different artists`)}
+    ${tile(number(t.sessions), 'Streams', t.sessions ? `Counted by gaps of 3h or more` : '')}
+  </div>`;
+
+  const whereFrom = card('Where requests come from', `${number(sources)} in total`, `
+    <div class="split">
+      <span style="width:${(data.sources.chat / Math.max(sources, 1)) * 100}%;background:var(--accent)"></span>
+      <span style="width:${(data.sources.redeem / Math.max(sources, 1)) * 100}%;background:var(--green)"></span>
+    </div>
+    <div class="legend">
+      <span><i style="background:var(--accent)"></i>Chat &middot; ${number(data.sources.chat)}</span>
+      <span><i style="background:var(--green)"></i>Channel points &middot; ${number(data.sources.redeem)}</span>
+    </div>`);
+
+  // The most useful card on the page: it says which setting is turning people
+  // away, so a number that looks wrong can actually be acted on. Worth naming
+  // plainly for that reason - this is the one somebody comes here to check.
+  const turnedAway = card(
+    'Why requests get turned away',
+    `${number(t.rejected)} of ${number(t.requests)} never made the queue`,
+    data.rejections.length
+      ? barList(data.rejections, row => rejectionLabel(row.outcome), row => row.count)
+      : '<p class="empty">Every request so far has made it into the queue.</p>');
+
+  const when = card('When people request', `Busiest around ${busiest}:00`, `
+    <div class="hours">
+      ${data.hours.map((count, hour) => `
+        <span class="h ${count ? 'on' : ''}" style="height:${(count / peak) * 100}%"
+              title="${hour}:00 - ${number(count)} requests"></span>`).join('')}
+    </div>
+    <div class="hour-axis"><span>00:00</span><span>06:00</span><span>12:00</span><span>18:00</span><span>23:00</span></div>`);
+
+  const flavour = card('The shape of it', '', `
+    <div class="bars">
+      ${data.obscurity !== null ? `
+      <div class="bar">
+        <span class="lbl">Obscurity</span>
+        <span class="track"><span class="fill" style="width:${100 - data.obscurity}%"></span></span>
+        <span class="val">${Math.round(100 - data.obscurity)}</span>
+      </div>` : ''}
+      <div class="bar">
+        <span class="lbl">Explicit</span>
+        <span class="track"><span class="fill" style="width:${(data.explicitRatio || 0) * 100}%"></span></span>
+        <span class="val">${percent(data.explicitRatio)}</span>
+      </div>
+    </div>
+    ${data.decades.length ? `<div style="margin-top:16px">${
+      barList(data.decades, row => `${row.decade}s`, row => row.count)
+    }</div>` : ''}`);
+
+  $('view-overview').innerHTML =
+    head('Overview', 'Every song request since Queueify started keeping count.')
+    + tiles
+    + `<div class="grid">${whereFrom}${turnedAway}</div>`
+    + `<div class="grid">${when}${flavour}</div>`;
+}
+
+// Both People and Music come from the one leaderboards call, so it is fetched
+// once and the two views read from it rather than asking twice.
+let boards = null;
+
+async function loadBoards() {
+  if (!boards) boards = await api('/api/stats/leaderboards');
+  return boards;
+}
+
+async function renderPeople() {
+  const data = await loadBoards();
+  const title = head('People', 'Who asks for what, and whose taste looks like whose.');
+
+  if (data.empty) {
+    $('view-people').innerHTML = title + nothingYet('');
+    return;
+  }
+
+  const requesters = card('Top requesters', 'By songs that got queued',
+    rankList(data.topRequesters,
+      row => row.name,
+      row => number(row.accepted),
+      row => (row.aliases.length ? `also seen as ${row.aliases.join(', ')}` : '')));
+
+  const signatures = card('Signature songs', 'The one that is most theirs',
+    rankList(data.signatures,
+      row => row.viewer,
+      row => `${number(row.count)}x`,
+      row => `${row.name}${row.exclusive ? ' - nobody else asks for it' : ''}`));
+
+  const twins = card('Closest listening twins', 'By the artists they share',
+    rankList(data.twins,
+      row => `${row.a} & ${row.b}`,
+      row => percent(row.overlap),
+      row => `${number(row.shared)} artists in common`));
+
+  const streaks = card('Longest streaks', 'Streams in a row with a request',
+    rankList(data.streaks,
+      row => row.name,
+      row => number(row.longest),
+      row => (row.current ? `still going - ${number(row.current)}` : 'ended')));
+
+  $('view-people').innerHTML = title + `<div class="masonry">${requesters}${signatures}${twins}${streaks}</div>`;
+}
+
+async function renderMusic() {
+  const data = await loadBoards();
+  const title = head('Music', 'What actually gets played, and the far ends of it.');
+
+  if (data.empty) {
+    $('view-music').innerHTML = title + nothingYet('');
+    return;
+  }
+
+  const tracks = card('Most requested songs', 'Remasters counted as one',
+    rankList(data.topTracks,
+      row => row.name,
+      row => number(row.count),
+      row => row.artists));
+
+  const artistBoard = card('Most requested artists', 'A collaboration counts for both',
+    rankList(data.topArtists,
+      row => row.name,
+      row => number(row.count),
+      row => `${number(row.tracks)} ${row.tracks === 1 ? 'track' : 'tracks'}`));
+
+  const skipped = card('Most skipped', 'Cut short before it finished',
+    rankList(data.mostSkipped,
+      row => row.name,
+      row => number(row.count),
+      row => row.artists));
+
+  // Spotify scores every track 0-100 for how much the world is listening to it
+  // right now. These two are the ends of that, and neither title says so on its
+  // own, so the header spells it out.
+  const popularity = track => `Spotify popularity ${track.popularity} out of 100`;
+
+  const e = data.extremes;
+  const facts = `
+    ${factCard('Longest song', 'By how long it runs', e.longest, track => trackTime(track.durationMs))}
+    ${factCard('Shortest song', 'By how long it runs', e.shortest, track => trackTime(track.durationMs))}
+    ${factCard('Deepest cut', 'The most obscure song anyone asked for', e.obscurest, popularity)}
+    ${factCard('Biggest crowd-pleaser', 'The best known song anyone asked for', e.mainstream, popularity)}
+    ${factCard('Oldest', 'By release date', e.oldest, track => track.releaseDate)}
+    ${factCard('Newest', 'By release date', e.newest, track => track.releaseDate)}`;
+
+  const oneHit = card('One-hit wonders', '', `<p class="empty">
+    <strong>${number(data.oneHitWonders)}</strong>
+    ${data.oneHitWonders === 1 ? 'artist has' : 'artists have'} been asked for exactly once, ever.
+  </p>`);
+
+  // Grouped by how tall they are, not by subject. The two ten-row lists next to
+  // seven three-line cards is what CSS columns balance worst: the long ones
+  // cannot be split, so one column ends up nearly empty. Side by side they are
+  // the same height as each other, and the short ones tile evenly below.
+  $('view-music').innerHTML = title
+    + `<div class="grid pair">${tracks}${artistBoard}</div>`
+    + `<div class="grid">${data.mostSkipped.length ? skipped : ''}${facts}${oneHit}</div>`;
+}
+
+async function renderStreams() {
+  const { sessions } = await api('/api/stats/sessions');
+
+  if (!sessions.length) {
+    $('view-streams').innerHTML = head('Streams', 'One row per stream, newest first.') + nothingYet('');
+    return;
+  }
+
+  const rows = sessions.map(session => `<tr>
+    <td>${escapeHtml(dateTime(session.startedAt))}</td>
+    <td class="num">${escapeHtml(duration(session.durationMs))}</td>
+    <td class="num">${number(session.accepted)}</td>
+    <td class="num">${number(session.rejected)}</td>
+    <td class="num">${number(session.viewers)}</td>
+    <td>${session.firstTrack
+      ? `${escapeHtml(session.firstTrack.name || '-')}<br><span style="color:var(--faint);font-size:12px">${escapeHtml(session.firstTrack.artists || '')}</span>`
+      : '-'}</td>
+    <td>${session.topRequester ? escapeHtml(session.topRequester.name) : '-'}</td>
+  </tr>`).join('');
+
+  $('view-streams').innerHTML =
+    head('Streams', 'One row per stream, newest first. A gap of three hours or more starts a new one.')
+    + card('Every stream', `${number(sessions.length)} counted`, `<div class="table-wrap"><table>
+        <thead><tr>
+          <th>Started</th><th>Length</th><th>Queued</th><th>Bounced</th>
+          <th>People</th><th>First song</th><th>Top requester</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table></div>`);
+}
+
+function head(title, description) {
+  return `<div class="page-head">
+    <h1>${escapeHtml(title)}</h1>
+    <p>${escapeHtml(description)}</p>
+  </div>`;
+}
+
+/* -------------------------------------------------------------- routing */
+
+const VIEWS = {
+  overview: renderOverview,
+  people: renderPeople,
+  music: renderMusic,
+  streams: renderStreams
+};
+
+let currentView = 'overview';
+
+async function show(name, { force = false } = {}) {
+  if (!VIEWS[name]) name = 'overview';
+
+  const changed = name !== currentView;
+  currentView = name;
+
+  for (const other of Object.keys(VIEWS)) {
+    $('view-' + other).classList.toggle('active', other === name);
+  }
+  for (const button of document.querySelectorAll('.pills button[data-view]')) {
+    button.classList.toggle('active', button.dataset.view === name);
+  }
+
+  if (location.hash.slice(1) !== name) history.replaceState(null, '', '#' + name);
+
+  // Historical data, so a view is drawn once and then left alone until the
+  // Refresh button asks for it again.
+  const host = $('view-' + name);
+  if (!force && !changed && host.innerHTML) return;
+  if (!force && host.innerHTML) return;
+
+  host.innerHTML = '<div class="card"><div class="body"><p class="empty">Counting…</p></div></div>';
+
+  try {
+    await VIEWS[name]();
+  } catch (err) {
+    host.innerHTML = `<div class="card"><div class="body"><p class="empty">
+      <strong>Could not read the request log.</strong>${escapeHtml(err.message)}
+    </p></div></div>`;
+  }
+}
+
+function refresh() {
+  // People and Music share one response, so a refresh has to drop it or they
+  // would redraw the numbers they already had.
+  boards = null;
+  show(currentView, { force: true });
+}
+
+for (const button of document.querySelectorAll('.pills button[data-view]')) {
+  button.addEventListener('click', () => show(button.dataset.view));
+}
+
+window.addEventListener('hashchange', () => show(location.hash.slice(1)));
+
+show(location.hash.slice(1) || 'overview');
+</script>
+<script src="/tooltips.js"></script>
+</body>
+</html>

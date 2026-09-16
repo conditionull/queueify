@@ -178,7 +178,24 @@ module.exports = function startEventSub(client) {
                 console.log('Redeem ignored (currently disabled)');
                 return refundRedeem(event.id, state.broadcasterId, state.spotifyRewardId);
             }
-            return queueSong({ client, channel: USERNAME, username: event.user_name, url: event.user_input, state, isRedeem: true, redemptionId: event.id, broadcasterId: state.broadcasterId });
+            return queueSong({
+                client,
+                channel: USERNAME,
+                username: event.user_name,
+                url: event.user_input,
+                state,
+                isRedeem: true,
+                redemptionId: event.id,
+                broadcasterId: state.broadcasterId,
+                // A redeem carries the login separately, where chat only ever
+                // sends the lowercase name. Passing it keeps the same person
+                // from becoming two rows in the request log.
+                requester: {
+                    userId: event.user_id ?? null,
+                    userLogin: event.user_login ?? event.user_name,
+                    userName: event.user_name
+                }
+            });
         }
     }
 

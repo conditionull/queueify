@@ -11,6 +11,8 @@ const startWidgetServer = require("./widget/server");
 const obs = require("./services/obs");
 const { sayMessage } = require('./services/messages');
 const aliases = require('./services/aliases');
+const history = require('./services/history');
+const commandCooldowns = require('./services/commandCooldowns');
 const { getVerifiedAccessToken } = require('./services/twitchAuth');
 const openBrowser = require('./helpers/openBrowser');
 
@@ -275,6 +277,9 @@ async function main() {
     eventSub.stop();
     if (dashboard.close) await dashboard.close().catch(() => {});
     await client.disconnect().catch(() => {});
+    // Request-log appends are handed over without being waited for, so the
+    // last song of a stream would otherwise be lost to a Ctrl+C.
+    await history.flush().catch(() => {});
     // Give debounced state writes (core/state.js, ~100ms) a moment to flush.
     // Registering a signal handler suppresses Node's default terminate-on-signal
     // behavior, and the widget/canvas HTTP servers keep the event loop alive
@@ -314,6 +319,12 @@ async function handleMessage(client, channel, tags, message, self) {
     sayMessage(client, channel, 'general.permissionDenied', { username });
     return;
   }
+
+  // Mods are usually checking on something that looks stuck, which is when
+  // being made to wait is least useful. Everyone else gets whatever wait the
+  // command has been given, and is turned down without a word - see
+  // services/commandCooldowns.js for why it stays quiet.
+  if (!isMod && !commandCooldowns.allow(state, handler.name, username)) return;
 
   const context = {
     client,

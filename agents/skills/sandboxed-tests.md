@@ -11,7 +11,8 @@ test that forgets one writes to the user's own files.
 | `QUEUEIFY_THEMES_DIR` | `widget/themes/` |
 | `QUEUEIFY_WIDGET_CONFIG_FILE` | `widget/config.json` |
 | `QUEUEIFY_SETTINGS_FILE` | `queue-settings.json` |
-| `QUEUEIFY_DATA_DIR` | `queue-state.json`, `queue-pending.json`, `queue-recent.json`, `queue-blacklist.json` |
+| `QUEUEIFY_DATA_DIR` | `queue-state.json`, `queue-pending.json`, `queue-recent.json`, `queue-blacklist.json`, `queue-history.jsonl` |
+| `QUEUEIFY_HISTORY_FILE` | `queue-history.jsonl` on its own |
 | `QUEUEIFY_ENV_FILE` | `.env` |
 | `QUEUEIFY_SCENE_THEMES_FILE` | `config/scene-themes.json` |
 | `QUEUEIFY_WIDGET_URL` | the running widget server |
@@ -31,10 +32,14 @@ process.env.QUEUEIFY_THEMES_DIR = sandbox;
 const store = require('../services/themeStore');
 ```
 
-`themeStore`, `widgetLayout`, `core/state`, `widget/server` and `setup/server`
-all resolve their paths at module load. An assignment after the `require` is
-too late, and nothing complains — the test passes while writing to the wrong
-place.
+`themeStore`, `widgetLayout`, `core/state`, `services/history`, `widget/server`
+and `setup/server` all resolve their paths at module load. An assignment after
+the `require` is too late, and nothing complains — the test passes while writing
+to the wrong place.
+
+`services/history` is reached indirectly by `services/queueSong`,
+`services/syncQueue` and `commands/skip`, so a test touching any of those has to
+set the override too — otherwise it appends to the log of whoever is running it.
 
 ## Bust the module cache between sandboxes
 
@@ -69,6 +74,10 @@ straight after the assertions races them:
 await new Promise(resolve => setTimeout(resolve, 250));
 fs.rmSync(sandbox, { recursive: true, force: true });
 ```
+
+`services/history` is the exception: it appends rather than rewriting and has no
+debounce, so `await appendEvent(...)` is already on disk. Do not copy the 250ms
+wait into a test that only touches the log.
 
 ## Standing in for OBS
 

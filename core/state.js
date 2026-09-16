@@ -15,7 +15,18 @@ const RECENT_REQUESTS_FILE = path.join(DATA_DIR, 'queue-recent.json');
 const DEFAULT_COOLDOWN_SECONDS = 60;
 const DEFAULT_REPEAT_BLOCK_SECONDS = 600;
 const DEFAULT_MAX_SONG_LENGTH = 360;
+// Commands that are worth a brake out of the box. !np asks Spotify what is
+// playing and what is queued, so it is the one that costs something to spam.
+// Anything absent here has no wait at all, and a command the user has set is
+// kept exactly as they set it - including a deliberate 0.
+const DEFAULT_COMMAND_COOLDOWNS = {
+    active: { global: 3, user: 20 }
+};
 const PROGRESS_RESET_GRACE_MS = 5000;
+// How near the start the playhead has to land for a jump backwards to mean the
+// track is beginning again, rather than somebody scrubbing inside the play that
+// is already going. See updateActiveTrack.
+const REPLAY_START_WINDOW_MS = 5000;
 const MAX_WRITE_RETRY = 3;
 
 // Debounce timers, keyed by file: coalesce rapid saveX() bursts into one write.
@@ -125,6 +136,10 @@ const state = {
     cooldownSeconds: settings.cooldownSeconds ?? DEFAULT_COOLDOWN_SECONDS,
     repeatBlockSeconds: settings.repeatBlockSeconds ?? DEFAULT_REPEAT_BLOCK_SECONDS,
     maxSongLength: settings.maxSongLength ?? DEFAULT_MAX_SONG_LENGTH,
+    // Per command: { global, user } in seconds. Merged over the defaults rather
+    // than replacing them, so a command nobody has touched still gets its
+    // built-in wait and one that has been set keeps the number that was set.
+    commandCooldowns: { ...DEFAULT_COMMAND_COOLDOWNS, ...(settings.commandCooldowns ?? {}) },
     activeWidgetPosition: settings.activeWidgetPosition ?? "topright",
     // Persisted so a restart knows which reward/channel it already owns,
     // instead of rediscovering them before anything can use them.
@@ -161,6 +176,7 @@ const state = {
             cooldownSeconds: this.cooldownSeconds,
             repeatBlockSeconds: this.repeatBlockSeconds,
             maxSongLength: this.maxSongLength,
+            commandCooldowns: this.commandCooldowns,
             chatEnabled: this.chatEnabled,
             redeemsEnabled: this.redeemsEnabled,
             allowExplicit: this.allowExplicit,
@@ -287,11 +303,22 @@ const state = {
         }
 
         if (this.activeTrack && this.activeTrack.id === currentlyPlaying.id) {
-            if (
+            const wentBackwards =
                 Number.isFinite(currentlyPlaying.progressMs) &&
                 Number.isFinite(this.activeTrack.lastProgressMs) &&
-                currentlyPlaying.progressMs + PROGRESS_RESET_GRACE_MS < this.activeTrack.lastProgressMs
-            ) {
+                currentlyPlaying.progressMs + PROGRESS_RESET_GRACE_MS < this.activeTrack.lastProgressMs;
+
+            // Back to the very start means this is the *next* copy of the track
+            // beginning: the same song can sit in the queue twice, and the
+            // second one belongs to whoever asked for it, so it is re-read from
+            // the pending queue.
+            //
+            // Landing anywhere else is somebody dragging the playhead inside
+            // the song already playing. That is the same play by the same
+            // person, so startedAt is left alone - it is what tells everything
+            // downstream this is not a new play, and minting a fresh one both
+            // lost the requester's name and logged the song as played twice.
+            if (wentBackwards && currentlyPlaying.progressMs <= REPLAY_START_WINDOW_MS) {
                 return this.startActiveTrack(currentlyPlaying);
             }
 

@@ -8,7 +8,7 @@ twitch-token.json
 twitch-token.json.tmp
 
 queue-settings.json
-queue-history.json
+queue-history.jsonl
 queue-pending.json
 queue-recent.json
 queue-blacklist.json
