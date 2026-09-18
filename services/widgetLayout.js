@@ -155,6 +155,27 @@ async function rememberPosition(theme) {
 }
 
 /**
+ * Saves where the widget is sitting right now as a theme's preset for one of
+ * the two positions - what `!tr set` and `!bc set` do in chat.
+ *
+ * The chat commands and the dashboard both come through here, so there is one
+ * implementation of what "set" means. They differ only in who is allowed to
+ * ask and what gets said back.
+ */
+async function savePreset(theme, kind) {
+    if (!getObsConfig().configured) {
+        return { saved: false, reason: 'obs_not_configured' };
+    }
+
+    const transform = await obs.getTransform();
+
+    state.widgetPresets[widgetPresets.nameFor(kind, theme)] = transform;
+    state.saveSettings();
+
+    return { saved: true, theme, kind };
+}
+
+/**
  * The remembered rectangle for a theme, if it still speaks for the positioning
  * mode in force. Running `!tr` after dragging the widget about means top right
  * is what was asked for, so the drag no longer counts.
@@ -570,6 +591,7 @@ module.exports = {
     activateTheme,
     restorePosition,
     rememberPosition,
+    savePreset,
     recordPlacement,
     lastPositionFor,
     presetsFor,

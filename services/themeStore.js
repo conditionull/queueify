@@ -20,7 +20,25 @@ const THEMES_DIR = process.env.QUEUEIFY_THEMES_DIR || path.join(__dirname, '..',
 // 2 added the two time labels either side of the progress bar, and an outline
 // on every piece of text. A model still saved as 1 predates both, so its time
 // labels start hidden - an old theme must not suddenly grow two numbers.
-const MODEL_VERSION = 2;
+//
+// 3 added canvas blur and dim. Both fall back to 0, which is the same widget a
+// version 2 theme already draws, so there is nothing to key on the saved
+// version here - a theme written before they existed simply has neither.
+//
+// 4 added a drop shadow on every text module. Its distance falls back to 0 and
+// nothing is emitted at 0, so the same applies - a version 3 theme generates
+// the stylesheet it always did, byte for byte.
+//
+// 5 added Lucide icons. They live in their own list rather than in `modules`,
+// because there can be any number of them and they can be deleted - neither
+// of which is true of the six parts the widget runtime queries by name. A
+// theme written before them simply has an empty list.
+//
+// 6 gave the progress bar a shape: the plain bar it has always been, or a
+// waveform of lines at differing heights. The style falls back to 'bar', which
+// generates exactly the rules a version 5 theme generated, so nothing keys on
+// the saved version here.
+const MODEL_VERSION = 6;
 const NAME_PATTERN = /^[a-z0-9][a-z0-9-]{0,30}$/;
 
 // The modules the widget runtime knows how to fill. They are always present in
@@ -35,6 +53,98 @@ const TIME_TYPES = ['elapsed', 'duration'];
 
 // Everything that is text, and so takes the text settings below.
 const TEXT_TYPES = ['title', 'artist', ...TIME_TYPES];
+
+/* ------------------------------------------------------------- icons */
+
+/**
+ * Lucide, read straight out of the installed package.
+ *
+ * Only the shapes inside <svg> are kept. The wrapper is written fresh by the
+ * generator so the size, colour and stroke width come from the theme rather
+ * than from whatever the file happened to ship with - Lucide draws every icon
+ * with `stroke="currentColor"`, which is exactly what lets a theme point one
+ * at `var(--album-vibrant)` and have it re-tint with the artwork.
+ *
+ * ISC, with a subset inherited from Feather under MIT. Both notices ship in
+ * node_modules/lucide-static/LICENSE, which is what either licence asks for.
+ */
+const LUCIDE_DIR = process.env.QUEUEIFY_LUCIDE_DIR
+    || path.join(__dirname, '..', 'node_modules', 'lucide-static', 'icons');
+
+// At most this many on one theme. A widget is 680x192; past a dozen the
+// theme is not a widget any more, and the cap keeps a hand-written
+// theme.json from asking the generator to inline a megabyte of paths.
+const ICON_LIMIT = 12;
+
+// Lucide's own naming. It has to exclude "." and "/" before the name is put
+// anywhere near a file path - see iconBody().
+const ICON_NAME = /^[a-z0-9]+(-[a-z0-9]+)*$/;
+
+let iconNamesCache = null;
+const iconBodyCache = new Map();
+
+/** Every icon the installed Lucide offers, as a Set of names. */
+function iconNames() {
+    if (iconNamesCache) return iconNamesCache;
+
+    try {
+        iconNamesCache = new Set(
+            fs.readdirSync(LUCIDE_DIR)
+                .filter(file => file.endsWith('.svg'))
+                .map(file => file.slice(0, -4))
+                .filter(name => ICON_NAME.test(name))
+        );
+    } catch (err) {
+        // No package installed: the feature switches itself off rather than
+        // taking the whole theme store down with it.
+        iconNamesCache = new Set();
+    }
+
+    return iconNamesCache;
+}
+
+/**
+ * The drawing instructions for one icon, with Lucide's own <svg> wrapper
+ * stripped off.
+ *
+ * The name is checked against the index first. That is the security boundary,
+ * not the regex: theme.json can be imported from anyone, and this is the only
+ * field whose value ends up as markup rather than as a CSS value. A name that
+ * is not a real icon returns nothing and the icon is dropped, so the worst a
+ * doctored file can do is ask for an icon that does not exist.
+ */
+function iconBody(name) {
+    if (!iconNames().has(name)) return null;
+    if (iconBodyCache.has(name)) return iconBodyCache.get(name);
+
+    let body = null;
+    try {
+        const file = fs.readFileSync(path.join(LUCIDE_DIR, name + '.svg'), 'utf8');
+        const open = file.indexOf('>', file.indexOf('<svg'));
+        const close = file.lastIndexOf('</svg>');
+
+        if (open !== -1 && close > open) {
+            body = file.slice(open + 1, close).replace(/\s+/g, ' ').trim();
+        }
+    } catch (err) {
+        body = null;
+    }
+
+    iconBodyCache.set(name, body);
+    return body;
+}
+
+/** The names and keywords the editor's picker searches over. */
+function iconCatalogue() {
+    let tags = {};
+    try {
+        tags = require(path.join(LUCIDE_DIR, '..', 'tags.json'));
+    } catch (err) {
+        tags = {};
+    }
+
+    return [...iconNames()].sort().map(name => ({ name, tags: tags[name] || [] }));
+}
 
 const CANVAS_LIMITS = { width: [120, 1920], height: [40, 1080] };
 
@@ -223,7 +333,8 @@ function defaultModule(type) {
                 font: 'system', fontSize: 26, fontWeight: 700, color: '#ffffff',
                 letterSpacing: 0, align: 'left', opacity: 1,
                 uppercase: false, italic: false, glow: 0, glowColor: 'var(--album-vibrant)',
-                outline: 0, outlineColor: '#000000'
+                outline: 0, outlineColor: '#000000',
+                shadow: 0, shadowAngle: 135, shadowBlur: 0, shadowColor: 'rgba(0,0,0,0.55)'
             };
         case 'artist':
             return {
@@ -231,12 +342,16 @@ function defaultModule(type) {
                 font: 'system', fontSize: 17, fontWeight: 500, color: 'var(--album-light)',
                 letterSpacing: 0, align: 'left', opacity: 0.85,
                 uppercase: false, italic: false, glow: 0, glowColor: 'var(--album-vibrant)',
-                outline: 0, outlineColor: '#000000'
+                outline: 0, outlineColor: '#000000',
+                shadow: 0, shadowAngle: 135, shadowBlur: 0, shadowColor: 'rgba(0,0,0,0.55)'
             };
         case 'progress':
             return {
                 type, hidden: false, x: 246, y: 132, w: 364, h: 6,
-                radius: 999, trackColor: 'rgba(255,255,255,0.18)', fillColor: 'var(--album-vibrant)'
+                radius: 999, trackColor: 'rgba(255,255,255,0.18)', fillColor: 'var(--album-vibrant)',
+                // A plain bar, as it always was. The waveform is something you
+                // go and choose, and it wants a taller box than 6px.
+                style: 'bar', bars: 48, barGap: 2, seed: 1
             };
         // The clocks sit level with the middle of the bar rather than under
         // it: 0:04 [========] 3:07 is the shape people already know.
@@ -246,7 +361,8 @@ function defaultModule(type) {
                 font: 'system', fontSize: 12, fontWeight: 600, color: 'var(--album-light)',
                 letterSpacing: 0, align: 'right', opacity: 0.75,
                 uppercase: false, italic: false, glow: 0, glowColor: 'var(--album-vibrant)',
-                outline: 0, outlineColor: '#000000'
+                outline: 0, outlineColor: '#000000',
+                shadow: 0, shadowAngle: 135, shadowBlur: 0, shadowColor: 'rgba(0,0,0,0.55)'
             };
         case 'duration':
             return {
@@ -254,7 +370,8 @@ function defaultModule(type) {
                 font: 'system', fontSize: 12, fontWeight: 600, color: 'var(--album-light)',
                 letterSpacing: 0, align: 'left', opacity: 0.75,
                 uppercase: false, italic: false, glow: 0, glowColor: 'var(--album-vibrant)',
-                outline: 0, outlineColor: '#000000'
+                outline: 0, outlineColor: '#000000',
+                shadow: 0, shadowAngle: 135, shadowBlur: 0, shadowColor: 'rgba(0,0,0,0.55)'
             };
         default:
             throw new ThemeError(`Unknown module type "${type}"`);
@@ -276,9 +393,17 @@ function defaultModel(label = 'New theme') {
             radius: 32,
             borderWidth: 1,
             borderColor: 'rgba(255,255,255,0.08)',
-            padding: 0
+            padding: 0,
+            // Off by default: a new theme looks exactly as it always did, and
+            // these are something you reach for once there is a Canvas video
+            // or a full-bleed cover behind the text.
+            blur: 0,
+            dim: 0
         },
         modules: MODULE_TYPES.map(defaultModule),
+        // Nothing by default: a new theme is the widget it always was, and an
+        // icon is something you go and add.
+        icons: [],
         properties: {
             media: { mode: 'canvas' },
             showProgress: true,
@@ -287,6 +412,62 @@ function defaultModel(label = 'New theme') {
             scroll: { enabled: true, speed: 70, pauseDuration: 7 }
         }
     };
+}
+
+/** The settings a freshly added icon starts with. */
+function defaultIcon(name) {
+    return {
+        id: '', name, x: 24, y: 24, w: 32, h: 32,
+        color: 'var(--album-light)', strokeWidth: 2, rotate: 0, opacity: 1, hidden: false
+    };
+}
+
+/**
+ * The icon list, cleaned up.
+ *
+ * Unlike the six fixed parts, these are free-form: any number, any order, and
+ * an id the generated CSS builds a class name from. So the id is regenerated
+ * here from its position rather than trusted - a stored id is the one thing
+ * that would otherwise let a doctored theme.json choose a CSS selector.
+ *
+ * An icon whose name is not in the installed Lucide is dropped rather than
+ * replaced with something else. Silently swapping in a different picture is
+ * worse than the icon not being there.
+ */
+function normalizeIcons(raw, canvas) {
+    if (!Array.isArray(raw)) return [];
+
+    const icons = [];
+
+    for (const item of raw) {
+        if (icons.length >= ICON_LIMIT) break;
+        if (!item || typeof item !== 'object') continue;
+
+        const name = typeof item.name === 'string' ? item.name.trim() : '';
+        if (!ICON_NAME.test(name) || !iconNames().has(name)) continue;
+
+        const fallback = defaultIcon(name);
+
+        icons.push({
+            id: 'i' + icons.length,
+            name,
+            hidden: Boolean(item.hidden),
+            x: Math.round(number(item.x, fallback.x, -canvas.width, canvas.width * 2)),
+            y: Math.round(number(item.y, fallback.y, -canvas.height, canvas.height * 2)),
+            w: Math.round(number(item.w, fallback.w, 4, canvas.width * 2)),
+            h: Math.round(number(item.h, fallback.h, 4, canvas.height * 2)),
+            color: color(item.color, fallback.color),
+            // Lucide draws at stroke-width 2 in a 24 unit box. Scaling the icon
+            // scales the stroke with it, so this is the weight before that -
+            // which is why a big icon at 1 still looks finer than a small one
+            // at 3.
+            strokeWidth: Math.round(number(item.strokeWidth, fallback.strokeWidth, 0.5, 4) * 10) / 10,
+            rotate: Math.round(number(item.rotate, fallback.rotate, 0, 360)),
+            opacity: number(item.opacity, fallback.opacity, 0, 1)
+        });
+    }
+
+    return icons;
 }
 
 /**
@@ -311,7 +492,15 @@ function normalizeModel(input, { label } = {}) {
         radius: Math.round(number(canvasIn.radius, base.canvas.radius, 0, 400)),
         borderWidth: Math.round(number(canvasIn.borderWidth, base.canvas.borderWidth, 0, 12)),
         borderColor: color(canvasIn.borderColor, base.canvas.borderColor),
-        padding: Math.round(number(canvasIn.padding, base.canvas.padding, 0, 200))
+        padding: Math.round(number(canvasIn.padding, base.canvas.padding, 0, 200)),
+        // How hard the panel's own contents - its background, and the album
+        // art or Canvas video - are blurred and darkened before the text is
+        // drawn over them. Nothing outside the widget is touched; see
+        // veilRules() for why that is not a choice.
+        blur: Math.round(number(canvasIn.blur, base.canvas.blur, 0, 40)),
+        // Two decimals, because the generator turns this into a brightness
+        // multiplier and 1 - 0.3333333 is not something to put in a stylesheet.
+        dim: Math.round(number(canvasIn.dim, base.canvas.dim, 0, 1) * 100) / 100
     };
 
     const byType = new Map();
@@ -358,7 +547,17 @@ function normalizeModel(input, { label } = {}) {
                 ...common,
                 radius: Math.round(number(module.radius, fallback.radius, 0, 999)),
                 trackColor: color(module.trackColor, fallback.trackColor),
-                fillColor: color(module.fillColor, fallback.fillColor)
+                fillColor: color(module.fillColor, fallback.fillColor),
+                style: pick(module.style, ['bar', 'waveform'], fallback.style),
+                // Enough bars to read as a waveform, few enough that the
+                // generator is not writing hundreds of nth-child rules.
+                bars: Math.round(number(module.bars, fallback.bars, 8, 96)),
+                barGap: Math.round(number(module.barGap, fallback.barGap, 0, 12)),
+                // The shape of the waveform, not the waveform itself. Heights
+                // are worked out from this every time the theme is generated -
+                // storing them instead would be storing a derived value, and
+                // one that changes length the moment the bar count does.
+                seed: Math.round(number(module.seed, fallback.seed, 1, 9999))
             };
         }
 
@@ -381,7 +580,18 @@ function normalizeModel(input, { label } = {}) {
             // game. Half of it is painted outside the glyph, so the width the
             // user picks is doubled when the CSS is written.
             outline: number(module.outline, fallback.outline, 0, 12),
-            outlineColor: color(module.outlineColor, fallback.outlineColor)
+            outlineColor: color(module.outlineColor, fallback.outlineColor),
+            // How far the shadow is thrown, and which way. Distance is the
+            // switch: at 0 there is nothing to cast, so the other three are
+            // kept but never reach the CSS. That is also what makes this
+            // invisible to a theme saved before it existed.
+            shadow: Math.round(number(module.shadow, fallback.shadow, 0, 40)),
+            // Degrees, read the same way as the canvas gradient angle - 0 is
+            // up, 90 is right - because that is the one angle convention the
+            // editor already taught its user.
+            shadowAngle: Math.round(number(module.shadowAngle, fallback.shadowAngle, 0, 360)),
+            shadowBlur: Math.round(number(module.shadowBlur, fallback.shadowBlur, 0, 40)),
+            shadowColor: color(module.shadowColor, fallback.shadowColor)
         };
     });
 
@@ -406,6 +616,7 @@ function normalizeModel(input, { label } = {}) {
         label: String(raw.label || base.label).slice(0, 60),
         canvas,
         modules,
+        icons: normalizeIcons(raw.icons, canvas),
         properties
     };
 }
@@ -425,18 +636,97 @@ function box(module) {
     ].join('\n');
 }
 
+/**
+ * How far past its box a text module paints, in pixels.
+ *
+ * `-webkit-text-stroke` is centred on the glyph edge, so half of a stroke is
+ * drawn outside the letter - and the width written into the CSS is doubled
+ * (see below), which puts that outer half exactly `outline` pixels past the
+ * glyph. The box clips its overflow, so without room for it that half is
+ * simply sliced off.
+ */
+function bleedOf(module) {
+    return Math.ceil(module.outline || 0);
+}
+
+/**
+ * The drop shadow step for a text module, or nothing if it has none.
+ *
+ * A `drop-shadow` filter rather than a `text-shadow`, for the reason the glow
+ * gives below: the box clips its overflow so a long title can scroll, and a
+ * text-shadow lives inside that clip - an offset shadow would be sliced off
+ * against the edge of the box, hardest exactly where it is thrown furthest.
+ *
+ * It also means the shadow is cast by the silhouette of the *painted* text,
+ * so an outlined title throws the shadow of its outline rather than a second
+ * copy of the letters peeking out from behind the stroke.
+ *
+ * The angle is read the way the canvas gradient angle is: 0 is up, 90 is
+ * right, growing clockwise. Hence the sin/-cos rather than the other way
+ * round - CSS measures y downwards, so a shadow thrown upwards is negative.
+ * Two decimals, because nothing useful comes of 4.242640687119285px.
+ */
+function shadowStep(module) {
+    if (!module.shadow) return '';
+
+    const radians = module.shadowAngle * Math.PI / 180;
+    const round = value => Math.round(value * 100) / 100;
+
+    const x = round(Math.sin(radians) * module.shadow);
+    const y = round(-Math.cos(radians) * module.shadow);
+
+    return `drop-shadow(${x}px ${y}px ${module.shadowBlur}px ${module.shadowColor})`;
+}
+
 function textRules(selector, module) {
     // The glow is a filter on the box, not a text-shadow on the text: the box
     // clips its overflow so long titles can scroll, and a shadow inside it gets
     // sliced into a hard-edged rectangle. A filter paints outside the box.
-    const glow = module.glow
-        ? `\n    filter: drop-shadow(0 0 ${module.glow}px ${module.glowColor}) drop-shadow(0 0 ${Math.round(module.glow / 2)}px ${module.glowColor});`
-        : '';
+    //
+    // `overflow` is also the only clip that happens *before* the filter -
+    // `clip-path` and `mask` are applied after it and would cut the halo back
+    // off - which is why the outline is given its room below by growing the
+    // box rather than by clipping somewhere else.
+    //
+    // The shadow goes first. Chained filters feed into each other, so the
+    // second one sees the first one's output: shadow-then-glow haloes the
+    // letters and their shadow, which still reads as text with a shadow,
+    // while glow-then-shadow casts the shadow of the halo - a soft dark blob
+    // the size of the glow. Only one of those is worth looking at.
+    const steps = [
+        shadowStep(module),
+        ...(module.glow
+            ? [`drop-shadow(0 0 ${module.glow}px ${module.glowColor})`,
+               `drop-shadow(0 0 ${Math.round(module.glow / 2)}px ${module.glowColor})`]
+            : [])
+    ].filter(Boolean);
+
+    const filter = steps.length ? `\n    filter: ${steps.join(' ')};` : '';
 
     // -webkit-text-stroke centres the stroke on the glyph edge, so half of it
     // eats into the letter. `paint-order` puts the stroke down first and the
     // fill over the top, which is what an outline is meant to look like -
     // otherwise a 3px outline visibly thins the text it is protecting.
+    //
+    // Padding moves the clip out past the stroke; the matching negative margin
+    // pulls the box back by the same amount, so the *content* box - the
+    // rectangle the editor draws, the user drags, and every width measurement
+    // works from - is still exactly x/y/w/h. Nothing moves on screen; the clip
+    // just stops cutting.
+    //
+    // `box-sizing` is spelled out because the theme editor renders this same
+    // stylesheet inside a page with a `* { box-sizing: border-box }` reset.
+    // Under that reset the padding is taken *out* of the width instead of
+    // added to it, so the clip stays where it was and the line loses room -
+    // the preview would drift from what OBS draws.
+    const bleed = bleedOf(module);
+    const room = bleed
+        ? `
+    box-sizing: content-box;
+    padding: ${bleed}px;
+    margin: -${bleed}px;`
+        : '';
+
     const outline = module.outline
         ? `
     paint-order: stroke fill;
@@ -450,7 +740,8 @@ ${box(module)}
     align-items: center;
     white-space: nowrap;
     justify-content: ${module.align === 'center' ? 'center' : module.align === 'right' ? 'flex-end' : 'flex-start'};
-    overflow: hidden;${glow}
+    overflow: hidden;${room}
+    z-index: 2;${filter}
     ${module.hidden ? 'display: none;' : ''}
 }
 
@@ -479,19 +770,29 @@ ${selector} > * {
  *
  * The mask only exists while a line is scrolling, so text that fits stays
  * sharp to its edges.
+ *
+ * The offsets are measured from the box the user drew, not from the element -
+ * an outlined line has grown its element by the width of the stroke, and a
+ * flat 22px would put its fade that much further out than the one beside it.
  */
-function fadeRules() {
-    const mask = 'linear-gradient(to right, transparent 0, #000 22px, #000 calc(100% - 22px), transparent 100%)';
+function fadeRules(model) {
+    const mask = (module) => {
+        const edge = 22 + bleedOf(module);
+        return `linear-gradient(to right, transparent 0, #000 ${edge}px, #000 calc(100% - ${edge}px), transparent 100%)`;
+    };
+
+    const rule = (selector, module) => `${selector}.scrolling {
+    -webkit-mask-image: ${mask(module)};
+    mask-image: ${mask(module)};
+}`;
 
     return `
 
 /* Soft edges, but only while a line is scrolling. */
 
-.title-wrapper.scrolling,
-.artist-wrapper.scrolling {
-    -webkit-mask-image: ${mask};
-    mask-image: ${mask};
-}
+${rule('.title-wrapper', moduleOf(model, 'title'))}
+
+${rule('.artist-wrapper', moduleOf(model, 'artist'))}
 `;
 }
 
@@ -499,6 +800,250 @@ function fadeRules() {
 function canvasBackground(canvas) {
     if (canvas.backgroundMode !== 'gradient') return canvas.background;
     return `linear-gradient(${canvas.gradientAngle}deg, ${canvas.background}, ${canvas.backgroundTo})`;
+}
+
+/**
+ * Blur and dim: the layer between what the panel is showing and the text.
+ *
+ * The blur is a `backdrop-filter` on this layer rather than a `filter` on the
+ * artwork, because a filter samples past the element's own edges - a blurred
+ * Canvas video fades away to nothing around the edge of the panel it is meant
+ * to be filling. A backdrop-filter blurs what has already been painted
+ * underneath instead, so the picture keeps its edges.
+ *
+ * What is underneath is the panel background and the album art or Canvas
+ * video, and nothing else. OBS composites the scene behind the *page*, which
+ * the page cannot see, so this can never blur or dim gameplay - the editor
+ * says so, because it is the first thing people expect it to do.
+ *
+ * Dim is part of the same filter rather than black laid over the top, because
+ * a theme can have its panel hidden - and a black rectangle over a panel that
+ * is meant to be transparent is a black rectangle on the stream. `brightness`
+ * only touches colour, never alpha, so it darkens the artwork and leaves the
+ * empty parts of the panel exactly as empty as they were.
+ *
+ * Nothing is emitted when both are off, so a theme that does not use them is
+ * the same stylesheet it was before they existed.
+ */
+function veilRules(canvas) {
+    if (!canvas.blur && !canvas.dim) return '';
+
+    const steps = [
+        canvas.blur ? `blur(${canvas.blur}px)` : '',
+        canvas.dim ? `brightness(${Math.round((1 - canvas.dim) * 100) / 100})` : ''
+    ].filter(Boolean).join(' ');
+
+    return `
+/* Over the artwork, under the text. */
+
+.widget::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    pointer-events: none;
+    -webkit-backdrop-filter: ${steps};
+    backdrop-filter: ${steps};
+}
+`;
+}
+
+/**
+ * The rules for the theme's icons.
+ *
+ * Colour is set on the wrapper rather than on the SVG, because Lucide draws
+ * every shape with `stroke="currentColor"` - so one `color` reaches the whole
+ * icon, and `var(--album-vibrant)` re-tints it with the artwork exactly the
+ * way the text colours already do.
+ *
+ * Stroke width stays an attribute on the SVG instead: it is in the 24-unit
+ * space of the viewBox, so the browser scales it with the icon. That is why a
+ * large icon at width 1 still looks finer than a small one at 3.
+ */
+function iconRules(icons) {
+    if (!icons.length) return '';
+
+    const rules = icons.map(icon => `.icon-${icon.id} {
+    position: absolute;
+${box(icon)}
+    z-index: 2;
+    color: ${icon.color};
+    opacity: ${icon.opacity};${icon.rotate ? `
+    transform: rotate(${icon.rotate}deg);` : ''}
+    ${icon.hidden ? 'display: none;' : ''}
+}`).join('\n\n');
+
+    return `
+
+/* Icons */
+
+.icon svg {
+    display: block;
+    width: 100%;
+    height: 100%;
+}
+
+${rules}
+`;
+}
+
+/**
+ * What goes inside the progress bar.
+ *
+ * A plain bar needs nothing: app.js widens `.progress` and that is the bar. A
+ * waveform needs the bars themselves, twice - once for the track and once for
+ * the played part that `.progress` clips.
+ */
+function progressMarkup(progress) {
+    if (progress.style !== 'waveform') return '<div class="progress"></div>';
+
+    const bars = '<i></i>'.repeat(progress.bars);
+
+    return `<div class="wave track">${bars}</div>
+            <div class="progress"><div class="wave fill">${bars}</div></div>`;
+}
+
+/** The icon elements, with Lucide's shapes inlined so nothing is fetched. */
+function iconMarkup(icons) {
+    return icons.map(icon => {
+        const body = iconBody(icon.name);
+        if (!body) return '';
+
+        return `
+        <div class="icon icon-${icon.id}">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" ` +
+            `stroke="currentColor" stroke-width="${icon.strokeWidth}" ` +
+            `stroke-linecap="round" stroke-linejoin="round">${body}</svg>
+        </div>`;
+    }).join('');
+}
+
+/**
+ * The bar heights of a waveform, as fractions of the box.
+ *
+ * Deterministic, and deliberately so: the same theme has to generate the same
+ * waveform every time it is saved. `Math.random` would reshape somebody's
+ * design every time they touched anything else in it.
+ *
+ * It is not flat noise either. Pure random heights read as a bar chart; a
+ * waveform has loud passages and quiet ones. So a slow swell decides roughly
+ * how tall this stretch is and the noise varies each bar within it, which is
+ * what gives the clusters and the occasional spike.
+ */
+function waveHeights(count, seed) {
+    // A small integer hash. Enough for a shape nobody can see the pattern in,
+    // and short enough to read.
+    let state = (seed * 2654435761) >>> 0;
+    const random = () => {
+        state = (state * 1664525 + 1013904223) >>> 0;
+        return state / 4294967296;
+    };
+
+    // Two swells at unrelated speeds, so the loud stretches do not arrive on
+    // a beat you can count.
+    const phase = random() * Math.PI * 2;
+    const slow = 2.1 + random() * 1.7;
+    const fast = 6.3 + random() * 3.1;
+
+    const heights = [];
+
+    for (let i = 0; i < count; i += 1) {
+        const at = i / Math.max(1, count - 1);
+        const swell =
+            0.5 + 0.32 * Math.sin(at * slow * Math.PI * 2 + phase)
+                + 0.18 * Math.sin(at * fast * Math.PI * 2 + phase * 1.7);
+
+        // Weighted towards the swell so neighbours stay related, with enough
+        // per-bar noise that no two bars in a run are the same height.
+        const unit = Math.min(1, Math.max(0, swell * 0.62 + random() * 0.38));
+
+        // Never a bar with no height at all - the reference waveform has short
+        // bars, not gaps.
+        heights.push(Math.round((0.18 + unit * 0.82) * 100) / 100);
+    }
+
+    return heights;
+}
+
+/**
+ * The progress bar, in whichever shape the theme asked for.
+ *
+ * Both shapes keep the same contract with the widget runtime: `.progress` is
+ * the played part and app.js sets its width as a percentage. For the waveform
+ * that means two identical rows of bars, one in the track colour and one in
+ * the fill colour, with the fill row clipped by `.progress`. The fill row is
+ * pinned to the full width of the box in pixels so its bars stay lined up
+ * with the track's however far along the song is - a percentage would squash
+ * them together as the clip narrowed.
+ */
+function progressRules(progress) {
+    const container = `.progress-container {
+    position: absolute;
+${box(progress)}
+    z-index: 2;
+    background: ${progress.style === 'waveform' ? 'transparent' : progress.trackColor};
+    border-radius: ${progress.radius}px;
+    overflow: hidden;
+    ${progress.hidden ? 'display: none;' : ''}
+}`;
+
+    if (progress.style !== 'waveform') {
+        return `${container}
+
+.progress {
+    width: 0%;
+    height: 100%;
+    background: ${progress.fillColor};
+    border-radius: inherit;
+    transition: width .25s linear;
+}`;
+    }
+
+    const heights = waveHeights(progress.bars, progress.seed);
+
+    // One rule per bar, on both rows at once. The bars are centred on the
+    // midline, the way a waveform is drawn.
+    const bands = heights.map((height, at) =>
+        `.wave > i:nth-child(${at + 1}) { height: ${Math.round(height * 100)}%; }`
+    ).join('\n');
+
+    return `${container}
+
+.progress {
+    position: relative;
+    width: 0%;
+    height: 100%;
+    overflow: hidden;
+    transition: width .25s linear;
+}
+
+/* Two rows of the same bars: the track underneath, the played part clipped
+   over the top of it. */
+
+.wave {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: ${progress.barGap}px;
+    pointer-events: none;
+}
+
+.wave.fill {
+    width: ${progress.w}px;
+}
+
+.wave > i {
+    flex: 1 1 0;
+    min-width: 1px;
+    border-radius: ${Math.min(progress.radius, 6)}px;
+}
+
+.wave.track > i { background: ${progress.trackColor}; }
+.wave.fill > i { background: ${progress.fillColor}; }
+
+${bands}`;
 }
 
 function generateCss(model) {
@@ -539,12 +1084,14 @@ function generateCss(model) {
     pointer-events: none;
 }
 
+${veilRules(canvas)}
 /* Album art / Canvas video */
 
 .cover,
 .canvas {
     position: absolute;
 ${box(art)}
+    z-index: 0;
     object-fit: ${art.fit};
     border-radius: ${art.radius}px;
     box-shadow: 0 ${Math.round(art.shadow / 2)}px ${art.shadow}px rgba(0, 0, 0, .38);
@@ -555,9 +1102,12 @@ ${box(art)}
 
 ${textRules('.title-wrapper', title)}
 
+/* No clip of its own: the wrapper above already cuts at the right place, and
+   this box is only as tall as one line of text - tight enough to shave the top
+   and bottom off an outline before the wrapper ever saw it. */
+
 .title-container {
     width: 100%;
-    overflow: hidden;
 }
 
 .title {
@@ -574,22 +1124,7 @@ ${textRules('.artist-wrapper', artist)}
 
 /* Progress */
 
-.progress-container {
-    position: absolute;
-${box(progress)}
-    background: ${progress.trackColor};
-    border-radius: ${progress.radius}px;
-    overflow: hidden;
-    ${progress.hidden ? 'display: none;' : ''}
-}
-
-.progress {
-    width: 0%;
-    height: 100%;
-    background: ${progress.fillColor};
-    border-radius: inherit;
-    transition: width .25s linear;
-}
+${progressRules(progress)}
 
 /* How far into the song, and how long it runs for. app.js writes both. */
 
@@ -637,7 +1172,7 @@ ${textRules('.duration-wrapper', duration)}
     50%, 80% { transform: translateX(calc(-1 * var(--artist-distance, 0px))); }
     100% { transform: translateX(0); }
 }
-${fadeRules()}`;
+${fadeRules(model)}${iconRules(model.icons || [])}`;
 }
 
 /**
@@ -681,7 +1216,7 @@ function generateHtml(name, model) {
         </div>
 
         <div class="progress-container">
-            <div class="progress"></div>
+            ${progressMarkup(model ? moduleOf(model, 'progress') : defaultModule('progress'))}
         </div>
 
         <div class="elapsed-wrapper">
@@ -690,7 +1225,7 @@ function generateHtml(name, model) {
 
         <div class="duration-wrapper">
             <div class="duration"></div>
-        </div>
+        </div>${iconMarkup(model ? model.icons || [] : [])}
     </div>
 
     <script src="/app.js"></script>
@@ -970,6 +1505,8 @@ module.exports = {
     normalizeModel,
     generateCss,
     generateHtml,
+    iconCatalogue,
+    iconBody,
     listThemes,
     readModel,
     saveTheme,

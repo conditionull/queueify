@@ -548,8 +548,11 @@ test('the soft edges only exist while a line is scrolling', async () => {
         const css = fs.readFileSync(path.join(dir, 'fades', 'style.css'), 'utf8');
 
         // The mask hangs off the class app.js adds to a line that overflows,
-        // so text that fits stays sharp to its edges.
-        assert.match(css, /\.title-wrapper\.scrolling,\s*\.artist-wrapper\.scrolling \{/);
+        // so text that fits stays sharp to its edges. Each line gets its own
+        // rule: the fade is measured from the box the user drew, and an
+        // outlined line's element is wider than that box.
+        assert.match(css, /\.title-wrapper\.scrolling \{/);
+        assert.match(css, /\.artist-wrapper\.scrolling \{/);
         assert.match(css, /mask-image: linear-gradient\(to right, transparent 0, #000 22px/);
         assert.match(css, /-webkit-mask-image:/, 'older CEF builds need the prefixed property');
 

@@ -116,3 +116,68 @@ test('the clocks use the fonts a design picked for them', () => {
 
     assert.deepStrictEqual(store.googleFonts(model), [{ family: 'Orbitron', weights: [700] }]);
 });
+
+/**
+ * The box a line of text lives in clips its overflow, so that a long title can
+ * scroll rather than run off the panel. Half an outline is painted outside the
+ * letters, and that clip was taking it off.
+ */
+
+test('an outlined box is grown to fit its stroke, and pulled back so nothing moves', () => {
+    const model = store.normalizeModel({
+        ...store.defaultModel(),
+        modules: [{ type: 'title', x: 200, y: 46, w: 456, h: 36, outline: 3 }]
+    });
+
+    const rule = /\.title-wrapper \{([\s\S]*?)\}/.exec(store.generateCss(model))[1];
+
+    assert.match(rule, /padding: 3px;/, 'the clip has to sit outside the stroke');
+    assert.match(rule, /margin: -3px;/, 'and the box has to come back by the same amount');
+
+    // The rectangle the editor draws and the user drags is untouched: this
+    // moves where the clip falls, not where the text is.
+    assert.match(rule, /left: 200px;/);
+    assert.match(rule, /top: 46px;/);
+    assert.match(rule, /width: 456px;/);
+    assert.match(rule, /height: 36px;/);
+});
+
+test('half a pixel of stroke still gets a whole pixel of room', () => {
+    const model = store.normalizeModel({ modules: [{ type: 'artist', outline: 2.5 }] });
+    const rule = /\.artist-wrapper \{([\s\S]*?)\}/.exec(store.generateCss(model))[1];
+
+    assert.match(rule, /padding: 3px;/);
+    assert.match(rule, /margin: -3px;/);
+});
+
+test('a theme with no outline is padded nowhere at all', () => {
+    const css = store.generateCss(store.normalizeModel(store.defaultModel()));
+
+    for (const selector of ['.title-wrapper', '.artist-wrapper', '.elapsed-wrapper', '.duration-wrapper']) {
+        const rule = css.slice(css.indexOf(selector + ' {')).split('}')[0];
+        assert.ok(!/padding|margin/.test(rule), selector + ' should not be padded');
+    }
+});
+
+test('the box inside the title does not clip either', () => {
+    // It is only as tall as one line, so it shaved the top and bottom off an
+    // outline before the box around it ever saw the text.
+    const css = store.generateCss(store.normalizeModel(store.defaultModel()));
+    const rule = /\.title-container \{([\s\S]*?)\}/.exec(css)[1];
+
+    assert.ok(!rule.includes('overflow'), 'the wrapper already clips, in the right place');
+});
+
+test('the fade at each end is measured from the box, not from the stroke', () => {
+    const model = store.normalizeModel({
+        ...store.defaultModel(),
+        modules: [{ type: 'title', outline: 4 }, { type: 'artist', outline: 0 }]
+    });
+
+    const css = store.generateCss(model);
+
+    // The title's element is 4px wider each side, so its fade starts 4px
+    // further in - which puts both fades on the same line down the panel.
+    assert.match(css, /\.title-wrapper\.scrolling \{[\s\S]*?#000 26px/);
+    assert.match(css, /\.artist-wrapper\.scrolling \{[\s\S]*?#000 22px/);
+});

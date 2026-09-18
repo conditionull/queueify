@@ -44,6 +44,11 @@ Adding songs to playback queue requires Spotify Premium
 - A visual theme editor: drag the album art, title, artist, progress bar and the two song times around a canvas and save it as a real theme (`!theme <name>`)
 - The progress bar can be flanked by the time so far and the song's length - `0:04 ———— 3:07`
 - Any text can carry an outline in a colour of your choosing, so it stays readable over gameplay
+- Any text can also carry a drop shadow, thrown in whatever direction you point it, for depth rather than a halo
+- Over 2,000 Lucide icons to drop on the widget, in any colour, including ones taken from the album art
+- The progress bar can be a waveform - lines of differing heights that fill as the song plays
+- `!tr` and `!bc` have buttons in the theme editor, so placing the widget in OBS needs no chat at all
+- The canvas can be blurred and dimmed behind the text, so a busy Canvas video becomes a background
 - A theme can belong to an OBS scene, and switches with it
 - Themes can be exported to a file and shared with anyone else running Queueify
 - The widget sizes itself to whatever space you give it in OBS, so it stays sharp at any size
@@ -270,6 +275,14 @@ it shows up in `!theme` straight away with no restart and no build step.
   including the background panel, for a design that sits straight over gameplay.
 - 50 fonts, gradients, glow, **outlines in any color**, UPPERCASE and italic, and colors that
   follow the album art.
+- **A drop shadow on any text**, with its own angle, blur and color. The glow sits evenly around
+  the letters; this comes from one side. A blur of 0 gives a hard offset copy
+- **Icons**, from [Lucide](https://lucide.dev) - search by what the thing is and drag it onto the
+  widget. Colour, line weight, rotation and opacity, and it can follow the album art like the text
+- **A waveform progress bar**, as well as the plain one. Set how many lines and how far apart;
+  **Shuffle** gives you a different shape. It is saved with the theme, so it stays that shape
+- **Blur and dim the canvas** so text reads over a busy Canvas video. It softens the panel's own
+  background and artwork, never your gameplay - OBS keeps the scene behind the widget
 - **The two song times** sit either side of the progress bar by default - `0:04` on the left,
   `3:07` on the right - but they are ordinary parts, so move them, restyle them or hide them.
   Themes made before they existed arrive with them hidden, so nothing you already have changes.
@@ -423,3 +436,9 @@ Queueify is free and always will be. If it saved you some hassle, you can
 
 ### License
 This project is licensed under the [MIT License](LICENSE).
+
+The icons in the theme editor are [Lucide](https://lucide.dev), under the
+[ISC License](https://github.com/lucide-icons/lucide/blob/main/LICENSE), with a
+subset inherited from [Feather](https://github.com/feathericons/feather) under
+MIT. Both notices ship with the package, in
+`node_modules/lucide-static/LICENSE`.

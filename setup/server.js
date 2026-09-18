@@ -501,6 +501,62 @@ function createApp() {
      * open - including the saved !tr / !bc positions and whether they still
      * hold for the size it is now.
      */
+    /*
+     * The two chat commands, as buttons.
+     *
+     * `!tr` / `!bc` put the widget where that theme's preset says, and
+     * `!tr set` / `!bc set` save where it is sitting now as that preset. Both
+     * go through the same widgetLayout calls the commands do, so the dashboard
+     * cannot drift from what a mod gets by typing it.
+     *
+     * They act on the theme that is live in OBS, because that is the one OBS
+     * is showing - which is not necessarily the one open in the editor. The
+     * page says so rather than guessing.
+     */
+    app.post('/api/widget/placement', async (req, res) => {
+        const kind = req.body?.kind === 'bottomcenter' ? 'bottomcenter' : 'topright';
+        const action = req.body?.action === 'save' ? 'save' : 'apply';
+
+        try {
+            const theme = widgetLayout.readWidgetConfig().theme || 'default';
+
+            if (action === 'save') {
+                const saved = await widgetLayout.savePreset(theme, kind);
+
+                if (!saved.saved) {
+                    return res.status(409).json({ error: 'OBS is not set up yet.', reason: saved.reason });
+                }
+
+                return res.json({ ok: true, action, kind, theme });
+            }
+
+            const placed = await widgetLayout.restorePosition(theme, { kind });
+
+            if (placed.reason === 'no_preset') {
+                return res.status(409).json({
+                    error: 'Nothing saved for this theme yet. Put the widget where you want it in OBS, then press Save this spot.',
+                    reason: 'no_preset'
+                });
+            }
+
+            if (!placed.applied) {
+                return res.status(409).json({
+                    error: placed.message || 'OBS could not be updated.',
+                    reason: placed.reason || 'error'
+                });
+            }
+
+            // The same bookkeeping the chat command does, so a later !tr and
+            // a later button press agree about which mode is in force.
+            state.activeWidgetPosition = kind;
+            state.saveSettings();
+
+            return res.json({ ok: true, action, kind, theme });
+        } catch (err) {
+            res.status(500).json({ error: err.message });
+        }
+    });
+
     app.get('/api/widget/fit', async (req, res) => {
         try {
             res.json(await widgetLayout.describeFit({
@@ -721,6 +777,26 @@ function createApp() {
         } catch (err) {
             themeError(res, err);
         }
+    });
+
+    /*
+     * Every Lucide icon, once.
+     *
+     * Names, keywords and drawing instructions together come to well under a
+     * megabyte, and this is a loopback-only dashboard - so the picker takes
+     * the lot in one request and then searches and draws without going back
+     * to the network on every keystroke.
+     */
+    let iconPayload = null;
+
+    app.get('/api/icons', (req, res) => {
+        if (!iconPayload) {
+            iconPayload = themeStore.iconCatalogue()
+                .map(icon => ({ ...icon, body: themeStore.iconBody(icon.name) }))
+                .filter(icon => icon.body);
+        }
+
+        res.json({ icons: iconPayload });
     });
 
     // The preview is styled by the very same generator that writes the file,

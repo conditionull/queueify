@@ -1,5 +1,3 @@
-const obs = require("../services/obs");
-const widgetPresets = require("../services/widgetPresets");
 const widgetLayout = require("../services/widgetLayout");
 const { reportObsFailure } = require("../services/obsFeedback");
 const settings = require("../config/userSettings");
@@ -18,10 +16,6 @@ async function getCurrentTheme() {
     }
 }
 
-function getThemePresetName(theme) {
-    return widgetPresets.nameFor("topright", theme);
-}
-
 module.exports = {
     name: "topright",
     aliases: ["tr"],
@@ -36,21 +30,16 @@ module.exports = {
                 return;
             }
 
-            let transform;
+            const theme = await getCurrentTheme();
+
             try {
-                transform = await obs.getTransform();
+                await widgetLayout.savePreset(theme, "topright");
             } catch (err) {
                 // A misconfigured OBS is the usual cause here, and the reply
                 // names the setting to fix. Anything else is a real fault.
                 if (reportObsFailure(client, channel, username, err)) return;
                 throw err;
             }
-
-            const theme = await getCurrentTheme();
-            const presetName = getThemePresetName(theme);
-
-            state.widgetPresets[presetName] = transform;
-            state.saveSettings();
 
             sayMessage(client, channel, 'widget.topSaved', { theme });
             return;

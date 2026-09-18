@@ -1,6 +1,6 @@
 {
   "name": "queueify",
-  "version": "42.0.0",
+  "version": "43.0.0",
   "description": "",
   "main": "index.js",
   "engines": {
@@ -25,6 +25,7 @@
     "dotenv": "^17.4.1",
     "express": "^5.2.1",
     "google-protobuf": "^3.11.4",
+    "lucide-static": "^1.47.0",
     "nocache": "^4.0.0",
     "node-vibrant": "^4.0.4",
     "obs-websocket-js": "^5.0.8",

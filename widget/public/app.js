@@ -300,9 +300,11 @@ async function updateSong() {
         const wrapper = title.closest(".title-wrapper");
         const container = title.closest(".title-container");
 
-        const titleShouldScroll = title.scrollWidth > container.clientWidth;
+        const titleWidth = contentBox(container).width;
+
+        const titleShouldScroll = title.scrollWidth > titleWidth;
         const scrollDistance = Math.max(
-            title.scrollWidth - container.clientWidth,
+            title.scrollWidth - titleWidth,
             0
         );
 
@@ -317,10 +319,10 @@ async function updateSong() {
         let artistShouldScroll = false;
 
         if (artistEl && artistWrapper) {
-            const wrapperRect = artistWrapper.getBoundingClientRect();
+            const wrapperRect = contentBox(artistWrapper);
             const progressRect = document.querySelector('.progress-container')?.getBoundingClientRect();
 
-            let visibleWidth = artistWrapper.clientWidth;
+            let visibleWidth = wrapperRect.width;
 
             // Some themes sit the progress bar on the same line as the artist,
             // where it eats into the space the text has. Only then does it
@@ -446,6 +448,29 @@ function clock(ms) {
     return hours
         ? `${hours}:${pad(minutes)}:${pad(seconds)}`
         : `${minutes}:${pad(seconds)}`;
+}
+
+/**
+ * The rectangle a box actually offers its contents.
+ *
+ * A generated theme pads a text box by the width of its outline and pulls it
+ * back by the same amount, so the clip falls outside the stroke instead of
+ * through it (services/themeStore.js). That padding is not room for text, so
+ * anything working out whether a line fits has to measure the content box
+ * rather than the padding box `clientWidth` and `getBoundingClientRect()`
+ * report. A theme with no padding is unaffected: the two are the same box.
+ */
+function contentBox(el) {
+    const rect = el.getBoundingClientRect();
+    const style = getComputedStyle(el);
+    const pad = side => parseFloat(style["padding" + side]) || 0;
+
+    const left = rect.left + el.clientLeft + pad("Left");
+    const top = rect.top + el.clientTop + pad("Top");
+    const width = Math.max(0, el.clientWidth - pad("Left") - pad("Right"));
+    const height = Math.max(0, el.clientHeight - pad("Top") - pad("Bottom"));
+
+    return { left, top, right: left + width, bottom: top + height, width, height };
 }
 
 /** Themes generated before the clocks existed have no element to write to. */

@@ -7,6 +7,46 @@ the dashboard shows this same list under **What's new**, at
 Newest version at the top. Nothing is ever removed: a new release goes above
 the others and pushes them down.
 
+## 43.0.0
+
+### New
+
+- **Blur and dim the canvas.** Two sliders under the border in **Canvas**. They soften and darken
+  the panel's own background and artwork, leaving the text on top sharp - and never your gameplay,
+  which OBS keeps behind the page where the widget cannot see it
+- **A drop shadow on any text.** A slider under **Outline**, on the title, artist and both song
+  times. Angle, blur and colour appear once it is on: 0 throws it up, 180 down, blur 0 gives a hard
+  offset copy
+- **Icons.** Over 2,000 of them, from [Lucide](https://lucide.dev), searchable by what they are -
+  "heart", "play", "mic". Add one from the parts list and it behaves like everything else: drag it,
+  resize it, snap it, hide it. Colour, line weight, rotation and opacity are yours, and it takes the
+  album colours too, so an icon re-tints with the artwork
+- **A waveform progress bar.** Under **Progress bar → Shape**: a row of lines of differing heights
+  instead of a solid bar, filling from the left as the song plays. The number of lines, the gap and
+  the colours are yours, and **Shuffle** gives you a different shape
+- **Place the widget without typing in chat.** **Place in OBS** in the theme editor does what
+  `!tr`, `!bc`, `!tr set` and `!bc set` do - move the widget to a theme's saved spot, or remember
+  where it is sitting now. Same code as the commands, so the two cannot drift apart. It says so
+  when OBS is showing a different theme than the one you have open, rather than moving the wrong
+  thing
+- **A tidier editor.** One toolbar instead of two rows of loose buttons: the theme you are editing
+  on the left, **New**, Save and **Use on stream** on the right. Backdrop, zoom, undo and **Revert
+  to last save** sit on the canvas they act on - revert only when there is something to revert -
+  **Start from a layout**, Duplicate, Export, Import and Delete sit under it, and the help that used
+  to fill the page below the widget is behind **?**
+
+### Fixed
+
+- **New theme and Start from a layout are no longer the same button.** New opened the layout picker
+  whenever any layout existed, so there was no way to an empty canvas. It starts a blank theme;
+  the picker is still under **⋯**
+- **Dropdowns are readable.** They were darker than the page behind them, and the zoom on the canvas
+  drew grey numbers on a grey strip. Every field is a step lighter than its panel now, taller to
+  hit, and carries the same chevron whatever the platform
+- **A text outline is no longer clipped by its own box.** Half a stroke is painted outside the
+  letters, and the box cut it off - flat along the top and bottom, which on the artist line read as
+  a coloured bar rather than an edge. Nothing moves: the rectangle you drag is where it was
+
 ## 42.0.0
 
 ### New

@@ -27,9 +27,22 @@
 
   * { box-sizing: border-box; }
 
+  /*
+   * The page itself does not scroll: the header is a fixed row and the two
+   * columns under it scroll on their own. Otherwise reaching a field at the
+   * bottom of the properties panel scrolled the preview off the top of the
+   * screen - you were changing a setting with no sight of what it did.
+   *
+   * A flex column rather than `calc(100vh - <header>)`, because the header
+   * wraps to a second row on a narrow window and its height is not a number
+   * that can be written down.
+   */
   body {
     margin: 0;
-    min-height: 100vh;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
     background: radial-gradient(1100px 520px at 50% -12%, #1e1533 0%, var(--bg) 58%);
     color: var(--text);
     font: 14px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
@@ -51,13 +64,44 @@
   button.danger { background: #3a1620; color: #ff9dab; }
   button.danger:hover:not(:disabled) { background: #4d1c2a; }
 
+  /*
+   * Fields sit a step above the panel rather than below it. They used to be
+   * #08080c - darker than anything around them - which read as a hole in the
+   * page and left the text in them hard to pick out.
+   */
   input, select {
-    width: 100%; font: inherit; font-size: 13px;
-    background: #08080c; color: var(--text);
-    border: 1px solid var(--border); border-radius: 7px;
-    padding: 6px 8px;
+    width: 100%; font: inherit; font-size: 13.5px;
+    background: var(--card); color: var(--text);
+    border: 1px solid var(--border); border-radius: 8px;
+    padding: 8px 10px;
+    min-height: 36px;
   }
-  input:focus, select:focus { outline: none; border-color: var(--accent); }
+  input:hover, select:hover { border-color: #38384a; }
+  input:focus, select:focus {
+    outline: none; border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(145, 71, 255, .18);
+  }
+
+  /*
+   * A select gets a chevron of its own, so the arrow is the same on every
+   * platform and there is room made for it on the right.
+   */
+  select {
+    appearance: none; -webkit-appearance: none; -moz-appearance: none;
+    padding-right: 30px; cursor: pointer;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%239494a8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 9px center;
+    background-size: 15px;
+  }
+  select:hover { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23ededf2' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E"); }
+
+  /* The open list is drawn by the OS, which does not inherit any of the
+     above - without this it falls back to white-on-white on some platforms. */
+  select option, select optgroup {
+    background: var(--panel);
+    color: var(--text);
+  }
   input[type="range"] { padding: 0; border: 0; background: none; accent-color: var(--accent); }
   input[type="color"] { padding: 2px; height: 30px; cursor: pointer; }
   input[type="checkbox"] { width: auto; accent-color: var(--accent); }
@@ -85,50 +129,83 @@
 
   /* ---------------------------------------------------------- chrome */
 
+  /* --------------------------------------------------------- top bar */
+
+  /*
+   * One row, read left to right: where you are, what you are editing, then
+   * what you can do about it - with only the two everyday actions spelled
+   * out. Everything rarer lives behind the menu, which keeps Delete from
+   * sitting in the corner your mouse goes to on the way to Save.
+   */
   .top {
-    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
-    padding: 12px 18px;
+    display: flex; align-items: center; gap: 8px;
+    padding: 10px 14px;
     border-bottom: 1px solid var(--border);
     background: rgba(13, 13, 17, .82);
     backdrop-filter: blur(8px);
-    position: sticky; top: 0; z-index: 20;
+    flex: none; z-index: 20;
   }
-  .top h1 { margin: 0 14px 0 0; font-size: 16px; letter-spacing: -.01em; }
-  .back {
-    display: inline-flex; align-items: center; gap: 6px;
-    padding: 7px 12px 7px 9px; margin-right: 4px;
-    border-radius: 8px; background: #292937; color: var(--text);
-    font-size: 13.5px; font-weight: 600; text-decoration: none;
-    transition: background .15s, transform .15s;
-  }
-  .back:hover { background: #343446; }
-  .back:active { transform: translateX(-2px); }
-  .back svg { width: 15px; height: 15px; }
-
-  /* The admin pages are the other half of this dashboard, so the way there
-     is a real button rather than another grey one nobody notices. */
-  .back.accent {
-    padding-left: 11px;
-    background: linear-gradient(180deg, #8a52ff, #6a26e0);
-    color: #fff;
-    box-shadow: 0 3px 14px rgba(122, 60, 240, .38);
-  }
-  .back.accent:hover { background: linear-gradient(180deg, #9866ff, #7833ec); }
-  .back.accent:active { transform: translateY(1px); }
-  /* Sharing is worth finding, so these two get a tint of their own rather
-     than disappearing into the row of grey buttons. */
-  button.share {
-    padding: 5px 10px; font-size: 12px;
-    background: #2c2540; color: #d8c8ff;
-    box-shadow: inset 0 0 0 1px rgba(145, 71, 255, .38);
-  }
-  button.share:hover:not(:disabled) { background: #3a2f57; color: #ece3ff; }
-
   .top .spacer { flex: 1; }
   .top button[hidden] { display: none; }
-  .top .field { display: flex; align-items: center; gap: 7px; }
-  .top label { color: var(--muted); font-size: 12.5px; white-space: nowrap; }
-  .top select, .top input { width: auto; min-width: 150px; }
+
+  .where { font-size: 13.5px; color: var(--muted); white-space: nowrap; }
+  .where-link {
+    font-size: 13.5px; color: var(--muted); text-decoration: none;
+    padding: 4px 8px; border-radius: 7px; white-space: nowrap;
+  }
+  .where-link:hover { color: var(--text); background: var(--card); }
+
+  .top-rule { width: 1px; height: 20px; background: var(--border); flex: none; }
+
+  /*
+   * The theme's name is the title of what you are editing, so it is typed in
+   * place rather than sitting in a labelled field. The list of other themes
+   * hides behind the chevron beside it - both used to be unlabelled dropdowns
+   * showing the same word, which read as one control drawn twice.
+   */
+  .identity { display: flex; align-items: center; gap: 2px; min-width: 0; }
+  /* It reads as the title of what you are editing, but it is still a field:
+     transparent on transparent left nothing to say you could type in it. */
+  .identity input {
+    width: auto; min-width: 0; max-width: 260px;
+    padding: 5px 8px; min-height: 32px;
+    background: var(--card); border-color: transparent;
+    font-size: 14.5px; font-weight: 600;
+  }
+  .identity input:hover { border-color: var(--border); }
+  .identity input:focus { background: var(--card); }
+
+  .opener { position: relative; display: inline-flex; align-items: center; flex: none; }
+  .opener svg { width: 15px; height: 15px; color: var(--muted); pointer-events: none; }
+  .opener:hover svg { color: var(--text); }
+  /* The real select sits invisibly over the chevron, so it keeps its native
+     keyboard behaviour and its own popup on every platform. */
+  .opener select {
+    position: absolute; inset: 0; width: 100%; min-width: 0; min-height: 0;
+    padding: 0; opacity: 0; cursor: pointer;
+  }
+
+  /* An icon button: the quiet tier. Nav and tools use it so that the only
+     things wearing a filled button are the two actions that matter. */
+  .icon-btn {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 34px; height: 34px; padding: 0; flex: none;
+    border-radius: 9px; border: 1px solid transparent;
+    background: transparent; color: var(--muted); cursor: pointer;
+    transition: background .15s, color .15s, border-color .15s;
+  }
+  .icon-btn svg { width: 18px; height: 18px; }
+  .icon-btn:hover { background: var(--card); color: var(--text); border-color: var(--border); }
+  .icon-btn[aria-expanded="true"] { background: var(--card); color: var(--text); border-color: var(--border); }
+  button.ghost.sm {
+    padding: 5px 11px; font-size: 12.5px; font-weight: 600;
+    border-radius: 8px;
+  }
+
+  .icon-btn.sm { width: 28px; height: 28px; border-radius: 7px; }
+  .icon-btn.sm svg { width: 15px; height: 15px; }
+  .icon-btn:disabled { opacity: .35; cursor: default; }
+  .icon-btn:disabled:hover { background: transparent; color: var(--muted); border-color: transparent; }
 
   .state {
     display: inline-flex; align-items: center; gap: 7px;
@@ -157,20 +234,66 @@
     display: grid;
     grid-template-columns: minmax(0, 1fr) 310px;
     gap: 0;
-    align-items: start;
-    min-height: calc(100vh - 59px);
+    align-items: stretch;
+    flex: 1;
+    /* Grid and flex children default to min-height: auto, which refuses to
+       shrink below their content - the columns would grow the page instead
+       of scrolling inside it. */
+    min-height: 0;
+  }
+
+  /*
+   * Everything you can do to the theme as a whole, under the canvas rather
+   * than behind a menu in the toolbar. All five were one click out of sight;
+   * this column had been empty since the help moved into its drawer.
+   */
+  .theme-actions { margin-top: 26px; max-width: 760px; }
+  .theme-actions h2 {
+    margin: 0 0 9px; font-size: 12px; font-weight: 600; color: var(--muted);
+  }
+  .theme-actions-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  /*
+   * Delete is set apart from the four that are safe to press, but by a rule
+   * rather than by being pushed to the far end of the row. Floating it right
+   * left it stranded in empty space: this column is a fixed width and the
+   * artboard beside it scales with the zoom, so it never lined up with
+   * anything and read as a layout fault.
+   */
+  .theme-actions-rule {
+    width: 1px; height: 22px; margin: 0 6px;
+    background: var(--border); flex: none;
   }
 
   /* ----------------------------------------------------------- stage */
 
-  .stage-wrap { padding: 26px 22px 40px; overflow: auto; }
+  .stage-wrap { padding: 26px 22px 40px; overflow: auto; min-height: 0; }
 
+  /*
+   * The tools that belong to the canvas sit on the canvas, in one low strip:
+   * what you are looking at (backdrop, zoom) and the two you reach for
+   * constantly (undo, redo). Nothing here changes the theme except by
+   * undoing, so none of it needs a spelled-out button.
+   */
   .stage-tools {
-    display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
-    margin-bottom: 16px; font-size: 12.5px; color: var(--muted);
+    display: flex; align-items: center; gap: 4px;
+    margin-bottom: 12px; font-size: 12.5px; color: var(--muted);
   }
+  .stage-tools .spacer { flex: 1; }
+  .tool-group { display: inline-flex; align-items: center; gap: 4px; }
+  .tool-rule { width: 1px; height: 18px; margin: 0 6px; background: var(--border); flex: none; }
+  .tool-note { font-size: 12px; color: var(--faint); margin-right: 2px; }
+  /* Compact, but still a field you can read and hit: it was transparent with
+     muted text, which put grey numbers on a grey strip. */
+  .tool-select {
+    width: auto; min-width: 0; min-height: 30px;
+    padding: 4px 26px 4px 9px; font-size: 12.5px;
+    background-color: var(--card); background-size: 13px;
+    background-position: right 7px center;
+    color: var(--text);
+  }
+
   .swatch {
-    width: 24px; height: 24px; border-radius: 6px; cursor: pointer;
+    width: 22px; height: 22px; padding: 0; border-radius: 6px; cursor: pointer;
     border: 1px solid var(--border);
   }
   .swatch.active { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(145,71,255,.28); }
@@ -323,7 +446,8 @@
   .panel {
     border-left: 1px solid var(--border);
     background: var(--panel);
-    min-height: calc(100vh - 59px);
+    overflow-y: auto;
+    min-height: 0;
     padding: 16px 16px 40px;
   }
 
@@ -462,12 +586,28 @@
   .toast-host .note.bad { background: #2a1219; border-color: rgba(245,86,108,.45); }
   .toast-host .note strong { display: block; margin-bottom: 2px; }
   .toast-host .note { position: relative; padding-right: 26px; }
-  .note-close {
-    position: absolute; top: 4px; right: 5px;
-    background: none; border: 0; padding: 2px 5px;
-    color: inherit; opacity: .55; font-size: 15px; line-height: 1; cursor: pointer;
+  /*
+   * Scoped to .toast-host so it outranks `button:hover:not(:disabled)`, which
+   * is (0,2,1) to a bare `.note-close:hover`'s (0,2,0) - so the accent colour
+   * was winning and the dismiss cross turned into a purple blob on hover. The
+   * rule always meant to say "no background"; it just never got to.
+   */
+  .toast-host .note-close {
+    position: absolute; top: 5px; right: 5px;
+    display: flex; align-items: center; justify-content: center;
+    width: 20px; height: 20px; padding: 0;
+    background: none; border: 0; border-radius: 50%;
+    color: inherit; opacity: .5; font-size: 15px; line-height: 1; cursor: pointer;
+    transition: opacity .12s, background .12s;
   }
-  .note-close:hover { opacity: 1; background: none; }
+  .toast-host .note-close:hover {
+    opacity: 1;
+    /* A tint of the text colour, so it works on both the green and the red. */
+    background: rgba(255, 255, 255, .1);
+  }
+  .toast-host .note-close:focus-visible {
+    opacity: 1; outline: 2px solid currentColor; outline-offset: 1px;
+  }
   @keyframes toast-in { from { opacity: 0; transform: translateY(-6px); } }
 
   @media (prefers-reduced-motion: reduce) {
@@ -492,6 +632,126 @@
   .preset:hover { border-color: var(--accent); background: #1b1526; }
   .preset small { display: block; margin-top: 3px; font-weight: 400; color: var(--muted); font-size: 12px; }
 
+  /* --------------------------------------------------------- drawer */
+
+  /*
+   * Help slides in over the page instead of living under the canvas. It was
+   * a stack of cards with the same border and fill as the artboard, so the
+   * eye read documentation as a peer of the thing being designed - and it
+   * owned the column long after anyone had finished reading it.
+   */
+  .drawer-scrim {
+    position: fixed; inset: 0; z-index: 44;
+    background: rgba(6, 6, 10, .5);
+  }
+  .drawer {
+    position: fixed; top: 0; right: 0; bottom: 0; z-index: 45;
+    width: min(420px, 100vw);
+    display: flex; flex-direction: column;
+    background: var(--panel); border-left: 1px solid var(--border);
+    box-shadow: -24px 0 60px rgba(0, 0, 0, .45);
+  }
+  .drawer-head {
+    display: flex; align-items: center; gap: 8px;
+    padding: 14px 12px 14px 18px; border-bottom: 1px solid var(--border);
+    flex: none;
+  }
+  .drawer-head h2 { margin: 0; font-size: 15px; flex: 1; }
+  .drawer-body { overflow-y: auto; padding: 16px 18px 28px; }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .drawer { animation: drawer-in .18s ease-out; }
+    .drawer-scrim { animation: scrim-in .18s ease-out; }
+  }
+  @keyframes drawer-in { from { transform: translateX(14px); opacity: 0; } }
+  @keyframes scrim-in { from { opacity: 0; } }
+
+  /* ------------------------------------------------- icons in the list */
+
+  .list-heading {
+    display: flex; align-items: center; gap: 8px;
+    margin: 18px 0 8px; padding: 0 2px;
+    font-size: 12px; font-weight: 600; color: var(--muted);
+  }
+  .list-heading span { flex: 1; }
+  .list-empty {
+    margin: 0 2px 6px; font-size: 12px; color: var(--faint); line-height: 1.5;
+  }
+
+  .add-icon {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 4px 9px 4px 7px; border-radius: 7px;
+    font-size: 12px; font-weight: 600;
+    background: var(--card); color: var(--text);
+    border: 1px solid var(--border);
+  }
+  .add-icon svg { width: 13px; height: 13px; }
+  .add-icon:hover:not(:disabled) { background: #2f2f3d; border-color: var(--accent); }
+  .add-icon:disabled { opacity: .45; }
+
+  .place-row { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
+  /* Saved against a different shape: still usable, but it will not frame the
+     design exactly any more. */
+  button.ghost.sm.stale { box-shadow: inset 0 0 0 1px rgba(245, 165, 36, .5); }
+  .place-name { flex: 1; font-size: 13px; }
+  .place-hint { margin: 6px 0 0; font-size: 12px; color: var(--faint); line-height: 1.5; }
+  .place-hint code {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 5px; padding: 1px 5px; font-size: 11.5px;
+  }
+
+  .shuffle { display: flex; align-items: center; gap: 8px; }
+  .shuffle-note { flex: 1; font-size: 12.5px; color: var(--muted); }
+
+  .icon-row { border-left-color: var(--accent); }
+  .row-glyph {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 20px; height: 20px; flex: none; color: var(--muted);
+  }
+  .row-glyph svg { width: 17px; height: 17px; }
+  .icon-row.selected .row-glyph { color: var(--text); }
+  .eye.remove:hover { color: var(--red); }
+
+  /* -------------------------------------------------------- icon picker */
+
+  .sheet-card.wide {
+    width: min(720px, 100%);
+    max-height: min(640px, 86vh);
+    display: flex; flex-direction: column;
+  }
+  .sheet-head { display: flex; align-items: flex-start; gap: 10px; }
+  .sheet-head h2 { margin: 0 0 4px; font-size: 17px; }
+  .sheet-head p { margin: 0 0 14px; color: var(--muted); font-size: 13px; }
+
+  .search { position: relative; display: flex; align-items: center; flex: none; }
+  .search svg {
+    position: absolute; left: 11px; width: 16px; height: 16px;
+    color: var(--faint); pointer-events: none;
+  }
+  .search input { padding-left: 34px; }
+  .search input::-webkit-search-cancel-button { filter: invert(.6); }
+
+  .icon-results { overflow-y: auto; margin-top: 12px; min-height: 120px; }
+
+  /* Wide enough to stay square at any panel width, so the grid never shows a
+     row of stretched icons on the last line. */
+  .icon-grid {
+    display: grid; gap: 4px;
+    grid-template-columns: repeat(auto-fill, minmax(58px, 1fr));
+  }
+  .icon-choice {
+    display: flex; align-items: center; justify-content: center;
+    aspect-ratio: 1; padding: 0;
+    border-radius: 10px; border: 1px solid transparent;
+    background: transparent; color: var(--muted); cursor: pointer;
+    transition: background .12s, color .12s, border-color .12s;
+  }
+  .icon-choice svg { width: 22px; height: 22px; }
+  .icon-choice:hover {
+    background: var(--card); color: var(--text); border-color: var(--accent);
+  }
+  .icon-choice:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
   .sheet {
     position: fixed; inset: 0; z-index: 40;
     background: rgba(6, 6, 10, .72); backdrop-filter: blur(3px);
@@ -513,59 +773,64 @@
 <body>
 
 <div class="top">
-  <a class="back" href="/" id="btn-back" title="Back to the dashboard">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"
-         stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-      <polyline points="15 18 9 12 15 6"></polyline>
-    </svg>
-    Dashboard
+  <a class="icon-btn" href="/" id="btn-back" title="Back to the dashboard" aria-label="Back to the dashboard">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+         stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>
   </a>
-  <a class="back accent" href="/admin.html" title="Queue settings, command aliases and every chat message">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1"
-         stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-      <circle cx="12" cy="12" r="3"></circle>
-      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
-    </svg>
-    Admin Panel
-  </a>
-  <h1>Theme editor</h1>
 
-  <div class="field">
-    <label for="theme-open">Open</label>
-    <select id="theme-open" title="Open one of the themes you have made here. The theme on stream is marked live."></select>
+  <span class="where">Theme editor</span>
+  <a class="where-link" href="/admin.html" title="Queue settings, command aliases and every chat message">Admin panel</a>
+  <div class="top-rule"></div>
+
+  <div class="identity">
+    <input id="theme-label" maxlength="60" placeholder="Untitled theme" aria-label="Theme name"
+           title="The name shown in the theme list and used by !theme in chat" />
+    <div class="opener">
+      <select id="theme-open" aria-label="Open a theme"
+              title="Open one of the themes you have made here. The theme on stream is marked live."></select>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+           stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+    </div>
   </div>
 
-  <div class="field">
-    <label for="theme-label">Name</label>
-    <input id="theme-label" maxlength="60" placeholder="My theme" title="The name shown in the theme list and used by !theme in chat" />
-  </div>
+  <div class="state" id="state" title="Whether this theme has changes you have not saved yet">New theme</div>
 
   <div class="spacer"></div>
 
-  <button id="btn-new" class="ghost" title="Start a new theme from scratch">New</button>
-  <button id="btn-presets" class="ghost" title="Pick one of the ready-made layouts to start from">Start from&hellip;</button>
-  <button id="btn-duplicate" class="ghost" title="Copy this theme so you can change it without touching the original">Duplicate</button>
-  <div class="state" id="state" title="Whether this theme has changes you have not saved yet">New theme</div>
+  <button class="ghost sm" id="btn-new" title="Start a blank theme">New</button>
+
+  <button class="icon-btn" id="btn-help" title="How the editor works" aria-label="How the editor works">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+         stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>
+  </button>
+
   <button id="btn-save" title="Write this theme to disk (Ctrl+S)">Save</button>
   <button id="btn-activate" class="ghost" title="Show this theme on stream and reload it in OBS">Use on stream</button>
-  <button id="btn-delete" class="danger" title="Delete this theme for good">Delete</button>
 </div>
 
 <div class="layout">
   <div class="stage-wrap">
     <div class="stage-tools">
-      <span>Backdrop</span>
-      <div class="swatch active" data-backdrop="dark" style="background:#101014" title="Preview against a dark scene"></div>
-      <div class="swatch" data-backdrop="light" style="background:#d7d7de" title="Preview against a light scene"></div>
-      <div class="swatch" data-backdrop="checker" style="background:#2c2c36" title="Preview against a checkerboard, to judge transparency"></div>
-      <span style="margin-left:14px" id="preview-source">Preview</span>
-      <button class="ghost" id="btn-refresh-song" style="padding:5px 10px;font-size:12px" title="Pull the song playing right now into the preview">Refresh song</button>
-      <button class="ghost" id="btn-undo" style="padding:5px 10px;font-size:12px" title="Undo the last change (Ctrl+Z)">Undo</button>
-      <button class="ghost" id="btn-redo" style="padding:5px 10px;font-size:12px" title="Redo (Ctrl+Shift+Z)">Redo</button>
-      <button class="ghost" id="btn-revert" style="padding:5px 10px;font-size:12px" title="Throw away every change since the last save, in one step">Revert to last save</button>
+      <div class="tool-group" role="group" aria-label="Preview backdrop">
+        <button class="swatch active" type="button" data-backdrop="dark" style="background:#101014" title="Preview against a dark scene" aria-label="Dark backdrop"></button>
+        <button class="swatch" type="button" data-backdrop="light" style="background:#d7d7de" title="Preview against a light scene" aria-label="Light backdrop"></button>
+        <button class="swatch" type="button" data-backdrop="checker" style="background:#2c2c36" title="Preview against a checkerboard, to judge transparency" aria-label="Checkerboard backdrop"></button>
+      </div>
 
-      <span style="margin-left:14px">Zoom</span>
-      <select id="zoom" style="width:auto;padding:4px 6px;font-size:12px" title="Magnify the editing canvas. Does not change the theme.">
+      <div class="tool-rule"></div>
+
+      <button class="icon-btn sm" id="btn-undo" title="Undo (Ctrl+Z)" aria-label="Undo">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5a5.5 5.5 0 0 1-5.5 5.5H11"/></svg>
+      </button>
+      <button class="icon-btn sm" id="btn-redo" title="Redo (Ctrl+Shift+Z)" aria-label="Redo">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 14 5-5-5-5"/><path d="M20 9H9.5A5.5 5.5 0 0 0 4 14.5A5.5 5.5 0 0 0 9.5 20H13"/></svg>
+      </button>
+
+      <div class="tool-rule"></div>
+
+      <select id="zoom" class="tool-select" title="Magnify the editing canvas. Does not change the theme.">
         <option value="0.5">50%</option>
         <option value="0.75">75%</option>
         <option value="1" selected>100%</option>
@@ -573,8 +838,18 @@
         <option value="2">200%</option>
       </select>
 
-      <button class="ghost share" id="btn-export" title="Save this theme as a file you can share">Export</button>
-      <button class="ghost share" id="btn-import" title="Load a theme file someone shared with you">Import</button>
+      <div class="tool-rule" id="revert-rule" hidden></div>
+
+      <button class="ghost sm hidden" id="btn-revert"
+              title="Throw away every change since the last save">Revert to last save</button>
+
+      <div class="spacer"></div>
+
+      <span id="preview-source" class="tool-note">Preview</span>
+      <button class="icon-btn sm" id="btn-refresh-song" title="Pull the song playing right now into the preview" aria-label="Refresh song">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg>
+      </button>
       <input type="file" id="import-file" accept="application/json,.json" class="hidden" />
     </div>
 
@@ -615,7 +890,41 @@
 
     <div class="readout" id="readout"></div>
     <div id="fit-warning"></div>
-    <div class="help">
+
+    <!-- Theme-level actions, next to the thing they act on. They were behind a
+         menu in the toolbar; this column has been empty since the help moved
+         into its drawer, and nothing here needs to be hunted for. -->
+    <section class="theme-actions" aria-label="This theme">
+      <h2>This theme</h2>
+      <div class="theme-actions-row">
+        <button type="button" class="ghost" id="btn-presets">Start from a layout&hellip;</button>
+        <button type="button" class="ghost" id="btn-duplicate">Duplicate</button>
+        <button type="button" class="ghost" id="btn-export">Export</button>
+        <button type="button" class="ghost" id="btn-import">Import</button>
+        <div class="theme-actions-rule"></div>
+        <button type="button" class="danger" id="btn-delete">Delete</button>
+      </div>
+    </section>
+  </div>
+
+  <div class="panel">
+    <div class="modules" id="modules"></div>
+    <div id="props"></div>
+  </div>
+</div>
+
+<div id="notes" class="toast-host"></div>
+
+<div class="drawer-scrim hidden" id="help-scrim"></div>
+<aside class="drawer hidden" id="help-drawer" aria-label="How the editor works">
+  <header class="drawer-head">
+    <h2>How the editor works</h2>
+    <button class="icon-btn sm" id="btn-help-close" title="Close" aria-label="Close help">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+           stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+    </button>
+  </header>
+  <div class="drawer-body">
       <div class="help-lead">
         <strong>Drag a part to move it, drag its handles to resize.</strong>
         Pink marks show what you have lined up with. Hold <kbd>Ctrl</kbd> or <kbd>Shift</kbd>
@@ -691,16 +1000,32 @@
           </div>
         </details>
       </div>
-    </div>
   </div>
+</aside>
 
-  <div class="panel">
-    <div class="modules" id="modules"></div>
-    <div id="props"></div>
+<div class="sheet hidden" id="icon-sheet">
+  <div class="sheet-card wide">
+    <header class="sheet-head">
+      <div>
+        <h2>Add an icon</h2>
+        <p>Drawn by <a href="https://lucide.dev" target="_blank" rel="noreferrer noopener">Lucide</a>.
+          It takes the colour you give it, so it can follow the album art like everything else.</p>
+      </div>
+      <button class="icon-btn sm" id="btn-icon-close" title="Close" aria-label="Close">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+      </button>
+    </header>
+
+    <div class="search">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+           stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg>
+      <input id="icon-search" type="search" placeholder="Search 2,000 icons - try heart, play, mic" aria-label="Search icons" />
+    </div>
+
+    <div id="icon-results" class="icon-results"></div>
   </div>
 </div>
-
-<div id="notes" class="toast-host"></div>
 
 <div class="sheet hidden" id="preset-sheet">
   <div class="sheet-card">
@@ -827,8 +1152,45 @@ function note(text, kind) {
   }
 }
 
+/**
+ * Every draggable thing on the canvas: the six fixed parts, then the icons.
+ *
+ * An icon is given a `type` of `icon:<id>` as it goes past, which is what
+ * lets the whole selection, drag, resize, snap and nudge machinery treat it
+ * as just another part - it already has the same x/y/w/h box. The field is
+ * put on the real model object on purpose, so a drag writes through to it;
+ * the server's normaliser rebuilds the list without it, so nothing reaches
+ * theme.json.
+ */
+function parts() {
+  for (const icon of state.model.icons || []) icon.type = 'icon:' + icon.id;
+  return [...state.model.modules, ...(state.model.icons || [])];
+}
+
+function iconOf(type) {
+  return (state.model.icons || []).find(icon => 'icon:' + icon.id === type);
+}
+
+function isIcon(type) {
+  return typeof type === 'string' && type.startsWith('icon:');
+}
+
 function moduleOf(type) {
-  return state.model.modules.find(module => module.type === type);
+  return isIcon(type)
+    ? iconOf(type)
+    : state.model.modules.find(module => module.type === type);
+}
+
+/** What a part is called, in the list, the readout and every tooltip. */
+function labelOf(part) {
+  if (!part) return '';
+  return isIcon(part.type) ? iconTitle(part.name) : MODULE_LABELS[part.type];
+}
+
+/** "circle-play" reads as "Circle play" everywhere a person sees it. */
+function iconTitle(name) {
+  const words = String(name || '').replace(/-/g, ' ');
+  return words.charAt(0).toUpperCase() + words.slice(1);
 }
 
 function selected() {
@@ -946,10 +1308,21 @@ async function revertToSaved() {
   note('Back to the last save. <kbd>Ctrl</kbd>+<kbd>Z</kbd> undoes this too.', 'good');
 }
 
-/** Nothing to revert to on an unsaved theme, and nothing to revert either. */
+/**
+ * Revert is only there when it would do something.
+ *
+ * It needs a save to go back to and changes to throw away, and outside those
+ * it is a button that cannot act - so it is hidden rather than greyed, and
+ * sits by the canvas it would change rather than inside a menu.
+ */
 function updateRevertButton() {
+  const usable = state.baseline !== null && state.dirty;
+
   const button = $('btn-revert');
-  if (button) button.disabled = state.baseline === null || !state.dirty;
+  if (button) button.classList.toggle('hidden', !usable);
+
+  const rule = $('revert-rule');
+  if (rule) rule.hidden = !usable;
 }
 
 /* ------------------------------------------------------------ preview */
@@ -970,6 +1343,8 @@ function refreshCss() {
       });
       $('theme-style').textContent = css;
       clearInlineBoxes();
+      syncIcons();
+      renderProgress();
       positionOverlay();
       showScrolling();
     } catch (err) {
@@ -981,7 +1356,8 @@ function refreshCss() {
 function clearInlineBoxes() {
   for (const el of [$('cover'), $('canvas'), document.querySelector('.title-wrapper'),
                     document.querySelector('.artist-wrapper'), document.querySelector('.progress-container'),
-                    document.querySelector('.elapsed-wrapper'), document.querySelector('.duration-wrapper')]) {
+                    document.querySelector('.elapsed-wrapper'), document.querySelector('.duration-wrapper'),
+                    ...document.querySelectorAll('.icon')]) {
     if (!el) continue;
     el.style.left = el.style.top = el.style.width = el.style.height = '';
   }
@@ -996,9 +1372,14 @@ const ELEMENTS = {
   duration: () => [document.querySelector('.duration-wrapper')]
 };
 
+function elementsOf(type) {
+  if (isIcon(type)) return [document.querySelector('.icon-' + type.slice(5))];
+  return ELEMENTS[type] ? ELEMENTS[type]() : [];
+}
+
 /** Immediate feedback while dragging; the server CSS catches up on release. */
 function applyLiveBox(type, box) {
-  for (const el of ELEMENTS[type]()) {
+  for (const el of elementsOf(type)) {
     if (!el) continue;
     el.style.left = box.x + 'px';
     el.style.top = box.y + 'px';
@@ -1050,7 +1431,14 @@ function showScrolling() {
     const wrapper = document.querySelector(wrapperClass);
     if (!text || !wrapper) return;
 
-    const overflow = Math.max(text.scrollWidth - wrapper.clientWidth, 0);
+    // An outlined box is padded by the width of its stroke so the clip falls
+    // outside the letters rather than through them, and that padding is not
+    // room for text. Same sum widget/public/app.js does, for the same reason.
+    const style = getComputedStyle(wrapper);
+    const padding = (parseFloat(style.paddingLeft) || 0) + (parseFloat(style.paddingRight) || 0);
+    const visible = Math.max(0, wrapper.clientWidth - padding);
+
+    const overflow = Math.max(text.scrollWidth - visible, 0);
     const scrolls = overflow > 0;
 
     document.documentElement.style.setProperty(variable, overflow + 'px');
@@ -1196,7 +1584,7 @@ function positionOverlay() {
   const overlay = $('overlay');
   overlay.innerHTML = '';
 
-  for (const module of state.model.modules) {
+  for (const module of parts()) {
     const hit = document.createElement('div');
     hit.className = 'hit' + (state.selection === module.type ? ' selected' : '') +
       (module.hidden ? ' hidden-module' : '');
@@ -1205,7 +1593,7 @@ function positionOverlay() {
     hit.style.top = module.y + 'px';
     hit.style.width = module.w + 'px';
     hit.style.height = module.h + 'px';
-    hit.title = MODULE_LABELS[module.type];
+    hit.title = labelOf(module);
 
     if (state.selection === module.type) {
       // All eight handles, always. On something thin - a 6px progress bar is
@@ -1237,7 +1625,7 @@ function positionOverlay() {
   const canvasSize = `${state.model.canvas.width} × ${state.model.canvas.height}`;
 
   $('readout').textContent = module
-    ? `${MODULE_LABELS[module.type]} · x ${module.x}  y ${module.y}  w ${module.w}  h ${module.h}`
+    ? `${labelOf(module)} · x ${module.x}  y ${module.y}  w ${module.w}  h ${module.h}`
     : state.selection === 'canvas'
       ? `Canvas · ${canvasSize}`
       : `Nothing selected · canvas ${canvasSize}`;
@@ -1378,6 +1766,12 @@ async function loadFit() {
   }
 
   checkFit();
+
+  // The first report lands after the panel has already been drawn once, so
+  // without this the placement buttons keep whatever they guessed before it.
+  if (state.placementDrawn !== undefined && state.placementDrawn !== placementSignature()) {
+    renderProps();
+  }
 }
 
 /* ------------------------------------------------------- drag / resize */
@@ -1501,11 +1895,11 @@ window.addEventListener('pointerup', () => {
  * equal gaps can be shown while it holds.
  */
 function snapToMatchingGaps(box, type) {
-  const parts = state.model.modules
+  const others = parts()
     .filter(module => module.type !== type && !module.hidden)
     .map(module => ({ type: module.type, x: module.x, y: module.y, w: module.w, h: module.h }));
 
-  if (parts.length < 2) return [];
+  if (others.length < 2) return [];
 
   const spacings = [];
 
@@ -1513,7 +1907,7 @@ function snapToMatchingGaps(box, type) {
     const start = axis === 'y' ? 'y' : 'x';
     const size = axis === 'y' ? 'h' : 'w';
 
-    const sorted = [...parts].sort((a, b) => a[start] - b[start]);
+    const sorted = [...others].sort((a, b) => a[start] - b[start]);
     const gaps = [];
 
     for (let index = 0; index < sorted.length - 1; index++) {
@@ -1531,7 +1925,7 @@ function snapToMatchingGaps(box, type) {
     const candidates = [];
 
     for (const { gap, before, after } of gaps) {
-      for (const part of parts) {
+      for (const part of others) {
         candidates.push({
           value: part[start] + part[size] + gap,
           gap,
@@ -1579,9 +1973,9 @@ function snapToMatchingSize(box, type) {
   const { width, height } = state.model.canvas;
   const matches = [];
 
-  const candidates = state.model.modules
+  const candidates = parts()
     .filter(module => module.type !== type && !module.hidden)
-    .map(module => ({ label: MODULE_LABELS[module.type], type: module.type, w: module.w, h: module.h }));
+    .map(module => ({ label: labelOf(module), type: module.type, w: module.w, h: module.h }));
 
   candidates.push({ label: 'the canvas', type: 'canvas', w: width, h: height });
 
@@ -1612,7 +2006,7 @@ function snap(box, type, moving, sizeMatches = [], spacings = []) {
   const { width, height } = state.model.canvas;
   const guides = [];
 
-  const others = state.model.modules
+  const others = parts()
     .filter(module => module.type !== type && !module.hidden)
     .map(module => ({ x: module.x, y: module.y, w: module.w, h: module.h }));
 
@@ -1894,6 +2288,104 @@ function renderModules() {
     row.addEventListener('click', () => select(module.type));
     list.appendChild(row);
   }
+
+  renderIconRows(list);
+}
+
+/**
+ * The icons, under the six parts that are always there.
+ *
+ * They get a heading of their own because they are a different kind of thing:
+ * the parts above cannot be added or removed, and these are nothing but.
+ */
+function renderIconRows(list) {
+  const icons = state.model.icons || [];
+
+  const heading = document.createElement('div');
+  heading.className = 'list-heading';
+
+  const headingText = document.createElement('span');
+  headingText.textContent = 'Icons';
+
+  const add = document.createElement('button');
+  add.className = 'add-icon';
+  add.type = 'button';
+  add.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" ' +
+    'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+    '<path d="M5 12h14"/><path d="M12 5v14"/></svg> Add';
+  add.title = icons.length >= ICON_LIMIT
+    ? 'A theme can hold ' + ICON_LIMIT + ' icons'
+    : 'Pick an icon to put on the widget';
+  add.disabled = icons.length >= ICON_LIMIT;
+  add.addEventListener('click', openIconPicker);
+
+  heading.append(headingText, add);
+  list.appendChild(heading);
+
+  if (!icons.length) {
+    const empty = document.createElement('p');
+    empty.className = 'list-empty';
+    empty.textContent = 'None yet. Add one to sit alongside the artwork and text.';
+    list.appendChild(empty);
+    return;
+  }
+
+  for (const icon of icons) {
+    const type = 'icon:' + icon.id;
+
+    const row = document.createElement('div');
+    row.className = 'module-row icon-row' + (state.selection === type ? ' selected' : '') +
+      (icon.hidden ? ' is-hidden' : '');
+
+    const glyph = document.createElement('span');
+    glyph.className = 'row-glyph';
+    glyph.innerHTML = iconSvg(icon.name, 1.75);
+
+    const name = document.createElement('span');
+    name.className = 'name';
+    name.textContent = iconTitle(icon.name);
+
+    const eye = document.createElement('button');
+    eye.className = 'eye';
+    eye.innerHTML = icon.hidden ? EYE_OFF : EYE_ON;
+    eye.title = icon.hidden ? 'Hidden - click to show it' : 'Hide this icon';
+    eye.addEventListener('click', event => {
+      event.stopPropagation();
+      toggleHidden(icon);
+    });
+
+    const remove = document.createElement('button');
+    remove.className = 'eye remove';
+    remove.title = 'Remove this icon';
+    remove.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" ' +
+      'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+      '<path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>';
+    remove.addEventListener('click', event => {
+      event.stopPropagation();
+      removeIcon(icon);
+    });
+
+    row.append(glyph, name, eye, remove);
+    row.title = 'Edit ' + iconTitle(icon.name).toLowerCase();
+    row.addEventListener('click', () => select(type));
+    list.appendChild(row);
+  }
+}
+
+/** Removing an icon is undoable, like everything else on the canvas. */
+function removeIcon(icon) {
+  const gone = iconTitle(icon.name);
+
+  commit(() => {
+    state.model.icons = state.model.icons.filter(entry => entry !== icon);
+    // The ids are positional, so the ones after it shift up.
+    state.model.icons.forEach((entry, at) => { entry.id = 'i' + at; });
+  });
+
+  if (isIcon(state.selection) && !moduleOf(state.selection)) select('canvas');
+
+  renderAll();
+  note(gone + ' removed.', 'good');
 }
 
 function googleHref(entries) {
@@ -2015,6 +2507,10 @@ const FIELD_TIPS = {
   'Glow color': 'The color of that halo.',
   'Outline': 'A hard edge around every letter. Reads over anything; 0 turns it off.',
   'Outline color': 'The color of that edge. Black or the album dark tone are the safe choices.',
+  'Drop shadow': 'A shadow thrown behind the letters, with a direction. 0 turns it off.',
+  'Shadow angle': 'Which way it is thrown, in degrees. 0 is up, 90 is right, 180 is down.',
+  'Shadow blur': 'How soft its edge is. 0 is a hard offset copy of the text.',
+  'Shadow color': 'The color of that shadow. Black at part opacity is the usual choice.',
   'Corner radius': 'How rounded the corners are. 0 is square.',
   'Shadow': 'A soft shadow behind the artwork.',
   'Fit': 'Album art is square: fill the box (cropping) or fit inside it (letterboxed).',
@@ -2025,6 +2521,8 @@ const FIELD_TIPS = {
   'Angle': 'Which way the gradient runs, in degrees. 90 is top to bottom.',
   'Border width': 'Thickness of the outline around the widget. 0 removes it.',
   'Border color': 'Color of that outline.',
+  'Blur': 'Softens the panel behind the text - its background and the artwork. Not your gameplay.',
+  'Dim': 'Turns down what the panel is showing, behind the text. 0 is untouched, 1 is black.',
   'Track color': 'The unfilled part of the progress bar.',
   'Fill color': 'The part of the progress bar that fills as the song plays.',
   'Album art': 'Whether to play Spotify Canvas videos when a track has one.',
@@ -2057,8 +2555,8 @@ function toggleHidden(module) {
   positionOverlay();
 
   note(module.hidden
-    ? MODULE_LABELS[module.type] + ' is hidden. It stays part of the theme - show it again any time.'
-    : MODULE_LABELS[module.type] + ' is showing again.', 'good');
+    ? labelOf(module) + ' is hidden. It stays part of the theme - show it again any time.'
+    : labelOf(module) + ' is showing again.', 'good');
 }
 
 // Which sections are folded away. Remembered across re-renders, so opening
@@ -2153,8 +2651,16 @@ function field(label, control, why) {
   return wrap;
 }
 
-function commit(mutate) {
-  pushHistory();
+/**
+ * Apply a change to the model and redraw what depends on it.
+ *
+ * `history` is what a continuous gesture turns off after its first step. A
+ * drag fires one of these per pixel, and each one used to clone the whole
+ * model onto an 80-deep stack - so one pull of a slider filled it end to end
+ * and pushed out everything done before it, leaving undo useless.
+ */
+function commit(mutate, { history = true } = {}) {
+  if (history) pushHistory();
   mutate();
   markChanged();
   refreshCss();
@@ -2219,15 +2725,40 @@ function sliderInput(target, key, { min, max, step = 1 } = {}) {
   box.value = target[key];
   box.min = min; box.max = max; box.step = step;
 
-  const set = value => {
-    const had = Number(target[key]);
-    commit(() => { target[key] = Number(value); });
-    // Turning a glow or an outline on (or off) adds or removes its color field.
-    if ((key === 'glow' || key === 'outline') && (had === 0) !== (Number(value) === 0)) renderProps();
-  };
+  // Turning a glow, an outline or a drop shadow on (or off) adds or removes
+  // the fields that only mean something once it is on, which means rebuilding
+  // the panel. `builtOff` is the state this panel was built for, so a value
+  // that leaves 0 and comes back needs no rebuild at all.
+  const reveals = key === 'glow' || key === 'outline' || key === 'shadow';
+  const builtOff = Number(target[key]) === 0;
+  const needsReveal = () => reveals && builtOff !== (Number(target[key]) === 0);
 
-  range.addEventListener('input', () => { box.value = range.value; set(range.value); });
-  box.addEventListener('change', () => { range.value = box.value; set(box.value); });
+  const set = (value, options) => commit(() => { target[key] = Number(value); }, options);
+
+  // One drag is one change, not one per pixel: the first tick records the
+  // value to come back to and the rest ride on it.
+  let dragging = false;
+
+  range.addEventListener('input', () => {
+    box.value = range.value;
+    set(range.value, { history: !dragging });
+    dragging = true;
+  });
+
+  // The rebuild waits for the pointer to come up. Doing it from `input` - the
+  // moment the value crossed 0 - replaced the very slider being dragged, and
+  // the browser drops the drag along with the element: it stuck at 1 and had
+  // to be let go and grabbed again to get any further.
+  range.addEventListener('change', () => {
+    dragging = false;
+    if (needsReveal()) renderProps();
+  });
+
+  box.addEventListener('change', () => {
+    range.value = box.value;
+    set(box.value);
+    if (needsReveal()) renderProps();
+  });
 
   wrap.append(range, box);
   return wrap;
@@ -2262,8 +2793,44 @@ function selectInput(target, key, options) {
       // Some choices reveal other fields (a gradient needs a second color).
       renderProps();
     }
+
+    // Choosing a waveform brings its own settings with it.
+    if (key === 'style') renderProps();
   });
   return select;
+}
+
+/**
+ * The waveform's shape, as a number you shuffle rather than one you type.
+ *
+ * The heights themselves are worked out from this every time the theme is
+ * generated. Storing the heights instead would be storing something derived -
+ * and a list that silently stops matching the moment the line count changes.
+ */
+function seedInput(target) {
+  const wrap = document.createElement('div');
+  wrap.className = 'shuffle';
+
+  const preview = document.createElement('span');
+  preview.className = 'shuffle-note';
+  preview.textContent = 'Pattern ' + target.seed;
+
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.className = 'ghost sm';
+  button.textContent = 'Shuffle';
+  button.addEventListener('click', () => {
+    commit(() => {
+      // Never the one it is already on, or a click can look like nothing.
+      let next = target.seed;
+      while (next === target.seed) next = 1 + Math.floor(Math.random() * 9999);
+      target.seed = next;
+    });
+    preview.textContent = 'Pattern ' + target.seed;
+  });
+
+  wrap.append(preview, button);
+  return wrap;
 }
 
 function checkboxInput(label, target, key) {
@@ -2402,6 +2969,9 @@ function renderProps() {
     return;
   }
 
+  // Called directly as well as through renderAll, so it checks for itself.
+  if (state.selection !== 'canvas' && !selected()) state.selection = 'canvas';
+
   if (state.selection === 'canvas') {
     const canvas = state.model.canvas;
     const section = group('Canvas', {
@@ -2446,17 +3016,40 @@ function renderProps() {
       field('Corner radius', sliderInput(canvas, 'radius', { min: 0, max: 120 })),
       field('Border width', sliderInput(canvas, 'borderWidth', { min: 0, max: 12 }),
         'A pale border shows up as a bright hairline against dark backgrounds. Set it to 0 to remove it.'),
-      field('Border color', colorInput(canvas, 'borderColor'))
+      field('Border color', colorInput(canvas, 'borderColor')),
+      field('Blur', sliderInput(canvas, 'blur', { min: 0, max: 40 }),
+        'Softens what the panel is showing - its background, and the album art or Canvas ' +
+        'video - so text can sit on top of it. It cannot touch your gameplay: OBS puts the ' +
+        'scene behind the widget, where the widget cannot see it.'),
+      field('Dim', sliderInput(canvas, 'dim', { min: 0, max: 1, step: 0.05 }),
+        'Turns the same thing down, still under the text. It darkens what is there rather than ' +
+        'laying black over the panel, so a hidden panel stays transparent. Blur and dim together ' +
+        'are what turn a busy Canvas video into a background.')
     );
 
-    host.append(section, themeProps());
+    host.append(section, placementProps(), themeProps());
     return;
   }
 
   const module = selected();
   host.appendChild(boxFields(module));
 
-  const section = group(MODULE_LABELS[module.type], { note: module.hidden ? 'hidden' : '' });
+  const section = group(labelOf(module), { note: module.hidden ? 'hidden' : '' });
+
+  if (isIcon(module.type)) {
+    section.body.append(
+      field('Color', colorInput(module, 'color')),
+      field('Line weight', sliderInput(module, 'strokeWidth', { min: 0.5, max: 4, step: 0.1 }),
+        'How heavy the drawing is. It is measured before the icon is scaled, so a big icon at 1 ' +
+        'still looks finer than a small one at 3.'),
+      field('Rotation', sliderInput(module, 'rotate', { min: 0, max: 360, step: 5 })),
+      field('Opacity', sliderInput(module, 'opacity', { min: 0, max: 1, step: 0.05 }))
+    );
+
+    section.body.insertBefore(visibilityButton(module), section.body.firstChild);
+    host.append(section, placementProps(), themeProps());
+    return;
+  }
 
   if (module.type === 'art') {
     section.body.append(
@@ -2468,10 +3061,26 @@ function renderProps() {
     );
   } else if (module.type === 'progress') {
     section.body.append(
+      field('Shape', selectInput(module, 'style', [
+        ['bar', 'A bar'],
+        ['waveform', 'A waveform']
+      ]), module.style === 'waveform'
+        ? 'Give the box some height - a waveform in a 6px bar is a bar.'
+        : 'A waveform draws the bar as a row of lines of differing heights.'),
       field('Corner radius', sliderInput(module, 'radius', { min: 0, max: 999 })),
       field('Track color', colorInput(module, 'trackColor')),
       field('Fill color', colorInput(module, 'fillColor'))
     );
+
+    if (module.style === 'waveform') {
+      section.body.append(
+        field('Lines', sliderInput(module, 'bars', { min: 8, max: 96 })),
+        field('Line gap', sliderInput(module, 'barGap', { min: 0, max: 12 })),
+        field('Pattern', seedInput(module),
+          'The shape of the waveform. Shuffle until you get one you like - it is saved with the ' +
+          'theme, so it stays that shape.')
+      );
+    }
   } else {
     section.body.append(
       field('Font', fontInput(module)),
@@ -2487,17 +3096,32 @@ function renderProps() {
         'A halo around the letters. Reads well on busy gameplay; 0 turns it off.'),
       field('Outline', sliderInput(module, 'outline', { min: 0, max: 12, step: 0.5 }),
         'A hard edge drawn around every letter - the one thing that keeps text readable ' +
-        'over gameplay that keeps changing colour. 0 turns it off.')
+        'over gameplay that keeps changing colour. 0 turns it off.'),
+      field('Drop shadow', sliderInput(module, 'shadow', { min: 0, max: 40 }),
+        'How far a shadow is thrown behind the letters. The glow sits evenly around them; ' +
+        'this comes from one side, which is what lifts text off what is behind it. 0 turns ' +
+        'it off - for a soft shadow with no direction, use the glow with a dark colour.')
     );
 
     if (module.glow) section.body.append(field('Glow color', colorInput(module, 'glowColor')));
     if (module.outline) section.body.append(field('Outline color', colorInput(module, 'outlineColor')));
+
+    // Only once there is a shadow to aim: on their own, an angle and a blur
+    // with nothing being thrown are three controls that do nothing.
+    if (module.shadow) {
+      section.body.append(
+        field('Shadow angle', sliderInput(module, 'shadowAngle', { min: 0, max: 360, step: 5 }),
+          'Read like the gradient angle: 0 throws it upwards, 90 to the right, 180 down.'),
+        field('Shadow blur', sliderInput(module, 'shadowBlur', { min: 0, max: 40 })),
+        field('Shadow color', colorInput(module, 'shadowColor'))
+      );
+    }
   }
 
   // The old "Hidden" tickbox was easy to miss; this is a switch that says
   // what state the part is in.
   section.body.insertBefore(visibilityButton(module), section.body.firstChild);
-  host.append(section, themeProps());
+  host.append(section, placementProps(), themeProps());
 }
 
 /** The one setting that changes what fills the art box, so it redraws it. */
@@ -2509,6 +3133,135 @@ function mediaInput(props) {
 
   select.addEventListener('change', renderMedia);
   return select;
+}
+
+/**
+ * The two OBS positions, as buttons instead of chat commands.
+ *
+ * `!tr` / `!bc` and their `set` forms were the only part of Queueify you had
+ * to leave the dashboard and type in chat to use. These call the same
+ * widgetLayout code the commands do, so the two cannot drift apart.
+ *
+ * They act on whichever theme OBS is showing, which is not always the one open
+ * here, so the section says which one rather than moving the wrong widget.
+ */
+function placementProps() {
+  const section = group('Place in OBS', { note: 'moves the source on your canvas' });
+  const fit = state.fit;
+
+  // What this section was drawn for, so loadFit knows whether the answer it
+  // just got changes anything here.
+  state.placementDrawn = placementSignature();
+
+  // The report arrives a moment after the first render. Until it does, nothing
+  // here knows whether OBS is connected - and saying it is not is a guess that
+  // was wrong for everyone who had it set up.
+  if (!fit) {
+    section.body.append(propNote('Checking OBS…'));
+    return section;
+  }
+
+  if (!fit.obsConfigured) {
+    section.body.append(propNote('Connect OBS in the Admin panel and these become buttons. ' +
+      'Until then, <code>!tr</code> and <code>!bc</code> in chat do the same thing.'));
+    return section;
+  }
+
+  if (fit.theme && !fit.live) {
+    section.body.append(propNote('OBS is showing <b>' + escapeHtml(fit.liveTheme) + '</b>, not this theme. ' +
+      'Press <b>Use on stream</b> first - these move whatever is actually on screen.'));
+    return section;
+  }
+
+  for (const [kind, label] of [['topright', 'Top right'], ['bottomcenter', 'Bottom centre']]) {
+    // presetsFor() returns a list, not a lookup.
+    const preset = (fit.presets || []).find(entry => entry.kind === kind);
+    const saved = Boolean(preset);
+
+    const row = document.createElement('div');
+    row.className = 'place-row';
+
+    const name = document.createElement('span');
+    name.className = 'place-name';
+    name.textContent = label;
+
+    const go = document.createElement('button');
+    go.className = 'ghost sm';
+    go.type = 'button';
+    go.textContent = 'Move here';
+    go.disabled = !saved;
+    go.title = !saved
+      ? 'Nothing saved for this theme yet - use Save this spot first'
+      : preset.stale
+        ? 'Saved before this design changed shape, so it can no longer frame it exactly. ' +
+          'Move the widget and save the spot again.'
+        : 'Put the widget where this theme remembers';
+
+    if (saved && preset.stale) go.classList.add('stale');
+    go.addEventListener('click', () => runPlacement(kind, 'apply', label));
+
+    const set = document.createElement('button');
+    set.className = 'ghost sm';
+    set.type = 'button';
+    set.textContent = saved ? 'Save again' : 'Save this spot';
+    set.title = 'Remember where the widget is in OBS right now as this theme’s ' + label.toLowerCase();
+    set.addEventListener('click', () => runPlacement(kind, 'save', label));
+
+    row.append(name, go, set);
+    section.body.appendChild(row);
+  }
+
+  section.body.append(propNote('The same as <code>!tr</code>, <code>!bc</code>, ' +
+    '<code>!tr set</code> and <code>!bc set</code> in chat.'));
+
+  return section;
+}
+
+/**
+ * Everything the placement section reads, as one string.
+ *
+ * The fit report is refetched whenever the canvas is resized, and rebuilding
+ * the properties panel on each of those would throw away whatever field is
+ * being edited. So the panel is only redrawn when the answer actually changes
+ * something here.
+ */
+function placementSignature() {
+  const fit = state.fit;
+  if (!fit) return 'unknown';
+
+  return [
+    fit.obsConfigured,
+    fit.live,
+    fit.liveTheme,
+    (fit.presets || []).map(entry => entry.kind + (entry.stale ? '!' : '')).sort().join('+')
+  ].join('|');
+}
+
+/** A line of explanation inside a properties group. */
+function propNote(html) {
+  const note = document.createElement('p');
+  note.className = 'place-hint';
+  note.innerHTML = html;
+  return note;
+}
+
+async function runPlacement(kind, action, label) {
+  try {
+    await api('/api/widget/placement', {
+      method: 'POST',
+      body: JSON.stringify({ kind, action })
+    });
+
+    note(action === 'save'
+      ? 'Saved this spot as <b>' + escapeHtml(label) + '</b> for this theme.'
+      : 'Moved the widget to <b>' + escapeHtml(label) + '</b>.', 'good');
+
+    // The report is what decides whether "Move here" can be pressed.
+    await loadFit();
+    renderProps();
+  } catch (err) {
+    note(err.message, 'bad');
+  }
 }
 
 function themeProps() {
@@ -2533,9 +3286,28 @@ function themeProps() {
   return section;
 }
 
+/**
+ * Drops a selection that points at something no longer in the model.
+ *
+ * Revert, undo, redo, import and "start from a layout" all swap the whole
+ * model out from under the editor, and an icon that was selected when they
+ * ran is simply gone afterwards. That left `selected()` undefined, which threw
+ * inside renderProps - and because that throw happened before positionOverlay,
+ * the old outline and its handles stayed painted on the canvas over nothing.
+ */
+function ensureSelection() {
+  if (state.selection === null || state.selection === 'canvas') return;
+  // Assigned rather than select()ed: renderAll is about to draw all three of
+  // the things select() would redraw.
+  if (!moduleOf(state.selection)) state.selection = 'canvas';
+}
+
 function renderAll() {
+  ensureSelection();
   applyZoom(state.zoom);
   loadUsedFonts();
+  renderIcons();
+  renderProgress();
   renderModules();
   renderProps();
   positionOverlay();
@@ -2649,13 +3421,13 @@ $('preset-sheet').addEventListener('click', event => {
   if (event.target === $('preset-sheet')) $('preset-sheet').classList.add('hidden');
 });
 
+// A blank canvas, every time. This used to open the layout picker whenever
+// there were any presets, which made it the same button as "Start from a
+// layout" - two ways to the same modal and no way to an empty theme.
 $('btn-new').addEventListener('click', async () => {
   if (state.dirty && !await askDiscard('Start a new theme')) return;
-  if (state.presets.length) {
-    showPresets();
-    return;
-  }
   await openTheme('');
+  note('Blank theme. <b>Start from a layout</b> in the ⋯ menu if you would rather not.', 'good');
 });
 
 /* ------------------------------------------------------------ share */
@@ -2812,6 +3584,267 @@ for (const swatch of document.querySelectorAll('.swatch')) {
 }
 
 $('btn-refresh-song').addEventListener('click', loadSong);
+/* -------------------------------------------------------------- icons */
+
+// Matches ICON_LIMIT in services/themeStore.js, which is what actually
+// enforces it - this only stops the button offering what the server refuses.
+const ICON_LIMIT = 12;
+
+// The whole of Lucide, fetched once. Names, keywords and shapes together are
+// small enough over loopback that searching never touches the network.
+const iconLibrary = { list: [], byName: new Map(), loaded: false };
+
+async function loadIcons() {
+  if (iconLibrary.loaded) return iconLibrary;
+
+  const { icons } = await api('/api/icons');
+  iconLibrary.list = icons;
+  for (const icon of icons) iconLibrary.byName.set(icon.name, icon);
+  iconLibrary.loaded = true;
+
+  return iconLibrary;
+}
+
+/** One icon as inline SVG, drawn in whatever color it inherits. */
+function iconSvg(name, strokeWidth = 2) {
+  const icon = iconLibrary.byName.get(name);
+  if (!icon) return '';
+
+  return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" ' +
+    'stroke="currentColor" stroke-width="' + strokeWidth + '" stroke-linecap="round" ' +
+    'stroke-linejoin="round" aria-hidden="true">' + icon.body + '</svg>';
+}
+
+/**
+ * The icon elements inside the preview.
+ *
+ * The generated theme inlines these into its index.html; the editor has to
+ * put the same markup in the artboard itself, because the preview is one
+ * fixed page that only ever swaps its stylesheet.
+ */
+function renderIcons() {
+  const widget = $('widget');
+
+  for (const stale of widget.querySelectorAll('.icon')) stale.remove();
+
+  for (const icon of state.model.icons || []) {
+    const el = document.createElement('div');
+    el.className = 'icon icon-' + icon.id;
+    el.innerHTML = iconSvg(icon.name, icon.strokeWidth);
+    widget.appendChild(el);
+  }
+}
+
+/* ----------------------------------------------------------- progress */
+
+/**
+ * The bars inside the progress box, when the theme asks for a waveform.
+ *
+ * The generated theme puts these in its index.html; the preview is one fixed
+ * page, so the editor has to build the same markup itself. It only touches the
+ * DOM when the shape actually changed - a rebuild on every commit would throw
+ * away the element whose width the preview is animating.
+ */
+function renderProgress() {
+  const container = document.querySelector('.progress-container');
+  if (!container) return;
+
+  const progress = moduleOf('progress');
+  const wanted = progress.style === 'waveform' ? progress.bars : 0;
+  if (Number(container.dataset.bars) === wanted) return;
+
+  const width = $('progress') ? $('progress').style.width : '';
+
+  if (!wanted) {
+    container.innerHTML = '<div class="progress" id="progress"></div>';
+  } else {
+    const bars = '<i></i>'.repeat(wanted);
+    container.innerHTML =
+      '<div class="wave track">' + bars + '</div>' +
+      '<div class="progress" id="progress"><div class="wave fill">' + bars + '</div></div>';
+  }
+
+  container.dataset.bars = String(wanted);
+  $('progress').style.width = width;
+}
+
+/**
+ * The one icon setting the stylesheet cannot carry.
+ *
+ * Colour, size, rotation and opacity are all CSS, so they arrive with the
+ * regenerated stylesheet like everything else. Stroke width is an attribute on
+ * the SVG itself - it is measured in the 24-unit space of the viewBox, which
+ * is what makes it scale with the icon - so moving that slider changed the
+ * model and nothing else. This writes it to the element that is already there,
+ * rather than rebuilding it: renderIcons() replaces the DOM node, and doing
+ * that mid-drag would drop the drag.
+ */
+function syncIcons() {
+  for (const icon of state.model.icons || []) {
+    const svg = document.querySelector('.icon-' + icon.id + ' > svg');
+    if (svg) svg.setAttribute('stroke-width', icon.strokeWidth);
+  }
+}
+
+/* --------------------------------------------------------- icon picker */
+
+const picker = { query: '', pending: false };
+
+async function openIconPicker() {
+  if ((state.model.icons || []).length >= ICON_LIMIT) return;
+
+  $('icon-sheet').classList.remove('hidden');
+  $('icon-search').value = picker.query = '';
+  $('icon-results').innerHTML = '<p class="list-empty">Loading icons…</p>';
+
+  try {
+    await loadIcons();
+    drawIconResults();
+    $('icon-search').focus();
+  } catch (err) {
+    $('icon-results').innerHTML = '<p class="list-empty">Could not load the icons: ' +
+      escapeHtml(err.message) + '</p>';
+  }
+}
+
+function closeIconPicker() {
+  $('icon-sheet').classList.add('hidden');
+}
+
+/**
+ * What the picker shows for the current search.
+ *
+ * With nothing typed it offers a short list chosen for a music overlay rather
+ * than the alphabetical top of 2,000 icons, which begins at "a-arrow-down"
+ * and tells nobody anything.
+ */
+const ICON_SUGGESTIONS = [
+  'play', 'pause', 'square', 'skip-forward', 'skip-back', 'music', 'music-2',
+  'disc-3', 'headphones', 'radio', 'mic', 'volume-2', 'heart', 'star', 'sparkles',
+  'flame', 'zap', 'crown', 'gamepad-2', 'twitch', 'list-music', 'audio-lines'
+];
+
+// How many results are drawn at once. Past this the grid costs more to paint
+// than the extra rows are worth, and the answer is a better search term.
+const ICON_PAGE = 120;
+
+function iconMatches(query) {
+  const q = query.trim().toLowerCase();
+
+  if (!q) {
+    return ICON_SUGGESTIONS
+      .map(name => iconLibrary.byName.get(name))
+      .filter(Boolean);
+  }
+
+  const words = q.split(/\s+/);
+  const scored = [];
+
+  for (const icon of iconLibrary.list) {
+    const haystack = icon.name + ' ' + icon.tags.join(' ');
+    if (!words.every(word => haystack.includes(word))) continue;
+
+    // An exact name, then a name that starts with it, then everything whose
+    // keywords happen to mention it - so "play" leads with play.
+    const rank = icon.name === q ? 0 : icon.name.startsWith(q) ? 1 : icon.name.includes(q) ? 2 : 3;
+    scored.push({ icon, rank });
+  }
+
+  return scored
+    .sort((a, b) => a.rank - b.rank || a.icon.name.localeCompare(b.icon.name))
+    .slice(0, ICON_PAGE)
+    .map(entry => entry.icon);
+}
+
+function drawIconResults() {
+  const host = $('icon-results');
+  const found = iconMatches(picker.query);
+
+  host.innerHTML = '';
+
+  if (!found.length) {
+    host.innerHTML = '<p class="list-empty">No icon matches that. Try a plainer word - ' +
+      'the icons are named in English.</p>';
+    return;
+  }
+
+  const grid = document.createElement('div');
+  grid.className = 'icon-grid';
+
+  for (const icon of found) {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'icon-choice';
+    button.title = iconTitle(icon.name);
+    button.setAttribute('aria-label', iconTitle(icon.name));
+    button.innerHTML = iconSvg(icon.name);
+    button.addEventListener('click', () => addIcon(icon.name));
+    grid.appendChild(button);
+  }
+
+  host.appendChild(grid);
+}
+
+/** Drops a new icon on the canvas, selected and ready to be dragged. */
+function addIcon(name) {
+  const icons = state.model.icons || (state.model.icons = []);
+  if (icons.length >= ICON_LIMIT) return;
+
+  const canvas = state.model.canvas;
+
+  commit(() => {
+    icons.push({
+      id: 'i' + icons.length,
+      name,
+      // Middle of the canvas, so it lands somewhere visible whatever the
+      // design is, rather than under the album art in the corner.
+      x: Math.round(canvas.width / 2 - 16),
+      y: Math.round(canvas.height / 2 - 16),
+      w: 32, h: 32,
+      color: 'var(--album-light)',
+      strokeWidth: 2, rotate: 0, opacity: 1, hidden: false
+    });
+  });
+
+  closeIconPicker();
+  select('icon:i' + (icons.length - 1));
+  renderAll();
+  note(iconTitle(name) + ' added. Drag it where you want it.', 'good');
+}
+
+/* ------------------------------------------------------ help drawer */
+
+/**
+ * Closes on Escape and on a click outside: a panel that can only be shut by
+ * the control that opened it is a panel people leave open.
+ */
+function toggleHelp(open) {
+  $('help-drawer').classList.toggle('hidden', !open);
+  $('help-scrim').classList.toggle('hidden', !open);
+  // Focus follows the panel, so keyboard and screen-reader users are not
+  // left behind on the button that is now under a scrim.
+  (open ? $('btn-help-close') : $('btn-help')).focus();
+}
+
+$('btn-icon-close').addEventListener('click', closeIconPicker);
+$('icon-sheet').addEventListener('click', event => {
+  if (event.target === $('icon-sheet')) closeIconPicker();
+});
+$('icon-search').addEventListener('input', event => {
+  picker.query = event.target.value;
+  drawIconResults();
+});
+
+$('btn-help').addEventListener('click', () => toggleHelp(true));
+$('btn-help-close').addEventListener('click', () => toggleHelp(false));
+$('help-scrim').addEventListener('click', () => toggleHelp(false));
+
+window.addEventListener('keydown', event => {
+  if (event.key !== 'Escape') return;
+  if (!$('help-drawer').classList.contains('hidden')) toggleHelp(false);
+  if (!$('icon-sheet').classList.contains('hidden')) closeIconPicker();
+});
+
 $('btn-undo').addEventListener('click', undo);
 $('btn-redo').addEventListener('click', redo);
 $('btn-revert').addEventListener('click', revertToSaved);
@@ -2839,6 +3872,10 @@ window.addEventListener('beforeunload', event => {
     // Both the box and the canvas start on the zoom this editor was left at.
     state.zoom = startingZoom();
     $('zoom').value = String(state.zoom);
+
+    // Before the first render: a theme that already has icons needs their
+    // shapes to draw them, in the preview and in the list.
+    await loadIcons().catch(() => {});
 
     await loadThemes('');
 
