@@ -38,7 +38,12 @@ const THEMES_DIR = process.env.QUEUEIFY_THEMES_DIR || path.join(__dirname, '..',
 // waveform of lines at differing heights. The style falls back to 'bar', which
 // generates exactly the rules a version 5 theme generated, so nothing keys on
 // the saved version here.
-const MODEL_VERSION = 6;
+//
+// 7 let the canvas, the art and the progress bar round each corner on its
+// own, the way Figma's independent corners do. `corners` falls back to null -
+// one radius for all four, the only thing a version 6 theme could say - so the
+// stylesheet it generates is the same byte for byte.
+const MODEL_VERSION = 7;
 const NAME_PATTERN = /^[a-z0-9][a-z0-9-]{0,30}$/;
 
 // The modules the widget runtime knows how to fill. They are always present in
@@ -268,6 +273,30 @@ function number(value, fallback, min, max) {
     return Math.min(Math.max(parsed, min), max);
 }
 
+/**
+ * Four radii, clockwise from the top left as CSS reads them, or null for "all
+ * the same as `radius`".
+ *
+ * Null rather than four copies of the radius, so there is only ever one
+ * number saying how round a uniform shape is. Anything that is not four
+ * usable numbers is treated as no opinion rather than half-trusted.
+ */
+function corners(value, max) {
+    if (!Array.isArray(value) || value.length !== 4) return null;
+
+    const parsed = value.map(corner => Number(corner));
+    if (!parsed.every(Number.isFinite)) return null;
+
+    return parsed.map(corner => Math.round(Math.min(Math.max(corner, 0), max)));
+}
+
+/** The `border-radius` value for anything with a radius and optional corners. */
+function radiusCss(part) {
+    return part.corners
+        ? part.corners.map(corner => corner + 'px').join(' ')
+        : part.radius + 'px';
+}
+
 function pick(value, allowed, fallback) {
     return allowed.includes(value) ? value : fallback;
 }
@@ -326,7 +355,7 @@ function googleFontsHref(fonts) {
 function defaultModule(type) {
     switch (type) {
         case 'art':
-            return { type, hidden: false, x: 16, y: 16, w: 160, h: 160, radius: 24, shadow: 18, fit: 'cover' };
+            return { type, hidden: false, x: 16, y: 16, w: 160, h: 160, radius: 24, corners: null, shadow: 18, fit: 'cover' };
         case 'title':
             return {
                 type, hidden: false, x: 200, y: 46, w: 456, h: 36,
@@ -348,7 +377,7 @@ function defaultModule(type) {
         case 'progress':
             return {
                 type, hidden: false, x: 246, y: 132, w: 364, h: 6,
-                radius: 999, trackColor: 'rgba(255,255,255,0.18)', fillColor: 'var(--album-vibrant)',
+                radius: 999, corners: null, trackColor: 'rgba(255,255,255,0.18)', fillColor: 'var(--album-vibrant)',
                 // A plain bar, as it always was. The waveform is something you
                 // go and choose, and it wants a taller box than 6px.
                 style: 'bar', bars: 48, barGap: 2, seed: 1
@@ -391,6 +420,8 @@ function defaultModel(label = 'New theme') {
             backgroundTo: 'var(--album-vibrant)',
             gradientAngle: 135,
             radius: 32,
+            // Null is one radius for all four corners. See corners().
+            corners: null,
             borderWidth: 1,
             borderColor: 'rgba(255,255,255,0.08)',
             padding: 0,
@@ -490,6 +521,7 @@ function normalizeModel(input, { label } = {}) {
         backgroundTo: color(canvasIn.backgroundTo, base.canvas.backgroundTo),
         gradientAngle: Math.round(number(canvasIn.gradientAngle, base.canvas.gradientAngle, 0, 360)),
         radius: Math.round(number(canvasIn.radius, base.canvas.radius, 0, 400)),
+        corners: corners(canvasIn.corners, 400),
         borderWidth: Math.round(number(canvasIn.borderWidth, base.canvas.borderWidth, 0, 12)),
         borderColor: color(canvasIn.borderColor, base.canvas.borderColor),
         padding: Math.round(number(canvasIn.padding, base.canvas.padding, 0, 200)),
@@ -537,6 +569,7 @@ function normalizeModel(input, { label } = {}) {
             return {
                 ...common,
                 radius: Math.round(number(module.radius, fallback.radius, 0, 400)),
+                corners: corners(module.corners, 400),
                 shadow: Math.round(number(module.shadow, fallback.shadow, 0, 80)),
                 fit: pick(module.fit, ['cover', 'contain'], fallback.fit)
             };
@@ -546,6 +579,7 @@ function normalizeModel(input, { label } = {}) {
             return {
                 ...common,
                 radius: Math.round(number(module.radius, fallback.radius, 0, 999)),
+                corners: corners(module.corners, 999),
                 trackColor: color(module.trackColor, fallback.trackColor),
                 fillColor: color(module.fillColor, fallback.fillColor),
                 style: pick(module.style, ['bar', 'waveform'], fallback.style),
@@ -982,7 +1016,7 @@ function progressRules(progress) {
 ${box(progress)}
     z-index: 2;
     background: ${progress.style === 'waveform' ? 'transparent' : progress.trackColor};
-    border-radius: ${progress.radius}px;
+    border-radius: ${radiusCss(progress)};
     overflow: hidden;
     ${progress.hidden ? 'display: none;' : ''}
 }`;
@@ -1067,7 +1101,7 @@ function generateCss(model) {
 
     background: ${canvas.hidden ? 'transparent' : canvasBackground(canvas)};
     border: ${canvas.hidden ? 0 : canvas.borderWidth}px solid ${canvas.borderColor};
-    border-radius: ${canvas.radius}px;
+    border-radius: ${radiusCss(canvas)};
 
     overflow: hidden;
     font-family: ${FONTS.system.stack};
@@ -1093,7 +1127,7 @@ ${veilRules(canvas)}
 ${box(art)}
     z-index: 0;
     object-fit: ${art.fit};
-    border-radius: ${art.radius}px;
+    border-radius: ${radiusCss(art)};
     box-shadow: 0 ${Math.round(art.shadow / 2)}px ${art.shadow}px rgba(0, 0, 0, .38);
     ${art.hidden ? 'display: none !important;' : ''}
 }

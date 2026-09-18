@@ -7,6 +7,14 @@ the dashboard shows this same list under **What's new**, at
 Newest version at the top. Nothing is ever removed: a new release goes above
 the others and pushes them down.
 
+## 43.1.0
+
+### New
+
+- **Round each corner on its own.** The button beside **Corner radius** on the canvas, the album
+  art and the progress bar splits it into four fields, one per corner. Click it
+  again to go back to one radius
+
 ## 43.0.0
 
 ### New

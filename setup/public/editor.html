@@ -547,6 +547,17 @@
   .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
   .slider { display: grid; grid-template-columns: 1fr 52px; gap: 8px; align-items: center; }
 
+  /* Corner radius, with Figma's switch to round each corner on its own. The
+     four fields sit where their corners are, so there is nothing to decode. */
+  .prop-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
+  .prop-head > label { font-size: 12px; color: var(--muted); }
+  .prop-head .icon-btn.sm { width: 24px; height: 24px; }
+  .prop-head .icon-btn.sm svg { width: 14px; height: 14px; }
+  .prop-head .icon-btn[aria-pressed="true"] { background: var(--card); color: var(--text); border-color: var(--accent); }
+  .corners { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 8px; }
+  .corner { display: grid; grid-template-columns: 14px 1fr; gap: 5px; align-items: center; }
+  .corner svg { width: 14px; height: 14px; color: var(--faint); }
+
   .color { display: flex; gap: 6px; align-items: center; }
   .color input[type="color"] { width: 40px; flex: none; }
   .color input[type="color"].active { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(145,71,255,.28); }
@@ -2512,6 +2523,7 @@ const FIELD_TIPS = {
   'Shadow blur': 'How soft its edge is. 0 is a hard offset copy of the text.',
   'Shadow color': 'The color of that shadow. Black at part opacity is the usual choice.',
   'Corner radius': 'How rounded the corners are. 0 is square.',
+  'Independent corners': 'Round each corner by its own amount, like Figma. Turn it off to go back to one radius.',
   'Shadow': 'A soft shadow behind the artwork.',
   'Fit': 'Album art is square: fill the box (cropping) or fit inside it (letterboxed).',
   'Background': 'The color behind everything.',
@@ -2764,6 +2776,80 @@ function sliderInput(target, key, { min, max, step = 1 } = {}) {
   return wrap;
 }
 
+/**
+ * Corner radius, one for all four corners or, switched over, one for each.
+ *
+ * `corners` is null until the switch is used - the model's way of saying "all
+ * the same" - so a theme nobody has touched keeps the single radius it always
+ * had. Switching on starts all four at the current radius, so nothing moves
+ * until a corner is changed; switching off keeps the top-left one, the corner
+ * people read first.
+ */
+function radiusInput(target, { max }) {
+  const wrap = document.createElement('div');
+  wrap.className = 'prop';
+  wrap.title = FIELD_TIPS['Corner radius'];
+
+  const head = document.createElement('div');
+  head.className = 'prop-head';
+
+  const tag = document.createElement('label');
+  tag.textContent = 'Corner radius';
+
+  const split = Boolean(target.corners);
+
+  const toggle = document.createElement('button');
+  toggle.type = 'button';
+  toggle.className = 'icon-btn sm';
+  toggle.title = FIELD_TIPS['Independent corners'];
+  toggle.setAttribute('aria-label', 'Independent corners');
+  toggle.setAttribute('aria-pressed', String(split));
+  toggle.innerHTML = CORNERS_ICON;
+  toggle.addEventListener('click', () => {
+    commit(() => {
+      if (target.corners) {
+        target.radius = target.corners[0];
+        target.corners = null;
+      } else {
+        target.corners = [target.radius, target.radius, target.radius, target.radius];
+      }
+    });
+    renderProps();
+  });
+
+  head.append(tag, toggle);
+  wrap.appendChild(head);
+
+  if (!split) {
+    wrap.appendChild(sliderInput(target, 'radius', { min: 0, max }));
+    return wrap;
+  }
+
+  // Laid out as the corners are: top left, top right, bottom left, bottom
+  // right. The model holds them in CSS order, clockwise, hence the indices.
+  const grid = document.createElement('div');
+  grid.className = 'corners';
+
+  for (const [at, turn, name] of [[0, 0, 'Top left'], [1, 90, 'Top right'], [3, 270, 'Bottom left'], [2, 180, 'Bottom right']]) {
+    const cell = document.createElement('div');
+    cell.className = 'corner';
+    cell.title = name + ' corner';
+    cell.innerHTML = CORNER_ICON.replace('<svg ', `<svg style="transform: rotate(${turn}deg)" `);
+    cell.appendChild(numberInput(target.corners, at, { min: 0, max }));
+    grid.appendChild(cell);
+  }
+
+  wrap.appendChild(grid);
+  return wrap;
+}
+
+const CORNER_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" ' +
+  'stroke-linecap="round" aria-hidden="true"><path d="M5 20V12a7 7 0 0 1 7-7h8"/></svg>';
+
+const CORNERS_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" ' +
+  'stroke-linecap="round" aria-hidden="true"><path d="M4 10V8a4 4 0 0 1 4-4h2"/><path d="M14 4h2a4 4 0 0 1 4 4v2"/>' +
+  '<path d="M20 14v2a4 4 0 0 1-4 4h-2"/><path d="M10 20H8a4 4 0 0 1-4-4v-2"/></svg>';
+
 function selectInput(target, key, options) {
   const select = document.createElement('select');
 
@@ -3013,7 +3099,7 @@ function renderProps() {
     }
 
     section.body.append(
-      field('Corner radius', sliderInput(canvas, 'radius', { min: 0, max: 120 })),
+      radiusInput(canvas, { max: 120 }),
       field('Border width', sliderInput(canvas, 'borderWidth', { min: 0, max: 12 }),
         'A pale border shows up as a bright hairline against dark backgrounds. Set it to 0 to remove it.'),
       field('Border color', colorInput(canvas, 'borderColor')),
@@ -3053,7 +3139,7 @@ function renderProps() {
 
   if (module.type === 'art') {
     section.body.append(
-      field('Corner radius', sliderInput(module, 'radius', { min: 0, max: 200 })),
+      radiusInput(module, { max: 200 }),
       field('Shadow', sliderInput(module, 'shadow', { min: 0, max: 80 }),
         'A soft drop shadow behind the artwork, to lift it off the panel.'),
       field('Fit', selectInput(module, 'fit', [['cover', 'Fill the box'], ['contain', 'Fit inside']]),
@@ -3067,7 +3153,7 @@ function renderProps() {
       ]), module.style === 'waveform'
         ? 'Give the box some height - a waveform in a 6px bar is a bar.'
         : 'A waveform draws the bar as a row of lines of differing heights.'),
-      field('Corner radius', sliderInput(module, 'radius', { min: 0, max: 999 })),
+      radiusInput(module, { max: 999 }),
       field('Track color', colorInput(module, 'trackColor')),
       field('Fill color', colorInput(module, 'fillColor'))
     );
