@@ -27,6 +27,8 @@ An application that handles Spotify song queuing for your Twitch stream, with an
 
 See [CHANGELOG.md](CHANGELOG.md) for what has changed.
 
+Documentation website [repo](https://github.com/conditionull/queueify-site)
+
 ### Credit
 
 - You don't need to credit me, feel free to use it however you want!
