@@ -4,25 +4,26 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Queueify Admin</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@800&display=swap">
+<link rel="stylesheet" href="docus.css">
+<script src="docus.js"></script>
 <style>
+  /* The page's own names for things, pointed at the docs site's palette in
+     docus.css - light and dark both come from there. */
   :root {
-    --bg: #0b0c0f;
-    --surface: #12141a;
-    --surface-2: #171a21;
-    --line: #23262f;
-    --line-soft: #1b1e25;
-    --text: #e9eaee;
-    --muted: #9aa0ad;
-    --faint: #6b7280;
-    --accent: #7c5cff;
-    --accent-soft: rgba(124, 92, 255, .16);
-    --green: #2fb87a;
-    --amber: #d9a441;
-    --red: #e5566d;
-    --radius: 10px;
+    --bg: var(--ui-bg);
+    --surface: var(--ui-bg);
+    --surface-2: var(--ui-bg-elevated);
+    --line: var(--ui-border-muted);
+    --line-soft: var(--ui-border);
+    --text: var(--ui-text);
+    --muted: var(--ui-text-muted);
+    --faint: var(--ui-text-dimmed);
+    --accent: var(--ui-primary-strong);
+    --accent-soft: color-mix(in srgb, var(--ui-primary) 18%, transparent);
+    --green: var(--ui-primary-strong);
+    --amber: var(--ui-warning-text);
+    --red: var(--ui-error);
+    --radius: 8px;
   }
 
   * { box-sizing: border-box; }
@@ -31,107 +32,42 @@
     margin: 0;
     background: var(--bg);
     color: var(--text);
-    font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, sans-serif;
+    font: 14px/1.5 var(--font-sans);
     -webkit-font-smoothing: antialiased;
   }
 
-  a { color: #a894ff; text-decoration: none; }
+  a { color: var(--ui-primary); text-decoration: none; font-weight: 500; }
   a:hover { text-decoration: underline; }
-
-
-  /* A faint grid behind everything, so a dark page has some depth to it
-     instead of being a flat slab. Fixed, so it does not slide around as you
-     scroll, and masked so it fades out down the page rather than stopping at
-     a hard edge. It is decoration: nothing can be clicked through it. */
-  body::before {
-    content: '';
-    position: fixed; inset: 0; z-index: 0; pointer-events: none;
-    background-image:
-      linear-gradient(to right, rgba(255, 255, 255, .04) 1px, transparent 1px),
-      linear-gradient(to bottom, rgba(255, 255, 255, .04) 1px, transparent 1px);
-    background-size: 46px 46px;
-    -webkit-mask-image: radial-gradient(130% 105% at 50% -5%, #000 0%, rgba(0, 0, 0, .55) 55%, transparent 100%);
-    mask-image: radial-gradient(130% 105% at 50% -5%, #000 0%, rgba(0, 0, 0, .55) 55%, transparent 100%);
-  }
 
   /* ------------------------------------------------------------ layout */
 
-  .shell {
-    display: grid; grid-template-columns: 232px minmax(0, 1fr); min-height: 100vh;
-    position: relative; z-index: 1;
-  }
+  .inner { max-width: 1020px; }
 
-  .side {
-    border-right: 1px solid var(--line);
-    background: var(--surface);
-    padding: 20px 14px;
-    position: sticky; top: 0; height: 100vh;
-    display: flex; flex-direction: column; gap: 4px;
-  }
-
-  /* Nunito for the wordmark only, with a real fallback so it still reads if
-     the font cannot be fetched - this is a local tool and may be offline. */
-  .brand {
-    display: block;
-    padding: 2px 8px 18px;
-    font-family: Nunito, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-    font-size: 17px; font-weight: 800; letter-spacing: -.01em;
-    color: var(--text); text-decoration: none;
-  }
-  .brand:hover { color: #fff; text-decoration: none; }
-
-  .side .label {
-    padding: 14px 8px 6px;
-    font-size: 11px; font-weight: 600; letter-spacing: .07em;
-    text-transform: uppercase; color: var(--faint);
-  }
-
-  .nav {
-    display: flex; align-items: center; gap: 9px;
-    padding: 8px 9px; border-radius: 8px;
-    color: var(--muted); font-size: 13.5px; font-weight: 500;
-    cursor: pointer; border: 1px solid transparent;
-    text-align: left; background: none; width: 100%;
-  }
-  .nav:hover { background: var(--surface-2); color: var(--text); }
-  .nav.active { background: var(--accent-soft); color: #fff; border-color: rgba(124,92,255,.35); }
-  .nav svg { width: 15px; height: 15px; flex: none; opacity: .9; }
-
-  .side .foot { margin-top: auto; padding: 10px 8px 0; font-size: 12px; color: var(--faint); }
-
-  .main { min-width: 0; padding: 0 34px 120px; }
-  .inner { margin: 0 auto; max-width: 1020px; }
-
-  /* The sections float above the content and stay there while the page
-     scrolls, so moving between them never means going back to the top. The
-     fade underneath lets a card pass behind it without a hard edge. */
+  /* The sections stay under the header while the page scrolls, so moving
+     between them never means going back to the top. The fade underneath lets
+     a card pass behind them without a hard edge. */
   .pillbar {
-    position: sticky; top: 0; z-index: 10;
-    display: flex; justify-content: center;
-    padding: 20px 0 16px;
-    background: linear-gradient(var(--bg) 62%, rgba(11, 12, 15, 0));
+    position: sticky; top: 64px; z-index: 10;
+    display: flex; justify-content: flex-start;
+    padding: 0 0 20px; margin-top: -8px;
+    background: linear-gradient(var(--bg) 70%, transparent);
   }
+  .pills { display: flex; }
 
-  .pills {
-    display: flex; gap: 2px;
-    background: var(--surface); border: 1px solid var(--line);
-    border-radius: 999px; padding: 4px;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, .45);
+  /* Each tab's page opens the way a docs page does */
+  .page-head {
+    padding-bottom: 28px; margin-bottom: 28px;
+    border-bottom: 1px solid var(--line-soft);
   }
-  .pills button {
-    font: inherit; font-size: 13px; font-weight: 600;
-    padding: 8px 18px; border-radius: 999px;
-    border: 0; background: none; color: var(--muted);
-    cursor: pointer; white-space: nowrap;
-    transition: background .16s, color .16s;
+  .page-head::before {
+    content: 'Admin panel'; display: block; margin-bottom: 8px;
+    font-size: 14px; font-weight: 600; color: var(--ui-primary);
   }
-  .pills button:hover { color: var(--text); }
-  .pills button.active { background: var(--accent); color: #fff; }
-
-
-  .page-head { margin-bottom: 26px; }
-  .page-head h1 { margin: 0 0 6px; font-size: 22px; font-weight: 650; letter-spacing: -.02em; }
-  .page-head p { margin: 0; color: var(--muted); font-size: 13.5px; max-width: 62ch; }
+  .page-head h1 {
+    margin: 0; font-size: 36px; line-height: 1.2; font-weight: 700;
+    letter-spacing: -.01em; color: var(--ui-text-highlighted);
+  }
+  .page-head p { margin: 14px 0 0; color: var(--muted); font-size: 18px; line-height: 1.55; max-width: 62ch; }
 
   /* ------------------------------------------------------------- cards */
 
@@ -147,8 +83,8 @@
     border-bottom: 1px solid var(--line-soft);
     display: flex; align-items: baseline; gap: 10px;
   }
-  .card > header h2 { margin: 0; font-size: 14.5px; font-weight: 600; letter-spacing: -.01em; }
-  .card > header .sub { color: var(--faint); font-size: 12.5px; }
+  .card > header h2 { margin: 0; font-size: 16px; font-weight: 600; color: var(--ui-text-highlighted); }
+  .card > header .sub { color: var(--faint); font-size: 13px; }
   .card .body { padding: 6px 18px 16px; }
 
   .row {
@@ -157,8 +93,8 @@
     padding: 14px 0; border-bottom: 1px solid var(--line-soft);
   }
   .row:last-child { border-bottom: 0; }
-  .row .name { font-size: 13.5px; font-weight: 550; }
-  .row .why { display: block; margin-top: 3px; color: var(--faint); font-size: 12.5px; font-weight: 400; }
+  .row .name { font-size: 14px; font-weight: 500; color: var(--ui-text-highlighted); }
+  .row .why { display: block; margin-top: 3px; color: var(--faint); font-size: 13px; font-weight: 400; }
   .row .control { display: flex; align-items: center; gap: 8px; justify-content: flex-end; }
   /* The text field is the one thing here that should give up room when the
      buttons beside it need it. */
@@ -166,15 +102,15 @@
   .row .unit { color: var(--faint); font-size: 12.5px; }
 
   input[type="text"], input[type="number"], input[type="password"], textarea, select {
-    font: inherit; font-size: 13.5px;
-    color: var(--text); background: var(--bg);
-    border: 1px solid var(--line); border-radius: 8px;
+    font: inherit; font-size: 14px;
+    color: var(--ui-text-highlighted); background: var(--bg);
+    border: 1px solid var(--ui-border-accented); border-radius: 6px;
     padding: 8px 10px; width: 100%;
     transition: border-color .15s, box-shadow .15s;
   }
   input:focus, textarea:focus, select:focus {
-    outline: none; border-color: var(--accent);
-    box-shadow: 0 0 0 3px var(--accent-soft);
+    outline: none; border-color: var(--ui-primary);
+    box-shadow: 0 0 0 1px var(--ui-primary);
   }
   textarea { resize: vertical; min-height: 62px; line-height: 1.5; }
   /* The browser's own up/down arrows are cramped and out of place next to
@@ -191,53 +127,55 @@
   .stepper button {
     flex: none; width: 30px; padding: 0;
     background: var(--bg); color: var(--faint);
-    border: 1px solid var(--line); border-radius: 0;
+    border: 1px solid var(--ui-border-accented); border-radius: 0;
     font-size: 15px; font-weight: 600; line-height: 1; cursor: pointer;
     transition: background .15s, color .15s;
   }
-  .stepper button:first-child { border-radius: 8px 0 0 8px; border-right: 0; }
-  .stepper button:last-child { border-radius: 0 8px 8px 0; border-left: 0; }
-  .stepper button:hover { background: var(--accent-soft); color: var(--accent); }
-  .stepper:focus-within > * { border-color: var(--accent); }
-  .stepper:focus-within { border-radius: 8px; box-shadow: 0 0 0 3px var(--accent-soft); }
+  .stepper button:first-child { border-radius: 6px 0 0 6px; border-right: 0; }
+  .stepper button:last-child { border-radius: 0 6px 6px 0; border-left: 0; }
+  .stepper button:hover { background: var(--surface-2); color: var(--ui-text-highlighted); }
+  .stepper:focus-within > * { border-color: var(--ui-primary); }
+  .stepper:focus-within { border-radius: 6px; box-shadow: 0 0 0 1px var(--ui-primary); }
   .stepper input:focus { box-shadow: none; }
 
   /* A switch, rather than a stray tickbox. */
   .toggle {
     position: relative; width: 40px; height: 22px; flex: none;
-    background: #2a2e38; border: 1px solid var(--line); border-radius: 999px;
+    background: var(--ui-bg-accented); border: 1px solid transparent; border-radius: 999px;
     cursor: pointer; transition: background .18s, border-color .18s;
   }
   .toggle::after {
     content: ''; position: absolute; top: 2px; left: 2px;
     width: 16px; height: 16px; border-radius: 50%;
-    background: #9aa0ad; transition: transform .18s, background .18s;
+    background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,.25);
+    transition: transform .18s, background .18s;
   }
   .toggle[aria-checked="true"] { background: var(--accent); border-color: var(--accent); }
-  .toggle[aria-checked="true"]::after { transform: translateX(18px); background: #fff; }
-  .toggle:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--accent-soft); }
+  .toggle[aria-checked="true"]::after { transform: translateX(18px); }
+  .toggle:focus-visible { outline: 2px solid var(--ui-primary); outline-offset: 2px; }
 
   button.btn {
-    font: inherit; font-size: 13.5px; font-weight: 600;
-    border-radius: 8px; padding: 8px 14px; cursor: pointer;
-    background: var(--accent); color: #fff; border: 1px solid transparent;
+    font: inherit; font-size: 14px; font-weight: 500; line-height: 20px;
+    border-radius: 6px; padding: 6px 12px; cursor: pointer;
+    background: var(--accent); color: var(--ui-on-primary); border: 1px solid transparent;
     transition: background .15s, opacity .15s;
     /* The control column is a fixed width and these sit in a row of three:
        without this a two-word label breaks across lines and the row grows. */
     white-space: nowrap; flex: none;
   }
-  button.btn:hover:not(:disabled) { background: #8c70ff; }
-  button.btn:disabled { opacity: .45; cursor: default; }
-  button.btn.ghost { background: transparent; border-color: var(--line); color: var(--text); }
-  button.btn.ghost:hover:not(:disabled) { background: var(--surface-2); }
+  button.btn:hover:not(:disabled) { background: var(--ui-primary); }
+  button.btn:focus-visible { outline: 2px solid var(--ui-primary); outline-offset: 2px; }
+  button.btn:disabled { opacity: .5; cursor: default; }
+  button.btn.ghost { background: var(--surface-2); color: var(--text); }
+  button.btn.ghost:hover:not(:disabled) { background: var(--ui-bg-accented); }
   button.btn.small { padding: 5px 10px; font-size: 12.5px; }
 
   .chips { display: flex; flex-wrap: wrap; gap: 6px; }
   .chip {
     display: inline-flex; align-items: center; gap: 6px;
     background: var(--surface-2); border: 1px solid var(--line);
-    border-radius: 999px; padding: 4px 6px 4px 10px;
-    font-size: 12.5px; font-family: ui-monospace, Menlo, Consolas, monospace;
+    border-radius: 6px; padding: 2px 4px 2px 8px;
+    font-size: 13px; font-family: var(--font-mono); color: var(--ui-text-highlighted);
   }
   .chip button {
     background: none; border: 0; color: var(--faint); cursor: pointer;
@@ -246,30 +184,30 @@
   .chip button:hover { color: var(--red); }
 
   .tag {
-    font-size: 11px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase;
-    padding: 2px 7px; border-radius: 999px;
+    font-size: 12px; font-weight: 500;
+    padding: 1px 7px; border-radius: 6px;
     background: var(--surface-2); color: var(--faint);
   }
-  .tag.edited { background: rgba(217,164,65,.14); color: var(--amber); }
+  .tag.edited { background: color-mix(in srgb, var(--ui-warning) 12%, transparent); color: var(--amber); }
 
-  .mono { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 12.5px; }
+  .mono { font-family: var(--font-mono); font-size: 13px; }
   .muted { color: var(--muted); }
   .hidden { display: none !important; }
 
   /* --------------------------------------------------------- save bar */
 
   .savebar {
-    position: fixed; left: 232px; right: 0; bottom: 0; z-index: 20;
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 20;
     display: flex; align-items: center; gap: 14px;
-    padding: 13px 34px;
-    background: rgba(18, 20, 26, .96);
-    border-top: 1px solid var(--line);
-    backdrop-filter: blur(6px);
+    padding: 12px max(32px, calc((100vw - 1440px) / 2 + 32px));
+    background: var(--ui-header-bg);
+    border-top: 1px solid var(--line-soft);
+    backdrop-filter: blur(8px);
     transform: translateY(105%); transition: transform .22s ease;
   }
   .savebar.show { transform: translateY(0); }
   .savebar .status { flex: 1; font-size: 13px; color: var(--muted); }
-  .savebar .status.error { color: #ff9dab; }
+  .savebar .status.error { color: var(--ui-error-text); }
 
   /* --------------------------------------------------- cooldown dialog */
 
@@ -278,7 +216,7 @@
     background: var(--surface); color: var(--text);
     padding: 0; width: min(420px, calc(100vw - 32px));
   }
-  dialog.cooldowns::backdrop { background: rgba(0, 0, 0, .55); }
+  dialog.cooldowns::backdrop { background: var(--ui-scrim); }
   dialog.cooldowns header { padding: 16px 20px; border-bottom: 1px solid var(--line-soft); }
   dialog.cooldowns h3 { margin: 0 0 4px; font-size: 15px; font-weight: 650; }
   dialog.cooldowns header p { margin: 0; color: var(--faint); font-size: 12.5px; }
@@ -300,8 +238,8 @@
     position: fixed; right: 22px; bottom: 84px; z-index: 30;
     background: var(--surface-2); border: 1px solid var(--line);
     border-left: 3px solid var(--green);
-    border-radius: 8px; padding: 11px 14px; font-size: 13px;
-    box-shadow: 0 12px 32px rgba(0,0,0,.5);
+    border-radius: 6px; padding: 11px 14px; font-size: 13px;
+    box-shadow: var(--ui-shadow);
     max-width: 340px;
   }
   .toast.bad { border-left-color: var(--red); }
@@ -310,17 +248,36 @@
   .empty { padding: 20px 0; color: var(--faint); font-size: 13px; }
 
   @media (max-width: 860px) {
-    .shell { grid-template-columns: 1fr; }
-    .side { position: static; height: auto; flex-direction: row; flex-wrap: wrap; }
-    .side .label, .side .foot { display: none; }
-    .savebar { left: 0; }
-    .main { padding: 0 18px 120px; }
-    .pillbar { padding: 14px 0 12px; }
+    .savebar { padding: 12px 16px; }
+    .pillbar { position: static; margin-top: 0; }
     .pills { width: 100%; overflow-x: auto; }
-    .pills button { flex: 1; padding: 8px 12px; }
+    .pills button { flex: 1; }
+    .page-head h1 { font-size: 30px; }
+    .page-head p { font-size: 16px; }
     .row { grid-template-columns: 1fr; }
     .row .control { justify-content: flex-start; }
   }
+
+  /* ------------------------------------------------------------- frame */
+
+  /* The page sits in the frame from docus.css. Its title rule runs out to the
+     rails, and the panels under it do too, one straight after another, so the
+     page reads as one ruled table under its title instead of cards floating
+     in the middle. Each panel's text keeps the page's gutter, so it lines up
+     with the title above it. */
+  .inner { max-width: none; }
+  .page-head {
+    margin: 0 calc(-1 * var(--d-gutter));
+    padding-inline: var(--d-gutter);
+    border-bottom-color: var(--line);
+  }
+  .view > .card, #view > .card {
+    margin: 0 calc(-1 * var(--d-gutter));
+    border-width: 0 0 1px; border-radius: 0;
+  }
+  .card > header { padding-inline: var(--d-gutter); background: color-mix(in srgb, var(--ui-bg-elevated) 35%, transparent); }
+  .card .body { padding-inline: var(--d-gutter); }
+
 </style>
 <!-- Loaded before the page script: number fields are built during the
      first render, and they ask for holdRepeat as they are made. -->
@@ -328,32 +285,17 @@
 </head>
 <body>
 
-<div class="shell">
-  <aside class="side">
-    <!-- The wordmark is the way back to the dashboard. -->
-    <a class="brand" href="/">Queueify</a>
-
-    <div class="label">Elsewhere</div>
-    <a class="nav" href="/">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
-      Setup dashboard
-    </a>
-    <a class="nav" href="/stats.html">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 3v18h18"/><path d="M7 15l4-5 3 3 5-7"/></svg>
-      Stats
-    </a>
-    <a class="nav" href="/editor.html">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M2 2l7.5 7.5"/><circle cx="11" cy="11" r="2"/></svg>
-      Theme editor
-    </a>
-
-    <div class="foot">Changes apply while the bot runs.</div>
+<q-header></q-header>
+<div class="d-shell">
+  <aside class="d-aside">
+    <q-nav active="admin"></q-nav>
+    <div class="d-aside-foot">Changes apply while the bot runs.</div>
   </aside>
 
-  <main class="main">
+  <main class="d-main">
     <div class="inner">
       <div class="pillbar">
-        <nav class="pills">
+        <nav class="pills d-tabs">
           <button class="active" data-view="settings">Settings</button>
           <button data-view="aliases">Commands</button>
           <button data-view="messages">Chat messages</button>

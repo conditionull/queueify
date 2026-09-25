@@ -7,6 +7,39 @@ the dashboard shows this same list under **What's new**, at
 Newest version at the top. Nothing is ever removed: a new release goes above
 the others and pushes them down.
 
+## 43.2.0
+
+### New
+
+- **A fresh look for the dashboard.** It matches the
+  [documentation site](https://queueify-docs.vercel.app/getting-started/introduction) now, with
+  the same sidebar on every page and a link straight to the docs. Light or dark follows your
+  system until you pick one with the button in the header, and then it remembers
+- **Spiffy, a new layout to start from.** One slim row - title, a waveform icon, artist, and a pill
+  progress bar - on a gradient taken from the album art. It replaces Ticker and Spotlight under
+  **Start from a layout**, which now offers Default, Spiffy, and Stacked. Themes you already made
+  from either are not touched
+- **A new default theme.** `!theme default` is redesigned: the album art runs flush to the left
+  edge, the title is in Righteous font, the song times sit on both sides of progress bar, and the
+  background is a gradient taken from the album art. It is 680 x 160 instead of 680 x 192, and
+  OBS is resized to match the next time it connects. Nothing to do on your end
+- **Classic is now Default.** Under **Start from a layout** it gives you the same design as the
+  default theme, ready to change. Themes you already made from the old Classic are not touched
+
+### Fixed
+
+- **Title alignment works.** Setting the title to centred or right-aligned did nothing - it always
+  sat on the left. Every text part lines up the way you set it now
+- **Long centred or right-aligned lines no longer start cut off.** A title or artist too long to
+  fit spilled off both edges, so it began scrolling with its first word already missing. A line
+  that does not fit starts at its beginning; one that fits stays where you aligned it
+- **The song times line up on long songs.** Past ten minutes, elapsed shows the same number of
+  digits as the length - `07:19` against `17:05` - so both are the same width. Elapsed can sit
+  flush with the text above it and still be as far from the bar as the length is. Songs under ten
+  minutes look the same as before
+- **Start from a layout is readable on hover.** The layout under the mouse turned solid green,
+  which hid its grey description. It gets a light tint and a green border now
+
 ## 43.1.0
 
 ### New

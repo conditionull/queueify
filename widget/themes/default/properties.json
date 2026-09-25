@@ -2,12 +2,9 @@
     "media": {
         "mode": "canvas"
     },
-
     "showProgress": true,
     "updateInterval": 5000,
-    
     "hideAfter": 5,
-    
     "scroll": {
         "enabled": true,
         "speed": 70,

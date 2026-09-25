@@ -8,21 +8,28 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link id="font-menu-css" rel="stylesheet" href="">
 <link id="font-used-css" rel="stylesheet" href="">
+<link rel="stylesheet" href="docus.css">
+<script src="docus.js"></script>
 <style>
+  /* The page's own names for things, pointed at the docs site's palette in
+     docus.css - light and dark both come from there. The preview backdrops
+     and the pink alignment marks further down are tools, not chrome, so they
+     keep colours of their own. */
   :root {
-    --bg: #0d0d11;
-    --card: #16161e;
-    --panel: #12121a;
-    --border: #272733;
-    --border-soft: #1f1f29;
-    --text: #ededf2;
-    --muted: #9494a8;
-    --faint: #6a6a7d;
-    --accent: #9147ff;
-    --accent-hover: #a970ff;
-    --green: #24d17e;
-    --amber: #f5a524;
-    --red: #f5566c;
+    --bg: var(--ui-bg);
+    --card: var(--ui-bg);
+    --panel: var(--ui-bg);
+    --border: var(--ui-border-muted);
+    --border-soft: var(--ui-border);
+    --text: var(--ui-text);
+    --muted: var(--ui-text-muted);
+    --faint: var(--ui-text-dimmed);
+    --accent: var(--ui-primary-strong);
+    --accent-hover: var(--ui-primary);
+    --accent-soft: color-mix(in srgb, var(--ui-primary) 18%, transparent);
+    --green: var(--ui-primary);
+    --amber: var(--ui-warning-text);
+    --red: var(--ui-error);
   }
 
   * { box-sizing: border-box; }
@@ -43,26 +50,27 @@
     display: flex;
     flex-direction: column;
     overflow: hidden;
-    background: radial-gradient(1100px 520px at 50% -12%, #1e1533 0%, var(--bg) 58%);
+    background: var(--bg);
     color: var(--text);
-    font: 14px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    font: 14px/1.5 var(--font-sans);
     -webkit-font-smoothing: antialiased;
   }
 
-  a { color: var(--accent-hover); }
+  a { color: var(--ui-primary); font-weight: 500; }
 
   button {
-    font: inherit; font-weight: 600; font-size: 13.5px;
-    border: 0; border-radius: 8px; padding: 8px 14px;
-    background: var(--accent); color: #fff; cursor: pointer;
+    font: inherit; font-weight: 500; font-size: 14px; line-height: 20px;
+    border: 0; border-radius: 6px; padding: 6px 12px;
+    background: var(--accent); color: var(--ui-on-primary); cursor: pointer;
     transition: background .15s, opacity .15s;
   }
   button:hover:not(:disabled) { background: var(--accent-hover); }
-  button:disabled { opacity: .4; cursor: default; }
-  button.ghost { background: #292937; }
-  button.ghost:hover:not(:disabled) { background: #343446; }
-  button.danger { background: #3a1620; color: #ff9dab; }
-  button.danger:hover:not(:disabled) { background: #4d1c2a; }
+  button:focus-visible { outline: 2px solid var(--ui-primary); outline-offset: 2px; }
+  button:disabled { opacity: .5; cursor: default; }
+  button.ghost { background: var(--ui-bg-elevated); color: var(--ui-text); }
+  button.ghost:hover:not(:disabled) { background: var(--ui-bg-accented); }
+  button.danger { background: color-mix(in srgb, var(--ui-error) 12%, transparent); color: var(--ui-error-text); }
+  button.danger:hover:not(:disabled) { background: color-mix(in srgb, var(--ui-error) 20%, transparent); }
 
   /*
    * Fields sit a step above the panel rather than below it. They used to be
@@ -71,15 +79,15 @@
    */
   input, select {
     width: 100%; font: inherit; font-size: 13.5px;
-    background: var(--card); color: var(--text);
-    border: 1px solid var(--border); border-radius: 8px;
+    background: var(--card); color: var(--ui-text-highlighted);
+    border: 1px solid var(--ui-border-accented); border-radius: 6px;
     padding: 8px 10px;
     min-height: 36px;
   }
-  input:hover, select:hover { border-color: #38384a; }
+  input:hover, select:hover { border-color: var(--ui-text-dimmed); }
   input:focus, select:focus {
-    outline: none; border-color: var(--accent);
-    box-shadow: 0 0 0 3px rgba(145, 71, 255, .18);
+    outline: none; border-color: var(--ui-primary);
+    box-shadow: 0 0 0 1px var(--ui-primary);
   }
 
   /*
@@ -89,12 +97,12 @@
   select {
     appearance: none; -webkit-appearance: none; -moz-appearance: none;
     padding-right: 30px; cursor: pointer;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%239494a8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2371717a' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
     background-repeat: no-repeat;
     background-position: right 9px center;
     background-size: 15px;
   }
-  select:hover { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23ededf2' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E"); }
+  select:hover { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23a1a1aa' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E"); }
 
   /* The open list is drawn by the OS, which does not inherit any of the
      above - without this it falls back to white-on-white on some platforms. */
@@ -116,15 +124,15 @@
   .stepper input { border-radius: 0; border-left: 0; border-right: 0; min-width: 0; }
   .stepper button {
     flex: none; width: 26px; padding: 0;
-    background: #16161e; color: var(--muted);
-    border: 1px solid var(--border); border-radius: 0;
+    background: var(--card); color: var(--muted);
+    border: 1px solid var(--ui-border-accented); border-radius: 0;
     font-size: 14px; line-height: 1; font-weight: 600;
     transition: background .12s, color .12s;
   }
-  .stepper button:first-child { border-radius: 7px 0 0 7px; border-right: 0; }
-  .stepper button:last-child { border-radius: 0 7px 7px 0; border-left: 0; }
-  .stepper button:hover:not(:disabled) { background: #24242f; color: var(--text); }
-  .stepper button:active:not(:disabled) { background: var(--accent); color: #fff; }
+  .stepper button:first-child { border-radius: 6px 0 0 6px; border-right: 0; }
+  .stepper button:last-child { border-radius: 0 6px 6px 0; border-left: 0; }
+  .stepper button:hover:not(:disabled) { background: var(--ui-bg-elevated); color: var(--ui-text-highlighted); }
+  .stepper button:active:not(:disabled) { background: var(--accent); color: var(--ui-on-primary); }
   .stepper:focus-within > * { border-color: var(--accent); }
 
   /* ---------------------------------------------------------- chrome */
@@ -139,21 +147,22 @@
    */
   .top {
     display: flex; align-items: center; gap: 8px;
-    padding: 10px 14px;
-    border-bottom: 1px solid var(--border);
-    background: rgba(13, 13, 17, .82);
+    min-height: 64px; padding: 10px 20px;
+    border-bottom: 1px solid var(--border-soft);
+    background: var(--ui-header-bg);
     backdrop-filter: blur(8px);
     flex: none; z-index: 20;
   }
   .top .spacer { flex: 1; }
   .top button[hidden] { display: none; }
 
-  .where { font-size: 13.5px; color: var(--muted); white-space: nowrap; }
+  .top .d-wordmark { margin-right: 4px; }
+  .where { font-size: 14px; font-weight: 600; color: var(--ui-text-highlighted); white-space: nowrap; padding: 4px 8px; }
   .where-link {
-    font-size: 13.5px; color: var(--muted); text-decoration: none;
-    padding: 4px 8px; border-radius: 7px; white-space: nowrap;
+    font-size: 14px; font-weight: 400; color: var(--muted); text-decoration: none;
+    padding: 4px 8px; border-radius: 6px; white-space: nowrap;
   }
-  .where-link:hover { color: var(--text); background: var(--card); }
+  .where-link:hover { color: var(--ui-text-highlighted); background: var(--ui-bg-elevated); text-decoration: none; }
 
   .top-rule { width: 1px; height: 20px; background: var(--border); flex: none; }
 
@@ -169,7 +178,7 @@
   .identity input {
     width: auto; min-width: 0; max-width: 260px;
     padding: 5px 8px; min-height: 32px;
-    background: var(--card); border-color: transparent;
+    background: var(--ui-bg-elevated); border-color: transparent;
     font-size: 14.5px; font-weight: 600;
   }
   .identity input:hover { border-color: var(--border); }
@@ -190,19 +199,20 @@
   .icon-btn {
     display: inline-flex; align-items: center; justify-content: center;
     width: 34px; height: 34px; padding: 0; flex: none;
-    border-radius: 9px; border: 1px solid transparent;
-    background: transparent; color: var(--muted); cursor: pointer;
+    border-radius: 6px; border: 1px solid transparent;
+    background: transparent; color: var(--ui-text); cursor: pointer;
     transition: background .15s, color .15s, border-color .15s;
   }
   .icon-btn svg { width: 18px; height: 18px; }
-  .icon-btn:hover { background: var(--card); color: var(--text); border-color: var(--border); }
-  .icon-btn[aria-expanded="true"] { background: var(--card); color: var(--text); border-color: var(--border); }
+  .icon-btn:hover { background: var(--ui-bg-elevated); color: var(--ui-text-highlighted); }
+  .icon-btn[aria-expanded="true"] { background: var(--ui-bg-elevated); color: var(--ui-text-highlighted); }
+  .icon-btn.d-mode span { display: flex; }
   button.ghost.sm {
-    padding: 5px 11px; font-size: 12.5px; font-weight: 600;
-    border-radius: 8px;
+    padding: 4px 10px; font-size: 13px; font-weight: 500;
+    border-radius: 6px;
   }
 
-  .icon-btn.sm { width: 28px; height: 28px; border-radius: 7px; }
+  .icon-btn.sm { width: 28px; height: 28px; border-radius: 6px; }
   .icon-btn.sm svg { width: 15px; height: 15px; }
   .icon-btn:disabled { opacity: .35; cursor: default; }
   .icon-btn:disabled:hover { background: transparent; color: var(--muted); border-color: transparent; }
@@ -212,19 +222,19 @@
     font-size: 13.5px; font-weight: 600; color: var(--muted); min-width: 96px;
   }
   .state.dirty { color: var(--amber); }
-  .state.saved { color: var(--green); }
+  .state.saved { color: var(--ui-primary); }
 
   /* The same "we are live" pulse Twitch uses, because this theme is the one
      your viewers are looking at right now. */
   .live-dot {
     width: 8px; height: 8px; flex: none; border-radius: 50%;
-    background: #b98cff;
+    background: var(--ui-primary);
     animation: live-pulse 1.6s ease-out infinite;
   }
   @keyframes live-pulse {
-    0%   { box-shadow: 0 0 0 0 rgba(168, 116, 255, .65); }
-    70%  { box-shadow: 0 0 0 7px rgba(168, 116, 255, 0); }
-    100% { box-shadow: 0 0 0 0 rgba(168, 116, 255, 0); }
+    0%   { box-shadow: 0 0 0 0 color-mix(in srgb, var(--ui-primary) 65%, transparent); }
+    70%  { box-shadow: 0 0 0 7px color-mix(in srgb, var(--ui-primary) 0%, transparent); }
+    100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--ui-primary) 0%, transparent); }
   }
   @media (prefers-reduced-motion: reduce) {
     .live-dot { animation: none; }
@@ -296,13 +306,13 @@
     width: 22px; height: 22px; padding: 0; border-radius: 6px; cursor: pointer;
     border: 1px solid var(--border);
   }
-  .swatch.active { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(145,71,255,.28); }
+  .swatch.active { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft); }
 
   .stage {
     position: relative;
     display: inline-block;
     padding: 44px;
-    border-radius: 14px;
+    border-radius: 8px;
     border: 1px solid var(--border);
   }
   .stage.dark { background: #101014; }
@@ -328,7 +338,7 @@
     border-radius: 4px;
     cursor: move;
   }
-  .hit:hover { border-color: rgba(145,71,255,.5); }
+  .hit:hover { border-color: color-mix(in srgb, var(--ui-primary) 55%, transparent); }
   .hit.selected { border-color: var(--accent); }
   .hit.hidden-module { opacity: .35; border-style: dashed; }
 
@@ -390,35 +400,35 @@
 
   /* Dragging with snapping held off says so, so it is never a mystery why
      things stopped lining up. */
-  .stage.freeform { box-shadow: 0 0 0 2px rgba(245,165,36,.45); }
+  .stage.freeform { box-shadow: 0 0 0 2px color-mix(in srgb, var(--ui-warning) 45%, transparent); }
   .stage.freeform::after {
     content: 'snapping off';
     position: absolute; top: 8px; right: 12px;
     font-size: 11px; font-weight: 700; letter-spacing: .04em;
-    color: #f5c47a; text-transform: uppercase;
+    color: var(--ui-warning-text); text-transform: uppercase;
   }
 
   /* Help sits under the canvas, in cards rather than a wall of small text. */
   .help { max-width: 720px; margin-top: 18px; }
   .help-lead {
     background: var(--card); border: 1px solid var(--border);
-    border-radius: 11px; padding: 14px 16px;
+    border-radius: 6px; padding: 14px 16px;
     font-size: 14px; line-height: 1.6; color: var(--text);
   }
-  .help-lead strong { color: #fff; }
+  .help-lead strong { color: var(--ui-text-highlighted); }
   .help-lead .keys {
     display: inline-block; margin-top: 8px; font-size: 13px; color: var(--muted);
   }
 
   kbd {
     font: inherit; font-size: 12px; font-weight: 600;
-    background: #08080c; border: 1px solid var(--border); border-bottom-width: 2px;
-    border-radius: 5px; padding: 1px 6px; color: var(--text);
+    background: var(--ui-bg-muted); border: 1px solid var(--ui-border-accented); border-bottom-width: 2px;
+    border-radius: 5px; padding: 1px 6px; color: var(--ui-text-highlighted);
   }
 
   .help-cards { display: grid; gap: 8px; margin-top: 10px; }
   .help-card {
-    background: var(--card); border: 1px solid var(--border-soft); border-radius: 10px;
+    background: var(--card); border: 1px solid var(--border); border-radius: 6px;
   }
   .help-card > summary {
     cursor: pointer; list-style: none; padding: 11px 14px;
@@ -433,18 +443,18 @@
   }
   .help-card[open] > summary::after { transform: rotate(-135deg) translate(-2px, -2px); }
   .help-card[open] > summary { border-bottom: 1px solid var(--border-soft); }
-  .help-card:hover { border-color: var(--border); }
+  .help-card:hover { border-color: var(--ui-border-accented); }
   .help-body { padding: 12px 14px 14px; font-size: 13px; line-height: 1.65; color: var(--muted); }
   .help-body p { margin: 0 0 9px; }
   .help-body p:last-child { margin-bottom: 0; }
   .help-body ul { margin: 0; padding-left: 18px; }
   .help-body li { margin-bottom: 5px; }
-  .help-body strong { color: var(--text); }
+  .help-body strong { color: var(--ui-text-highlighted); }
 
   /* ----------------------------------------------------------- panel */
 
   .panel {
-    border-left: 1px solid var(--border);
+    border-left: 1px solid var(--border-soft);
     background: var(--panel);
     overflow-y: auto;
     min-height: 0;
@@ -458,23 +468,23 @@
   .modules { display: grid; gap: 6px; margin-bottom: 18px; }
   .module-row {
     display: flex; align-items: center; gap: 8px;
-    padding: 9px 10px 9px 8px; border-radius: 8px;
+    padding: 9px 10px 9px 8px; border-radius: 6px;
     border: 1px solid var(--border); background: var(--card);
-    border-left: 3px solid #3a3a4a;
+    border-left: 3px solid var(--ui-border-accented);
     cursor: pointer;
     transition: border-color .15s, background .15s, transform .12s;
   }
   .module-row:hover {
     border-color: var(--accent-hover);
     border-left-color: var(--accent-hover);
-    background: #1a1a24;
+    background: var(--ui-bg-elevated);
     transform: translateX(2px);
   }
   .module-row.selected {
     border-color: var(--accent); border-left-color: var(--accent);
-    background: #1b1526;
+    background: color-mix(in srgb, var(--ui-primary) 8%, transparent);
   }
-  .module-row .name { flex: 1; font-size: 13px; font-weight: 600; }
+  .module-row .name { flex: 1; font-size: 13px; font-weight: 600; color: var(--ui-text-highlighted); }
   .module-row .tag { font-size: 10.5px; color: var(--faint); text-transform: uppercase; letter-spacing: .06em; }
   .module-row .eye {
     background: none; border: 0; padding: 2px 4px; cursor: pointer;
@@ -492,7 +502,7 @@
   .group > summary {
     display: flex; align-items: center; gap: 8px;
     padding: 13px 0 11px; cursor: pointer; list-style: none;
-    font-size: 14px; font-weight: 700; color: var(--text);
+    font-size: 14px; font-weight: 600; color: var(--ui-text-highlighted);
   }
   .group > summary::-webkit-details-marker { display: none; }
   .group > summary::after {
@@ -512,25 +522,26 @@
   .visibility {
     display: flex; align-items: center; gap: 9px;
     width: 100%; justify-content: flex-start;
-    background: #22222e; color: var(--text);
-    border: 1px solid var(--border); border-radius: 8px;
+    background: var(--ui-bg-elevated); color: var(--ui-text-highlighted);
+    border: 1px solid transparent; border-radius: 6px;
     padding: 9px 11px; margin-bottom: 11px; font-size: 13px;
   }
-  .visibility:hover:not(:disabled) { background: #2a2a38; border-color: var(--accent-hover); }
+  .visibility:hover:not(:disabled) { background: var(--ui-bg-accented); }
   .visibility svg { width: 16px; height: 16px; flex: none; }
   .visibility.is-hidden {
-    background: rgba(245,165,36,.1); border-color: rgba(245,165,36,.4); color: #f5c47a;
+    background: color-mix(in srgb, var(--ui-warning) 10%, transparent); border-color: color-mix(in srgb, var(--ui-warning) 25%, transparent); color: var(--ui-warning-text);
   }
+  .visibility.is-hidden:hover:not(:disabled) { background: color-mix(in srgb, var(--ui-warning) 16%, transparent); }
   .visibility .why-hidden { margin-left: auto; font-size: 11px; opacity: .8; }
 
   .module-row.is-hidden { opacity: .62; }
   .module-row.is-hidden .name { text-decoration: line-through; text-decoration-color: var(--faint); }
   .module-row .tag.hidden-tag {
-    color: #f5c47a; background: rgba(245,165,36,.14);
-    padding: 2px 6px; border-radius: 999px; letter-spacing: .04em;
+    color: var(--ui-warning-text); background: color-mix(in srgb, var(--ui-warning) 12%, transparent);
+    padding: 2px 6px; border-radius: 6px; letter-spacing: .04em;
   }
   .module-row .eye { display: grid; place-items: center; border-radius: 6px; }
-  .module-row .eye:hover { background: #2a2a38; color: var(--text); }
+  .module-row .eye:hover { background: var(--ui-bg-accented); color: var(--ui-text-highlighted); }
   .module-row .eye svg { width: 15px; height: 15px; }
 
   /* Short explanations under a control, for the settings whose names do not
@@ -553,32 +564,37 @@
   .prop-head > label { font-size: 12px; color: var(--muted); }
   .prop-head .icon-btn.sm { width: 24px; height: 24px; }
   .prop-head .icon-btn.sm svg { width: 14px; height: 14px; }
-  .prop-head .icon-btn[aria-pressed="true"] { background: var(--card); color: var(--text); border-color: var(--accent); }
+  .prop-head .icon-btn[aria-pressed="true"] { background: var(--ui-bg-elevated); color: var(--ui-text-highlighted); border-color: var(--accent); }
   .corners { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 8px; }
   .corner { display: grid; grid-template-columns: 14px 1fr; gap: 5px; align-items: center; }
   .corner svg { width: 14px; height: 14px; color: var(--faint); }
 
   .color { display: flex; gap: 6px; align-items: center; }
   .color input[type="color"] { width: 40px; flex: none; }
-  .color input[type="color"].active { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(145,71,255,.28); }
-  .color .album.active { box-shadow: 0 0 0 2px rgba(145,71,255,.28); }
+  .color input[type="color"].active { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft); }
+  .color .album.active { box-shadow: 0 0 0 2px var(--accent-soft); }
   .color .albums { display: flex; gap: 4px; flex: 1; }
   .color .album {
     flex: 1; height: 26px; border-radius: 6px; cursor: pointer;
-    border: 1px solid var(--border); font-size: 10px; color: #fff;
+    /* The label follows the page, not white: the swatch fill is an album
+       variable that is usually unset here, which leaves the chip see-through. */
+    border: 1px solid var(--border); font-size: 10px; color: var(--ui-text-highlighted);
     display: grid; place-items: center; padding: 0;
   }
   .color .album.active { border-color: var(--accent); }
+  .color .album[data-value="transparent"] { color: #fff; }
 
   .note {
-    font-size: 12.5px; border-radius: 7px; padding: 8px 11px; margin-top: 10px;
-    background: rgba(245,165,36,.09); border: 1px solid rgba(245,165,36,.28); color: #f5c47a;
+    font-size: 13px; border-radius: 6px; padding: 8px 11px; margin-top: 10px;
+    color: var(--ui-warning-text);
+    background: color-mix(in srgb, var(--ui-warning) 10%, transparent); border: 1px solid color-mix(in srgb, var(--ui-warning) 25%, transparent);
   }
+  .note strong { color: inherit; }
   /* An aside inside a message needs its own line, or it runs straight on from
      the sentence before it. */
   .note .why { display: block; margin-top: 5px; font-size: 11.5px; line-height: 1.45; opacity: .82; }
-  .note.bad  { background: rgba(245,86,108,.09); border-color: rgba(245,86,108,.28); color: #ff9dab; }
-  .note.good { background: rgba(36,209,126,.09); border-color: rgba(36,209,126,.28); color: #82e9ba; }
+  .note.bad  { background: color-mix(in srgb, var(--ui-error) 10%, transparent); border-color: color-mix(in srgb, var(--ui-error) 25%, transparent); color: var(--ui-error-text); }
+  .note.good { background: color-mix(in srgb, var(--ui-success) 10%, transparent); border-color: color-mix(in srgb, var(--ui-success) 25%, transparent); color: var(--ui-success-text); }
 
   /* Messages appear under the buttons that caused them, not stretched across
      the page where they read as unrelated. */
@@ -589,12 +605,12 @@
   }
   .toast-host .note {
     margin: 0;
-    background: #191922; border-color: var(--border);
-    box-shadow: 0 12px 30px rgba(0, 0, 0, .45);
+    background: color-mix(in srgb, var(--ui-warning) 10%, var(--ui-bg)); border-color: color-mix(in srgb, var(--ui-warning) 30%, transparent);
+    box-shadow: var(--ui-shadow);
     animation: toast-in .18s ease-out;
   }
-  .toast-host .note.good { background: #13261e; border-color: rgba(36,209,126,.4); }
-  .toast-host .note.bad { background: #2a1219; border-color: rgba(245,86,108,.45); }
+  .toast-host .note.good { background: color-mix(in srgb, var(--ui-success) 10%, var(--ui-bg)); border-color: color-mix(in srgb, var(--ui-success) 30%, transparent); }
+  .toast-host .note.bad { background: color-mix(in srgb, var(--ui-error) 10%, var(--ui-bg)); border-color: color-mix(in srgb, var(--ui-error) 30%, transparent); }
   .toast-host .note strong { display: block; margin-bottom: 2px; }
   .toast-host .note { position: relative; padding-right: 26px; }
   /*
@@ -614,7 +630,7 @@
   .toast-host .note-close:hover {
     opacity: 1;
     /* A tint of the text colour, so it works on both the green and the red. */
-    background: rgba(255, 255, 255, .1);
+    background: color-mix(in srgb, currentColor 14%, transparent);
   }
   .toast-host .note-close:focus-visible {
     opacity: 1; outline: 2px solid currentColor; outline-offset: 1px;
@@ -628,19 +644,21 @@
   .hint { font-size: 12px; color: var(--faint); line-height: 1.5; margin: 10px 0 0; }
   .row { display: flex; gap: 8px; flex-wrap: wrap; }
   .mini {
-    padding: 5px 10px; font-size: 12px; background: #292937;
+    padding: 4px 10px; font-size: 12px; background: var(--ui-bg-elevated); color: var(--ui-text);
   }
-  .mini:hover:not(:disabled) { background: #343446; }
+  .mini:hover:not(:disabled) { background: var(--ui-bg-accented); }
 
   .align-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-bottom: 9px; }
 
   .presets { display: grid; gap: 8px; margin-bottom: 4px; }
   .preset {
     text-align: left; background: var(--card); color: var(--text);
-    border: 1px solid var(--border); padding: 10px 12px; border-radius: 9px;
+    border: 1px solid var(--border); padding: 10px 12px; border-radius: 6px;
     font-weight: 600; font-size: 13px; cursor: pointer;
   }
-  .preset:hover { border-color: var(--accent); background: #1b1526; }
+  /* :not(:disabled) so it outranks `button:hover:not(:disabled)`, whose solid
+     accent otherwise wins and swallows the grey description. */
+  .preset:hover:not(:disabled) { border-color: var(--accent); background: color-mix(in srgb, var(--ui-primary) 8%, transparent); }
   .preset small { display: block; margin-top: 3px; font-weight: 400; color: var(--muted); font-size: 12px; }
 
   /* --------------------------------------------------------- drawer */
@@ -653,14 +671,14 @@
    */
   .drawer-scrim {
     position: fixed; inset: 0; z-index: 44;
-    background: rgba(6, 6, 10, .5);
+    background: var(--ui-scrim);
   }
   .drawer {
     position: fixed; top: 0; right: 0; bottom: 0; z-index: 45;
     width: min(420px, 100vw);
     display: flex; flex-direction: column;
-    background: var(--panel); border-left: 1px solid var(--border);
-    box-shadow: -24px 0 60px rgba(0, 0, 0, .45);
+    background: var(--panel); border-left: 1px solid var(--border-soft);
+    box-shadow: var(--ui-shadow);
   }
   .drawer-head {
     display: flex; align-items: center; gap: 8px;
@@ -691,24 +709,24 @@
 
   .add-icon {
     display: inline-flex; align-items: center; gap: 4px;
-    padding: 4px 9px 4px 7px; border-radius: 7px;
-    font-size: 12px; font-weight: 600;
-    background: var(--card); color: var(--text);
-    border: 1px solid var(--border);
+    padding: 4px 9px 4px 7px; border-radius: 6px;
+    font-size: 12px; font-weight: 500;
+    background: var(--ui-bg-elevated); color: var(--ui-text);
+    border: 1px solid transparent;
   }
   .add-icon svg { width: 13px; height: 13px; }
-  .add-icon:hover:not(:disabled) { background: #2f2f3d; border-color: var(--accent); }
+  .add-icon:hover:not(:disabled) { background: var(--ui-bg-accented); }
   .add-icon:disabled { opacity: .45; }
 
   .place-row { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
   /* Saved against a different shape: still usable, but it will not frame the
      design exactly any more. */
-  button.ghost.sm.stale { box-shadow: inset 0 0 0 1px rgba(245, 165, 36, .5); }
+  button.ghost.sm.stale { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ui-warning) 50%, transparent); }
   .place-name { flex: 1; font-size: 13px; }
   .place-hint { margin: 6px 0 0; font-size: 12px; color: var(--faint); line-height: 1.5; }
   .place-hint code {
-    background: var(--card); border: 1px solid var(--border);
-    border-radius: 5px; padding: 1px 5px; font-size: 11.5px;
+    background: var(--ui-bg-muted); border: 1px solid var(--border);
+    border-radius: 5px; padding: 1px 5px; font-size: 11.5px; color: var(--ui-text-highlighted);
   }
 
   .shuffle { display: flex; align-items: center; gap: 8px; }
@@ -753,26 +771,27 @@
   .icon-choice {
     display: flex; align-items: center; justify-content: center;
     aspect-ratio: 1; padding: 0;
-    border-radius: 10px; border: 1px solid transparent;
+    border-radius: 6px; border: 1px solid transparent;
     background: transparent; color: var(--muted); cursor: pointer;
     transition: background .12s, color .12s, border-color .12s;
   }
   .icon-choice svg { width: 22px; height: 22px; }
   .icon-choice:hover {
-    background: var(--card); color: var(--text); border-color: var(--accent);
+    background: var(--ui-bg-elevated); color: var(--ui-text-highlighted); border-color: var(--accent);
   }
   .icon-choice:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 
   .sheet {
     position: fixed; inset: 0; z-index: 40;
-    background: rgba(6, 6, 10, .72); backdrop-filter: blur(3px);
+    background: var(--ui-scrim); backdrop-filter: blur(3px);
     display: grid; place-items: center; padding: 24px;
   }
   .sheet-card {
     width: min(420px, 100%); background: var(--panel);
-    border: 1px solid var(--border); border-radius: 14px; padding: 20px;
+    border: 1px solid var(--border); border-radius: 8px; padding: 20px;
+    box-shadow: var(--ui-shadow);
   }
-  .sheet-card h2 { margin: 0 0 4px; font-size: 17px; }
+  .sheet-card h2 { margin: 0 0 4px; font-size: 17px; color: var(--ui-text-highlighted); }
   .sheet-card p { margin: 0 0 14px; color: var(--muted); font-size: 13px; }
 
   .hidden { display: none !important; }
@@ -784,10 +803,7 @@
 <body>
 
 <div class="top">
-  <a class="icon-btn" href="/" id="btn-back" title="Back to the dashboard" aria-label="Back to the dashboard">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-         stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>
-  </a>
+  <a class="d-wordmark" href="/" id="btn-back" title="Back to the dashboard" aria-label="Back to the dashboard">queueify</a>
 
   <span class="where">Theme editor</span>
   <a class="where-link" href="/admin.html" title="Queue settings, command aliases and every chat message">Admin panel</a>
@@ -809,6 +825,13 @@
   <div class="spacer"></div>
 
   <button class="ghost sm" id="btn-new" title="Start a blank theme">New</button>
+
+  <button type="button" class="icon-btn d-mode" data-color-mode-toggle title="Switch between light and dark" aria-label="Switch between light and dark">
+    <span class="moon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+         stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.985 12.486a9 9 0 1 1-9.473-9.472c.405-.022.617.46.402.803a6 6 0 0 0 8.268 8.268c.344-.215.825-.004.803.401"/></svg></span>
+    <span class="sun"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+         stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg></span>
+  </button>
 
   <button class="icon-btn" id="btn-help" title="How the editor works" aria-label="How the editor works">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
@@ -1124,14 +1147,14 @@ function obsOutcome(result) {
 
   if (result && result.reason === 'obs_not_configured') {
     return {
-      text: '<br /><strong style="color:#ff9dab">Refresh the widget source in OBS to see it on stream.</strong>' +
+      text: '<br /><strong style="color:var(--ui-error-text)">Refresh the widget source in OBS to see it on stream.</strong>' +
         ' (Connect OBS on the dashboard and Queueify will do that for you.)',
       bad: true
     };
   }
 
   return {
-    text: '<br /><strong style="color:#ff9dab">OBS could not be reloaded, so refresh the widget source in OBS yourself.</strong>',
+    text: '<br /><strong style="color:var(--ui-error-text)">OBS could not be reloaded, so refresh the widget source in OBS yourself.</strong>',
     bad: true
   };
 }
@@ -1424,7 +1447,7 @@ function applySong(song) {
   // The same clock the widget draws, so a box that fits "3:07" here fits it
   // on stream. With nothing playing these fall back to a plausible length
   // rather than 0:00, which would size the boxes too small.
-  $('elapsed').textContent = clock(durationMs ? progressMs : 99000);
+  $('elapsed').textContent = clock(durationMs ? progressMs : 99000, durationMs || 254000);
   $('duration').textContent = clock(durationMs || 254000);
 
   showScrolling();
@@ -1455,6 +1478,9 @@ function showScrolling() {
     document.documentElement.style.setProperty(variable, overflow + 'px');
     text.classList.toggle('scroll', scrolls);
     wrapper.classList.toggle('scrolling', scrolls);
+    // What app.js sets for the same reason: an aligned title that overflows
+    // starts at its beginning even where `safe` alignment is not supported.
+    wrapper.querySelector('.title-container')?.classList.toggle('overflowing', scrolls);
   };
 
   // Measured after layout, or the widths are the ones from before this change.
@@ -1505,16 +1531,24 @@ function renderMedia() {
   canvas.style.display = 'none';
 }
 
-/** m:ss, or h:mm:ss past the hour - matching widget/public/app.js exactly. */
-function clock(ms) {
-  const total = Math.max(0, Math.round(ms / 1000));
-  const pad = value => String(value).padStart(2, '0');
-  const hours = Math.floor(total / 3600);
-  const minutes = Math.floor(total / 60) % 60;
+/**
+ * m:ss, or h:mm:ss past the hour - matching widget/public/app.js exactly,
+ * including elapsed taking the song length's shape (07:19 against 17:05).
+ */
+function clock(ms, longestMs = ms) {
+  const fields = value => {
+    const total = Math.max(0, Math.round(value / 1000));
+    return [Math.floor(total / 3600), Math.floor(total / 60) % 60, total % 60];
+  };
 
-  return hours
-    ? hours + ':' + pad(minutes) + ':' + pad(total % 60)
-    : minutes + ':' + pad(total % 60);
+  const [hours, minutes, seconds] = fields(ms);
+  const [longestHours, longestMinutes] = fields(longestMs);
+
+  const pad = (value, width = 2) => String(value).padStart(width, '0');
+
+  return longestHours
+    ? pad(hours, String(longestHours).length) + ':' + pad(minutes) + ':' + pad(seconds)
+    : pad(minutes, String(longestMinutes).length) + ':' + pad(seconds);
 }
 
 function placeholderArt(palette) {
@@ -1542,14 +1576,27 @@ function applyZoom(zoom) {
   const artboard = $('artboard');
   artboard.style.transform = zoom === 1 ? '' : `scale(${zoom})`;
   artboard.style.transformOrigin = 'top left';
+  sizeStage();
+}
 
-  // The stage has to reserve the scaled footprint, or the panel below it
-  // overlaps a zoomed-in canvas.
+/**
+ * Fits the backdrop and artboard to the canvas at the current zoom. The stage
+ * has to reserve the scaled footprint, or the panel below it overlaps a
+ * zoomed-in canvas.
+ *
+ * Its own function because the canvas size changes far more often than the
+ * zoom does: when this only ran on a zoom change, typing a new width left the
+ * dark/light/checker backdrop at the old size around the new canvas.
+ */
+function sizeStage() {
   const { width, height } = state.model.canvas;
+  const artboard = $('artboard');
   artboard.style.width = width + 'px';
   artboard.style.height = height + 'px';
-  $('stage').style.width = Math.round(width * zoom) + 88 + 'px';
-  $('stage').style.height = Math.round(height * zoom) + 88 + 'px';
+  // 44px of padding and a 1px border each side: the stage is border-box, so
+  // leaving the border out squeezed the right and bottom margins by 2px.
+  $('stage').style.width = Math.round(width * state.zoom) + 90 + 'px';
+  $('stage').style.height = Math.round(height * state.zoom) + 90 + 'px';
 }
 
 /**
@@ -1592,6 +1639,10 @@ $('zoom').addEventListener('change', event => {
 /* ------------------------------------------------------------ overlay */
 
 function positionOverlay() {
+  // Everything that edits the model ends up here, so the backdrop follows a
+  // canvas resize however it happened.
+  sizeStage();
+
   const overlay = $('overlay');
   overlay.innerHTML = '';
 
@@ -1873,7 +1924,7 @@ window.addEventListener('pointermove', event => {
 
   const snapped = freeform
     ? { ...box, guides: [] }
-    : snap(box, drag.type, !drag.dir, matches, spacings);
+    : snap(box, drag.type, drag.dir, matches, spacings);
 
   $('stage').classList.toggle('freeform', freeform);
   Object.assign(module, {
@@ -1883,7 +1934,7 @@ window.addEventListener('pointermove', event => {
 
   applyLiveBox(drag.type, module);
   positionOverlay();
-  drawGuides(snapped.guides, matches, spacings.length ? { spacings, box: { ...module } } : null);
+  drawGuides(snapped.guides, matches, spacings.length ? { spacings, box: { ...module } } : null, { ...module });
 });
 
 window.addEventListener('pointerup', () => {
@@ -1902,15 +1953,18 @@ window.addEventListener('pointerup', () => {
  *
  * If the artist sits 10px under the title, dragging the progress bar down
  * should catch at 10px below the artist - that is what makes a stack look
- * deliberate rather than nearly-right. Returns the pairs to draw, so the two
- * equal gaps can be shown while it holds.
+ * deliberate rather than nearly-right. It also catches the box centred between
+ * the two parts either side of it, like an icon between the artist and the
+ * progress bar. Returns the pairs to draw, so the two equal gaps can be shown
+ * while it holds.
  */
 function snapToMatchingGaps(box, type) {
   const others = parts()
     .filter(module => module.type !== type && !module.hidden)
     .map(module => ({ type: module.type, x: module.x, y: module.y, w: module.w, h: module.h }));
 
-  if (others.length < 2) return [];
+  // One part is enough: the box can centre between it and the canvas edge.
+  if (!others.length) return [];
 
   const spacings = [];
 
@@ -1921,6 +1975,32 @@ function snapToMatchingGaps(box, type) {
     const sorted = [...others].sort((a, b) => a[start] - b[start]);
     const gaps = [];
 
+    // Where the dragged box could sit to repeat one of those gaps.
+    const candidates = [];
+
+    // Centred between any two things it fits between - parts, or a part and
+    // the edge of the canvas - whatever row they are in. Only the ones within
+    // SNAP of where the box already is can catch, so the extra pairs cost
+    // nothing until the box is actually near their middle. The canvas's own
+    // middle is left to snap(), which draws it as a center line.
+    const { width, height } = state.model.canvas;
+    const edges = axis === 'y'
+      ? [{ x: 0, y: 0, w: width, h: 0 }, { x: 0, y: height, w: width, h: 0 }]
+      : [{ x: 0, y: 0, w: 0, h: height }, { x: width, y: 0, w: 0, h: height }];
+
+    for (const before of [edges[0], ...others]) {
+      for (const after of [...others, edges[1]]) {
+        if (before === edges[0] && after === edges[1]) continue;
+
+        const from = before[start] + before[size];
+        const room = after[start] - from;
+        if (room < box[size]) continue;
+
+        const gap = (room - box[size]) / 2;
+        candidates.push({ value: from + gap, gap, centred: { before, after } });
+      }
+    }
+
     for (let index = 0; index < sorted.length - 1; index++) {
       const before = sorted[index];
       const after = sorted[index + 1];
@@ -1929,11 +2009,6 @@ function snapToMatchingGaps(box, type) {
       // Only gaps that are real space, not overlaps.
       if (gap > 0) gaps.push({ gap, before, after });
     }
-
-    if (!gaps.length) return null;
-
-    // Where the dragged box could sit to repeat one of those gaps.
-    const candidates = [];
 
     for (const { gap, before, after } of gaps) {
       for (const part of others) {
@@ -1956,12 +2031,18 @@ function snapToMatchingGaps(box, type) {
 
     const nearest = candidates
       .filter(candidate => Math.abs(candidate.value - box[start]) <= SNAP)
-      .sort((a, b) => Math.abs(a.value - box[start]) - Math.abs(b.value - box[start]))[0];
+      // On a tie - several pairs often share a middle - the closest pair wins,
+      // since that is the one the eye reads the box as sitting between.
+      .sort((a, b) => Math.abs(a.value - box[start]) - Math.abs(b.value - box[start]) ||
+        Boolean(b.centred) - Boolean(a.centred) || a.gap - b.gap)[0];
 
     if (!nearest) return null;
 
+    // How far it jumped, so snap() can tell whether a plain edge line was
+    // closer to where the box actually was.
+    const shift = nearest.value - box[start];
     box[start] = nearest.value;
-    return { axis, ...nearest };
+    return { axis, shift, ...nearest };
   };
 
   const vertical = axisRun('y');
@@ -2011,9 +2092,10 @@ function snapToMatchingSize(box, type) {
 
 /**
  * Snaps edges and centers to the canvas and to the other modules, and reports
- * the lines to draw so it is obvious why something jumped.
+ * the lines to draw so it is obvious why something jumped. `dir` is the
+ * handle being dragged, or null when the whole box is moving.
  */
-function snap(box, type, moving, sizeMatches = [], spacings = []) {
+function snap(box, type, dir, sizeMatches = [], spacings = []) {
   const { width, height } = state.model.canvas;
   const guides = [];
 
@@ -2029,60 +2111,116 @@ function snap(box, type, moving, sizeMatches = [], spacings = []) {
     hTargets.push(other.y, other.y + other.h / 2, other.y + other.h);
   }
 
-  const applyAxis = (edges, targets, apply) => {
+  // Mirrored insets: a left edge that sits as far in from the canvas as some
+  // other part's right edge does from the far side, and the same for right,
+  // top and bottom. A title on the left and a progress bar on the right are
+  // different sizes, so no center line can balance them - only matching their
+  // distances from the canvas edges can.
+  const mirrorsOf = (start, size, span) => others.flatMap(other => {
+    const fromStart = other[start];
+    const fromEnd = span - (other[start] + other[size]);
+    const mirrors = [];
+    if (fromEnd > 0) mirrors.push({ side: 'start', at: fromEnd, inset: fromEnd, partner: other });
+    if (fromStart > 0) mirrors.push({ side: 'end', at: span - fromStart, inset: fromStart, partner: other });
+    return mirrors;
+  });
+
+  const vMirrors = mirrorsOf('x', 'w', width);
+  const hMirrors = mirrorsOf('y', 'h', height);
+
+  // Plain alignment is tried first, so where a line and a mirror land on the
+  // same spot the simpler explanation is the one drawn.
+  const applyAxis = (edges, targets, mirrors, apply) => {
     let best = null;
+    const consider = (edge, target, mirror) => {
+      const delta = target - edge.value;
+      if (Math.abs(delta) <= SNAP && (!best || Math.abs(delta) < Math.abs(best.delta))) {
+        best = { delta, target, edge, mirror };
+      }
+    };
 
     for (const edge of edges) {
-      for (const target of targets) {
-        const delta = target - edge.value;
-        if (Math.abs(delta) <= SNAP && (!best || Math.abs(delta) < Math.abs(best.delta))) {
-          best = { delta, target, edge };
-        }
+      for (const target of targets) consider(edge, target, null);
+      for (const mirror of mirrors) {
+        if (mirror.side === edge.side) consider(edge, mirror.at, mirror);
       }
     }
 
-    if (best) {
-      apply(best);
-      return best.target;
-    }
-    return null;
+    if (best) apply(best);
+    return best;
   };
 
-  if (moving) {
-    // An axis already held by an equal-spacing match is left alone.
-    const heldX = spacings.some(spacing => spacing.axis === 'x');
-    const heldY = spacings.some(spacing => spacing.axis === 'y');
+  const guideFor = (axis, best) => {
+    if (!best) return;
+    guides.push(best.mirror
+      ? { axis, at: best.target, mirror: best.mirror }
+      : { axis, at: best.target });
+  };
 
-    if (!heldX) {
-      const vLine = applyAxis(
-        [{ value: box.x }, { value: box.x + box.w / 2 }, { value: box.x + box.w }],
-        vTargets,
-        best => { box.x += best.delta; }
-      );
-      if (vLine !== null) guides.push({ axis: 'v', at: vLine });
-    }
+  if (!dir) {
+    // An equal-spacing match and an edge line compete on distance from where
+    // the box really was. With a centre between every pair of parts on offer,
+    // letting the spacing always win would drag a box off an edge it sits 1px
+    // from towards the middle of two things across the widget. On a tie the
+    // spacing keeps it: it is the rarer, more deliberate catch.
+    const moveAxis = (axis, start, size, targets, mirrors) => {
+      const held = spacings.find(spacing => spacing.axis === axis);
+      if (held) box[start] -= held.shift;
 
-    if (!heldY) {
-      const hLine = applyAxis(
-        [{ value: box.y }, { value: box.y + box.h / 2 }, { value: box.y + box.h }],
-        hTargets,
-        best => { box.y += best.delta; }
+      const best = applyAxis(
+        [
+          { value: box[start], side: 'start' },
+          { value: box[start] + box[size] / 2, side: 'middle' },
+          { value: box[start] + box[size], side: 'end' }
+        ],
+        targets, mirrors,
+        () => {}
       );
-      if (hLine !== null) guides.push({ axis: 'h', at: hLine });
-    }
+
+      if (held && (!best || Math.abs(held.shift) <= Math.abs(best.delta))) {
+        box[start] += held.shift;
+        return;
+      }
+
+      if (held) spacings.splice(spacings.indexOf(held), 1);
+      if (best) {
+        box[start] += best.delta;
+        guideFor(axis === 'x' ? 'v' : 'h', best);
+      }
+    };
+
+    moveAxis('x', 'x', 'w', vTargets, vMirrors);
+    moveAxis('y', 'y', 'h', hTargets, hMirrors);
   } else {
     // A width that has just been matched to another part stays matched.
     const matchedWidth = sizeMatches.some(match => match.axis === 'w');
     const matchedHeight = sizeMatches.some(match => match.axis === 'h');
 
-    if (!matchedWidth) {
-      const vLine = applyAxis([{ value: box.x + box.w }], vTargets, best => { box.w += best.delta; });
-      if (vLine !== null) guides.push({ axis: 'v', at: vLine });
+    // Only the edge under the handle snaps. Snapping the far edge instead -
+    // which is what this used to do - never caught the left or top handle on
+    // anything, and nudged the edge that is meant to stay put.
+    if (!matchedWidth && dir.includes('e')) {
+      guideFor('v', applyAxis([{ value: box.x + box.w, side: 'end' }], vTargets, vMirrors,
+        best => { box.w += best.delta; }));
+    }
+    if (!matchedWidth && dir.includes('w')) {
+      guideFor('v', applyAxis([{ value: box.x, side: 'start' }], vTargets, vMirrors, best => {
+        const right = box.x + box.w;
+        box.w = Math.max(4, box.w - best.delta);
+        box.x = right - box.w;
+      }));
     }
 
-    if (!matchedHeight) {
-      const hLine = applyAxis([{ value: box.y + box.h }], hTargets, best => { box.h += best.delta; });
-      if (hLine !== null) guides.push({ axis: 'h', at: hLine });
+    if (!matchedHeight && dir.includes('s')) {
+      guideFor('h', applyAxis([{ value: box.y + box.h, side: 'end' }], hTargets, hMirrors,
+        best => { box.h += best.delta; }));
+    }
+    if (!matchedHeight && dir.includes('n')) {
+      guideFor('h', applyAxis([{ value: box.y, side: 'start' }], hTargets, hMirrors, best => {
+        const bottom = box.y + box.h;
+        box.h = Math.max(2, box.h - best.delta);
+        box.y = bottom - box.h;
+      }));
     }
   }
 
@@ -2113,7 +2251,7 @@ function drawGap(axis, gap, from, to, across) {
   $('artboard').appendChild(mark);
 }
 
-function drawGuides(guides, sizeMatches = [], spacing = null) {
+function drawGuides(guides, sizeMatches = [], spacing = null, dragged = null) {
   for (const old of document.querySelectorAll('.guide, .match, .match-label, .gap-mark')) old.remove();
 
   for (const guide of guides || []) {
@@ -2122,6 +2260,29 @@ function drawGuides(guides, sizeMatches = [], spacing = null) {
     if (guide.axis === 'v') line.style.left = guide.at + 'px';
     else line.style.top = guide.at + 'px';
     $('artboard').appendChild(line);
+
+    // A mirrored inset: mark both distances to the canvas edge, so it reads
+    // as "these two match" rather than a line in the middle of nowhere.
+    if (guide.mirror && dragged) {
+      const axis = guide.axis === 'v' ? 'x' : 'y';
+      const start = axis;
+      const size = axis === 'x' ? 'w' : 'h';
+      const other = axis === 'x' ? 'y' : 'x';
+      const otherSize = axis === 'x' ? 'h' : 'w';
+      const span = axis === 'x' ? state.model.canvas.width : state.model.canvas.height;
+      const { partner, side } = guide.mirror;
+      const inset = Math.round(guide.mirror.inset);
+
+      const insetOf = (box, atStart) => atStart
+        ? [0, box[start]]
+        : [box[start] + box[size], span];
+
+      const [draggedFrom, draggedTo] = insetOf(dragged, side === 'start');
+      drawGap(axis, inset, draggedFrom, draggedTo, dragged[other] + dragged[otherSize] / 2);
+
+      const [partnerFrom, partnerTo] = insetOf(partner, side !== 'start');
+      drawGap(axis, inset, partnerFrom, partnerTo, partner[other] + partner[otherSize] / 2);
+    }
   }
 
   // Point at whatever the size was matched to, and say what happened.
@@ -2159,6 +2320,20 @@ function drawGuides(guides, sizeMatches = [], spacing = null) {
     const size = axis === 'y' ? 'h' : 'w';
     const other = axis === 'y' ? 'x' : 'y';
     const otherSize = axis === 'y' ? 'w' : 'h';
+    const dragged = spacing.box;
+
+    // Centred between two parts: the two gaps either side of it. Measured from
+    // the rounded box, so an odd leftover pixel shows as 11 and 12 rather than
+    // two labels claiming 11.5 that the widget can never draw.
+    if (match.centred) {
+      const { before, after } = match.centred;
+      const across = dragged[other] + dragged[otherSize] / 2;
+      const leading = before[start] + before[size];
+      const trailing = dragged[start] + dragged[size];
+      drawGap(axis, Math.round(dragged[start] - leading), leading, dragged[start], across);
+      drawGap(axis, Math.round(after[start] - trailing), trailing, after[start], across);
+      continue;
+    }
 
     const existing = match.pair;
     drawGap(
@@ -2170,7 +2345,6 @@ function drawGuides(guides, sizeMatches = [], spacing = null) {
     );
 
     // ...and the new one, between the dragged part and its neighbour.
-    const dragged = spacing.box;
     const neighbour = match.neighbour;
     const first = match.side === 'after' ? neighbour : dragged;
     const second = match.side === 'after' ? dragged : neighbour;

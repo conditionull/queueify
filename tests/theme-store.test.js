@@ -332,7 +332,7 @@ test('the starting presets are all usable designs', () => {
 
     try {
         const presets = store.listPresets();
-        assert.ok(presets.length >= 4, 'there should be a few ways to start');
+        assert.ok(presets.length >= 3, 'there should be a few ways to start');
 
         for (const preset of presets) {
             assert.ok(preset.id && preset.label && preset.description, `${preset.id} is missing its blurb`);

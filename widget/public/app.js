@@ -360,6 +360,12 @@ async function updateSong() {
             `${totalDuration}s`
         );
 
+        // Straight away, unlike `scrolling` below: it puts a centred or
+        // right-aligned title back at its start on browsers without `safe`
+        // alignment, and a quarter of a second late shows the middle of the
+        // title on the first frames of every song.
+        container.classList.toggle("overflowing", titleShouldScroll);
+
         if (titleShouldScroll) {
             title.classList.add("scroll");
             setTimeout(() => {
@@ -436,18 +442,28 @@ async function init() {
 /**
  * m:ss, or h:mm:ss once a track runs past the hour. Spotify shows the same
  * shape, so the widget reads the way the app people are looking at does.
+ *
+ * `longestMs` is the song's length, and the elapsed time takes its shape:
+ * 07:19 against 17:05, 0:07:19 against 1:02:05. The digits are tabular, so
+ * the two clocks are then the same width, and a theme can line elapsed up
+ * with the text above it *and* keep both gaps to the bar even. Unpadded,
+ * 7:19 is a digit narrower, so one of those has to give. Under ten minutes
+ * nothing changes: both are already m:ss.
  */
-function clock(ms) {
-    const total = Math.max(0, Math.round(ms / 1000));
-    const seconds = total % 60;
-    const minutes = Math.floor(total / 60) % 60;
-    const hours = Math.floor(total / 3600);
+function clock(ms, longestMs = ms) {
+    const fields = value => {
+        const total = Math.max(0, Math.round(value / 1000));
+        return [Math.floor(total / 3600), Math.floor(total / 60) % 60, total % 60];
+    };
 
-    const pad = value => String(value).padStart(2, "0");
+    const [hours, minutes, seconds] = fields(ms);
+    const [longestHours, longestMinutes] = fields(longestMs);
 
-    return hours
-        ? `${hours}:${pad(minutes)}:${pad(seconds)}`
-        : `${minutes}:${pad(seconds)}`;
+    const pad = (value, width = 2) => String(value).padStart(width, "0");
+
+    return longestHours
+        ? `${pad(hours, String(longestHours).length)}:${pad(minutes)}:${pad(seconds)}`
+        : `${pad(minutes, String(longestMinutes).length)}:${pad(seconds)}`;
 }
 
 /**
@@ -499,7 +515,7 @@ function updateProgress() {
     // without this the elapsed time sails past the end of a finished track.
     progressMs = Math.min(Math.max(progressMs, 0), currentSong.durationMs);
 
-    setText(".elapsed", clock(progressMs));
+    setText(".elapsed", clock(progressMs, currentSong.durationMs));
     setText(".duration", clock(currentSong.durationMs));
 
     if (!themeProperties.showProgress) {

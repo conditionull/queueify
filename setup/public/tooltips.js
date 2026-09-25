@@ -27,9 +27,10 @@
     .qtip {
         position: fixed; z-index: 9999; top: 0; left: 0;
         max-width: 280px; padding: 7px 10px;
-        background: #16161f; color: #f2f2f7;
-        border: 1px solid rgba(255, 255, 255, .12); border-radius: 8px;
-        box-shadow: 0 10px 30px rgba(0, 0, 0, .45);
+        /* The docs palette from docus.css, with the old dark values behind it */
+        background: var(--ui-bg, #16161f); color: var(--ui-text-highlighted, #f2f2f7);
+        border: 1px solid var(--ui-border-muted, rgba(255, 255, 255, .12)); border-radius: 6px;
+        box-shadow: var(--ui-shadow, 0 10px 30px rgba(0, 0, 0, .45));
         font-family: inherit; font-size: 12.5px; line-height: 1.45; font-weight: 400;
         text-align: left; white-space: normal;
         pointer-events: none;
@@ -43,8 +44,8 @@
         content: ''; position: absolute; left: var(--arrow, 50%); margin-left: -5px;
         border: 5px solid transparent;
     }
-    .qtip:not(.below)::after { top: 100%; border-top-color: #16161f; }
-    .qtip.below::after { bottom: 100%; border-bottom-color: #16161f; }
+    .qtip:not(.below)::after { top: 100%; border-top-color: var(--ui-border-muted, #16161f); }
+    .qtip.below::after { bottom: 100%; border-bottom-color: var(--ui-border-muted, #16161f); }
 
     @media (prefers-reduced-motion: reduce) {
         .qtip { transition: none; }

@@ -2,30 +2,40 @@
 <html>
 
 <head>
-    <link rel="stylesheet" href="/themes/default/style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Righteous:wght@400&display=swap">
+    <link id="theme" rel="stylesheet" href="/themes/default/style.css">
 </head>
 
 <body>
     <div class="widget">
         <img class="cover">
-        <video class="canvas" autoplay muted loop playsinline>
-        </video>
+        <video class="canvas" autoplay muted loop playsinline></video>
 
-        <div class="info">
-            <div class="title-wrapper">
-                <div class="title-container">
-                    <div class="title"></div>
-                </div>
-            </div>
-
-            <div class="artist"></div>
-
-            <div class="progress-container">
-                <div class="progress"></div>
+        <div class="title-wrapper">
+            <div class="title-container">
+                <div class="title"></div>
             </div>
         </div>
 
+        <div class="artist-wrapper">
+            <div class="artist"></div>
+        </div>
+
+        <div class="progress-container">
+            <div class="progress"></div>
+        </div>
+
+        <div class="elapsed-wrapper">
+            <div class="elapsed"></div>
+        </div>
+
+        <div class="duration-wrapper">
+            <div class="duration"></div>
+        </div>
     </div>
+
     <script src="/app.js"></script>
 </body>
 

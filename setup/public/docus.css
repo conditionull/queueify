@@ -1,0 +1,320 @@
+/*
+ * The look of the documentation site (Docus on Nuxt UI), in plain CSS.
+ *
+ * The docs site is a Nuxt app; this dashboard is static files served by the
+ * bot, and it has to stay that way - it opens instantly, with nothing to build
+ * and no second server to start. So rather than share components, it shares
+ * the numbers: the zinc greys, the Spotify green, the 4rem header and the
+ * sidebar are all measured off the rendered site, not guessed at.
+ *
+ * Every page links this before its own <style>, and a page's own variables
+ * (--bg, --text, --accent and so on) point at these, so the page CSS keeps
+ * working unchanged underneath.
+ */
+
+/* Dark is the default: it is what the class is before the script in <head>
+   has run, and what a stream setup is usually looked at in. */
+:root {
+  color-scheme: dark;
+
+  --ui-bg: #18181b;
+  --ui-bg-muted: #27272a;
+  --ui-bg-elevated: #27272a;
+  --ui-bg-accented: #3f3f46;
+  --ui-border: #27272a;
+  --ui-border-muted: #3f3f46;
+  --ui-border-accented: #3f3f46;
+  --ui-text: #e4e4e7;
+  --ui-text-toned: #d4d4d8;
+  --ui-text-muted: #a1a1aa;
+  --ui-text-dimmed: #71717a;
+  --ui-text-highlighted: #ffffff;
+
+  --ui-primary: #2ecf7c;
+  --ui-primary-strong: #1db954;
+  --ui-on-primary: #06140b;
+
+  /* Callout colours: the tint is the 400 shade, the text the 300 */
+  --ui-info: #51a2ff;
+  --ui-info-text: #8ec5ff;
+  --ui-success: #05df72;
+  --ui-success-text: #7bf1a8;
+  --ui-warning: #fdc700;
+  --ui-warning-text: #ffdf20;
+  --ui-error: #ff6467;
+  --ui-error-text: #ffa2a2;
+
+  --ui-header-bg: rgba(24, 24, 27, .75);
+  --ui-shadow: 0 12px 32px rgba(0, 0, 0, .45);
+  --ui-scrim: rgba(9, 9, 11, .6);
+  --wordmark-end: #ffffff;
+
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue",
+    "Noto Sans", Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
+    "Courier New", monospace;
+}
+
+:root.light {
+  color-scheme: light;
+
+  --ui-bg: #ffffff;
+  --ui-bg-muted: #fafafa;
+  --ui-bg-elevated: #f4f4f5;
+  --ui-bg-accented: #e4e4e7;
+  --ui-border: #e4e4e7;
+  --ui-border-muted: #e4e4e7;
+  --ui-border-accented: #d4d4d8;
+  --ui-text: #3f3f46;
+  --ui-text-toned: #52525b;
+  --ui-text-muted: #71717a;
+  --ui-text-dimmed: #a1a1aa;
+  --ui-text-highlighted: #18181b;
+
+  --ui-primary: #1db954;
+  --ui-primary-strong: #1db954;
+  --ui-on-primary: #06140b;
+
+  /* On white the 400s wash out, so the text steps down to the 600/700 */
+  --ui-info: #2b7fff;
+  --ui-info-text: #155dfc;
+  --ui-success: #00c950;
+  --ui-success-text: #008236;
+  --ui-warning: #f0b100;
+  --ui-warning-text: #a65f00;
+  --ui-error: #fb2c36;
+  --ui-error-text: #e7000b;
+
+  --ui-header-bg: rgba(255, 255, 255, .75);
+  --ui-shadow: 0 12px 32px rgba(24, 24, 27, .12);
+  --ui-scrim: rgba(24, 24, 27, .35);
+  --wordmark-end: #18181b;
+}
+
+/* ----------------------------------------------------------------- header */
+
+/* The custom elements from docus.js only carry their markup; they should not
+   be a box of their own, or the sticky header sticks inside them. */
+q-header, q-nav { display: contents; }
+
+.d-header {
+  position: sticky; top: 0; z-index: 40;
+  display: flex; align-items: center; gap: 12px;
+  height: 64px; padding: 0 32px;
+  background: var(--ui-header-bg);
+  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--ui-border);
+}
+.d-header .d-spacer { flex: 1; }
+
+/* The wordmark, drawn the way the docs site draws it: green fading into the
+   page's text colour, so it stays legible on white as well as on zinc. */
+.d-wordmark {
+  display: inline-block;
+  font: 700 20px/1 var(--font-sans); letter-spacing: -.7px;
+  background-image: linear-gradient(100deg, #1db954 0%, #1ed760 32%, var(--wordmark-end) 100%);
+  -webkit-background-clip: text; background-clip: text;
+  color: transparent; text-decoration: none;
+  /* The descender of the "y" hangs outside the box that gets painted */
+  padding: 4px 2px 6px; margin: -4px -2px -6px;
+}
+.d-wordmark:hover { text-decoration: none; }
+
+.d-version {
+  font-size: 12px; font-weight: 500; color: var(--ui-text-muted);
+  font-variant-numeric: tabular-nums;
+  border: 1px solid var(--ui-border-accented); border-radius: 6px;
+  padding: 1px 6px;
+}
+.d-version:empty { display: none; }
+
+.d-icon-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  height: 32px; min-width: 32px; padding: 0 6px;
+  border: 0; border-radius: 6px;
+  background: transparent; color: var(--ui-text);
+  font: 500 14px var(--font-sans); text-decoration: none; cursor: pointer;
+  transition: background .15s, color .15s;
+}
+.d-icon-btn:hover { background: var(--ui-bg-elevated); color: var(--ui-text-highlighted); text-decoration: none; }
+.d-icon-btn:focus-visible { outline: 2px solid var(--ui-primary); outline-offset: 2px; }
+.d-icon-btn svg { width: 20px; height: 20px; flex: none; }
+.d-icon-btn.with-label { padding: 0 10px; }
+.d-icon-btn.with-label svg { width: 16px; height: 16px; }
+
+/* Only one of the two is ever showing: the icon is the mode you would switch
+   to, the same as the docs site. */
+.d-mode span { display: flex; }
+:root:not(.light) .d-mode .sun { display: none; }
+:root.light .d-mode .moon { display: none; }
+
+/* ------------------------------------------------------------------ shell */
+
+.d-shell {
+  display: grid;
+  grid-template-columns: 256px minmax(0, 1fr);
+  max-width: 1440px; margin: 0 auto;
+  padding: 0 32px;
+  column-gap: 40px;
+}
+
+.d-aside {
+  position: sticky; top: 64px; align-self: start;
+  height: calc(100vh - 64px); overflow-y: auto;
+  display: flex; flex-direction: column;
+  padding: 32px 8px 20px 0;
+}
+
+/* A group heading: icon, then the name in bold, as in the docs sidebar */
+.d-group + .d-group { margin-top: 18px; }
+.d-group-title {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 0; margin-bottom: 2px;
+  font-size: 14px; font-weight: 600; color: var(--ui-text-highlighted);
+}
+.d-group-title svg { width: 16px; height: 16px; flex: none; color: var(--ui-text-muted); }
+
+/* The children hang off a hairline, and the one you are on marks it in green */
+.d-links { margin-left: 7px; border-left: 1px solid var(--ui-border); }
+
+.d-link {
+  position: relative;
+  display: flex; align-items: center; gap: 8px; width: 100%;
+  margin-left: -1px; padding: 6px 10px 6px 18px;
+  border: 0; border-left: 1px solid transparent; border-radius: 0;
+  background: none; color: var(--ui-text-muted);
+  font: 400 14px/20px var(--font-sans); text-align: left; text-decoration: none;
+  cursor: pointer;
+  transition: color .15s, border-color .15s;
+}
+.d-link:hover { color: var(--ui-text-highlighted); border-left-color: var(--ui-border-accented); text-decoration: none; background: none; }
+.d-link.active { color: var(--ui-primary); border-left-color: var(--ui-primary); font-weight: 500; }
+.d-link:focus-visible { outline: 2px solid var(--ui-primary); outline-offset: -2px; border-radius: 6px; }
+.d-link > svg { width: 16px; height: 16px; flex: none; }
+.d-link .d-link-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.d-link .d-link-tag { font-size: 11px; color: var(--ui-text-dimmed); }
+
+/* A setup step's number, where the other items have an icon. The dashboard
+   turns it into a tick once the step is done. */
+.dot {
+  width: 18px; height: 18px; border-radius: 50%; flex: none;
+  display: grid; place-items: center;
+  font-size: 10.5px; font-weight: 600; line-height: 1;
+  background: var(--ui-bg-elevated); color: var(--ui-text-muted);
+  box-shadow: inset 0 0 0 1px var(--ui-border-accented);
+  transition: background .25s, color .25s;
+}
+
+.d-aside-foot {
+  margin-top: auto; padding-top: 24px;
+  font-size: 13px; color: var(--ui-text-dimmed);
+}
+
+.d-main { min-width: 0; padding: 32px 0 96px; }
+
+/* The page title block from the docs: a green eyebrow, a 36px title, a lead
+   paragraph and a rule under the lot. */
+.d-page-head {
+  padding-bottom: 32px; margin-bottom: 32px;
+  border-bottom: 1px solid var(--ui-border);
+}
+.d-eyebrow { margin: 0 0 10px; font-size: 14px; font-weight: 600; color: var(--ui-primary); }
+.d-page-head h1 {
+  margin: 0; font-size: 36px; line-height: 1.2; font-weight: 700;
+  letter-spacing: -.01em; color: var(--ui-text-highlighted);
+}
+.d-lead { margin: 16px 0 0; font-size: 18px; line-height: 1.55; color: var(--ui-text-muted); max-width: 68ch; }
+
+/* ------------------------------------------------------------- components */
+
+/* The tabs the docs use for "npm / pnpm / yarn": a tray with the chosen one
+   lifted out of it in green. */
+.d-tabs {
+  display: inline-flex; gap: 2px; padding: 4px;
+  background: var(--ui-bg-elevated); border-radius: 8px;
+}
+.d-tabs button {
+  font: 500 14px var(--font-sans);
+  padding: 6px 12px; border: 0; border-radius: 6px;
+  background: none; color: var(--ui-text-muted);
+  cursor: pointer; white-space: nowrap;
+  transition: background .15s, color .15s;
+}
+.d-tabs button:hover { color: var(--ui-text-highlighted); background: none; }
+.d-tabs button.active { background: var(--ui-primary-strong); color: var(--ui-on-primary); }
+
+/* Callouts, as ::note / ::tip / ::warning / ::caution render on the site */
+.d-callout {
+  border: 1px solid; border-radius: 6px; padding: 12px 16px;
+  font-size: 14px; line-height: 1.6;
+}
+.d-callout.info, .note.info {
+  color: var(--ui-info-text);
+  background: color-mix(in srgb, var(--ui-info) 10%, transparent);
+  border-color: color-mix(in srgb, var(--ui-info) 25%, transparent);
+}
+
+@media (max-width: 1000px) {
+  .d-shell { grid-template-columns: 220px minmax(0, 1fr); --d-gutter: 24px; }
+  .d-header, body:has(.d-shell) .d-header { padding: 0 20px; }
+}
+
+/* ------------------------------------------------------------------ frame */
+
+/* The docs site's landing page is built on a frame: rules down both sides of
+   the content and across between sections, so nothing floats in the middle of
+   the screen. The dashboard takes the same frame - the shell is ruled down
+   both sides, the sidebar is ruled off from the page all the way down, and a
+   page's title rule and its panels run from rail to rail instead of stopping
+   short in the middle.
+
+   --d-gutter is the page's side padding. Anything that runs out to the rails
+   takes it off with a negative margin and puts it back as padding, so its
+   text still lines up with the title. */
+.d-shell {
+  --d-gutter: 32px;
+  max-width: 1280px; padding: 0; column-gap: 0;
+  min-height: calc(100vh - 64px);
+  border-inline: 1px solid var(--ui-border);
+}
+.d-aside { padding: 32px 16px 20px 24px; }
+.d-main {
+  padding: 32px var(--d-gutter) 96px;
+  border-left: 1px solid var(--ui-border);
+}
+.d-page-head {
+  margin-inline: calc(-1 * var(--d-gutter));
+  padding-inline: var(--d-gutter);
+}
+
+/* The header's contents line up with the frame underneath: the logo over the
+   sidebar, the buttons over the page's right-hand edge. Only on pages with
+   the shell - the editor is a full-width tool and keeps its own header. */
+body:has(.d-shell) .d-header {
+  padding-inline: max(32px, calc((100% - 1280px) / 2 + 24px));
+}
+
+/* Narrow: the sidebar lies down across the top as a row, and the page gets
+   the full width. */
+@media (max-width: 860px) {
+  .d-shell { grid-template-columns: minmax(0, 1fr); --d-gutter: 16px; border-inline: 0; }
+  .d-header, body:has(.d-shell) .d-header { padding: 0 16px; gap: 6px; }
+  .d-aside {
+    position: static; height: auto; overflow: visible;
+    padding: 16px 16px 12px; border-bottom: 1px solid var(--ui-border);
+  }
+  .d-main { border-left: 0; }
+  .d-groups { display: flex; flex-wrap: wrap; gap: 4px 16px; }
+  .d-group + .d-group { margin-top: 0; }
+  .d-group-title { display: none; }
+  .d-links { display: flex; flex-wrap: wrap; border: 0; margin: 0; }
+  .d-link { width: auto; padding: 6px 10px; border-left: 0; border-bottom: 1px solid transparent; margin: 0; }
+  .d-link.active { border-bottom-color: var(--ui-primary); }
+  .d-link .d-link-tag { display: none; }
+  .d-aside-foot { padding-top: 10px; }
+  .d-main { padding-top: 24px; }
+  .d-page-head { padding-bottom: 24px; margin-bottom: 24px; }
+  .d-page-head h1 { font-size: 30px; }
+  .d-lead { font-size: 16px; }
+  .d-hide-narrow { display: none !important; }
+}

@@ -4,25 +4,28 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Queueify Stats</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@800&display=swap">
+<link rel="stylesheet" href="docus.css">
+<script src="docus.js"></script>
 <style>
+  /* The page's own names for things, pointed at the docs site's palette in
+     docus.css - light and dark both come from there. */
   :root {
-    --bg: #0b0c0f;
-    --surface: #12141a;
-    --surface-2: #171a21;
-    --line: #23262f;
-    --line-soft: #1b1e25;
-    --text: #e9eaee;
-    --muted: #9aa0ad;
-    --faint: #6b7280;
-    --accent: #7c5cff;
-    --accent-soft: rgba(124, 92, 255, .16);
-    --green: #2fb87a;
-    --amber: #d9a441;
-    --red: #e5566d;
-    --radius: 10px;
+    --bg: var(--ui-bg);
+    --surface: var(--ui-bg);
+    --surface-2: var(--ui-bg-elevated);
+    --line: var(--ui-border-muted);
+    --line-soft: var(--ui-border);
+    --text: var(--ui-text);
+    --muted: var(--ui-text-muted);
+    --faint: var(--ui-text-dimmed);
+    --accent: var(--ui-primary-strong);
+    --accent-soft: color-mix(in srgb, var(--ui-primary) 18%, transparent);
+    --green: var(--ui-primary-strong);
+    --amber: var(--ui-warning-text);
+    --red: var(--ui-error);
+    --radius: 8px;
+    /* The second colour in a split, beside the green: the docs site's blue */
+    --series-2: var(--ui-info);
   }
 
   * { box-sizing: border-box; }
@@ -31,111 +34,55 @@
     margin: 0;
     background: var(--bg);
     color: var(--text);
-    font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, sans-serif;
+    font: 14px/1.5 var(--font-sans);
     -webkit-font-smoothing: antialiased;
   }
 
-  a { color: #a894ff; text-decoration: none; }
+  a { color: var(--ui-primary); text-decoration: none; font-weight: 500; }
   a:hover { text-decoration: underline; }
-
-  /* The same faint grid the other pages use, so this reads as part of the
-     same tool rather than as something bolted on. Decoration only. */
-  body::before {
-    content: '';
-    position: fixed; inset: 0; z-index: 0; pointer-events: none;
-    background-image:
-      linear-gradient(to right, rgba(255, 255, 255, .04) 1px, transparent 1px),
-      linear-gradient(to bottom, rgba(255, 255, 255, .04) 1px, transparent 1px);
-    background-size: 46px 46px;
-    -webkit-mask-image: radial-gradient(130% 105% at 50% -5%, #000 0%, rgba(0, 0, 0, .55) 55%, transparent 100%);
-    mask-image: radial-gradient(130% 105% at 50% -5%, #000 0%, rgba(0, 0, 0, .55) 55%, transparent 100%);
-  }
 
   /* ------------------------------------------------------------ layout */
 
-  .shell {
-    display: grid; grid-template-columns: 232px minmax(0, 1fr); min-height: 100vh;
-    position: relative; z-index: 1;
-  }
+  .inner { max-width: 1020px; }
 
-  .side {
-    border-right: 1px solid var(--line);
-    background: var(--surface);
-    padding: 20px 14px;
-    position: sticky; top: 0; height: 100vh;
-    display: flex; flex-direction: column; gap: 4px;
-  }
-
-  /* Nunito for the wordmark only, with a real fallback so it still reads if
-     the font cannot be fetched - this is a local tool and may be offline. */
-  .brand {
-    display: block; padding: 2px 8px 18px;
-    font-family: Nunito, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-    font-size: 17px; font-weight: 800; letter-spacing: -.01em;
-    color: var(--text); text-decoration: none;
-  }
-  .brand:hover { color: #fff; text-decoration: none; }
-
-  .side .label {
-    padding: 14px 8px 6px;
-    font-size: 11px; font-weight: 600; letter-spacing: .07em;
-    text-transform: uppercase; color: var(--faint);
-  }
-
-  .nav {
-    display: flex; align-items: center; gap: 9px;
-    padding: 8px 9px; border-radius: 8px;
-    color: var(--muted); font-size: 13.5px; font-weight: 500;
-    border: 1px solid transparent; text-decoration: none;
-  }
-  .nav:hover { background: var(--surface-2); color: var(--text); text-decoration: none; }
-  .nav svg { width: 15px; height: 15px; flex: none; opacity: .9; }
-
-  .side .foot { margin-top: auto; padding: 10px 8px 0; font-size: 12px; color: var(--faint); }
-
-  .main { min-width: 0; padding: 0 28px 100px; }
-  .inner { margin: 0 auto; max-width: 1020px; }
-
-  /* The groups float above the cards and stay there while the page scrolls, so
-     moving between them never means going back to the top. The fade underneath
-     is what lets a card pass behind it without a hard edge. */
+  /* The groups stay under the header while the page scrolls, so moving
+     between them never means going back to the top. The fade underneath is
+     what lets a card pass behind them without a hard edge. */
   .pillbar {
-    position: sticky; top: 0; z-index: 10;
-    display: grid; grid-template-columns: 1fr auto 1fr;
-    align-items: center; gap: 12px;
-    padding: 20px 0 16px;
-    background: linear-gradient(var(--bg) 62%, rgba(11, 12, 15, 0));
+    position: sticky; top: 64px; z-index: 10;
+    display: flex; align-items: center; gap: 12px;
+    padding: 0 0 20px; margin-top: -8px;
+    background: linear-gradient(var(--bg) 70%, transparent);
   }
+  .pills { display: flex; }
 
-  .pills {
-    grid-column: 2;
-    display: flex; gap: 2px;
-    background: var(--surface); border: 1px solid var(--line);
-    border-radius: 999px; padding: 4px;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, .45);
+  .bar-actions { margin-left: auto; display: flex; align-items: center; gap: 12px; }
+
+  /* Each tab's page opens the way a docs page does */
+  .page-head {
+    padding-bottom: 28px; margin-bottom: 28px;
+    border-bottom: 1px solid var(--line-soft);
   }
-  .pills button {
-    font: inherit; font-size: 13px; font-weight: 600;
-    padding: 8px 18px; border-radius: 999px;
-    border: 0; background: none; color: var(--muted);
-    cursor: pointer; white-space: nowrap;
-    transition: background .16s, color .16s;
+  .page-head::before {
+    content: 'Stats'; display: block; margin-bottom: 8px;
+    font-size: 14px; font-weight: 600; color: var(--ui-primary);
   }
-  .pills button:hover { color: var(--text); }
-  .pills button.active { background: var(--accent); color: #fff; }
+  .page-head h1 {
+    margin: 0; font-size: 36px; line-height: 1.2; font-weight: 700;
+    letter-spacing: -.01em; color: var(--ui-text-highlighted);
+  }
+  .page-head p { margin: 14px 0 0; color: var(--muted); font-size: 18px; line-height: 1.55; max-width: 62ch; }
 
-  .bar-actions { grid-column: 3; justify-self: end; display: flex; align-items: center; gap: 12px; }
-
-  .page-head { margin-bottom: 22px; }
-  .page-head h1 { margin: 0 0 6px; font-size: 22px; font-weight: 650; letter-spacing: -.02em; }
-  .page-head p { margin: 0; color: var(--muted); font-size: 13.5px; max-width: 62ch; }
-
+  /* A soft grey button, as Nuxt UI draws its neutral one */
   .ghost {
-    background: none; border: 1px solid var(--line);
-    color: var(--muted); border-radius: 999px;
-    padding: 7px 14px; font-size: 12.5px; cursor: pointer; flex: none;
+    font: inherit; font-size: 14px; font-weight: 500; line-height: 20px;
+    background: var(--surface-2); border: 0;
+    color: var(--text); border-radius: 6px;
+    padding: 6px 12px; cursor: pointer; flex: none;
+    transition: background .15s;
   }
-  .ghost:hover { color: var(--text); border-color: var(--accent); }
+  .ghost:hover { background: var(--ui-bg-accented); color: var(--ui-text-highlighted); }
+  .ghost:focus-visible { outline: 2px solid var(--ui-primary); outline-offset: 2px; }
 
   /* ------------------------------------------------------------- cards */
 
@@ -146,46 +93,51 @@
     margin-bottom: 16px;
     overflow: hidden;
   }
+  /* Title over subtitle, always. Side by side, one card's note would fit and
+     its neighbour's would wrap, and the two headers - and every list row under
+     them - would stop lining up across the row. */
   .card > header {
     padding: 14px 18px;
     border-bottom: 1px solid var(--line-soft);
-    display: flex; align-items: baseline; gap: 10px;
-    /* In a narrow column the title and its note cannot sit side by side. Let
-       the note drop to its own line whole, rather than both of them breaking
-       in the middle of a phrase. */
-    flex-wrap: wrap;
+    display: flex; flex-direction: column; gap: 2px;
   }
-  .card > header h2 { margin: 0; font-size: 14.5px; font-weight: 600; letter-spacing: -.01em; }
-  .card > header .sub { color: var(--faint); font-size: 12.5px; flex: 1 1 auto; min-width: 0; }
+  .card > header h2 { margin: 0; font-size: 16px; font-weight: 600; color: var(--ui-text-highlighted); }
+  .card > header .sub { color: var(--faint); font-size: 13px; }
   .card > .body { padding: 16px 18px; }
 
-  /* align-items:start so a short card sits at its own height instead of being
-     stretched to match the tall one beside it. */
+  /* Every card in a row is as tall as the tallest, so the row ends on one
+     line. Cards used to keep their own heights, which left a short card with a
+     hole under it beside a long one - so the views put cards of a kind
+     together instead: lists with lists, and the one-liners in a card of their
+     own (.facts). */
   .grid {
-    display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-    gap: 16px; align-items: start; margin-bottom: 16px;
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 16px; align-items: stretch; margin-bottom: 16px;
   }
   .grid .card { margin-bottom: 0; }
-  /* Two up rather than three, for the cards that are long lists. */
+  /* Two up rather than three */
   .grid.pair { grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); }
+  /* Three lists across, or one above the other - never two and a stray,
+     which is the hole all over again */
+  .grid.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  @media (max-width: 1180px) { .grid.three { grid-template-columns: minmax(0, 1fr); } }
 
-  /* Ranked cards vary a lot in height, and in a grid the whole row is as tall
-     as the longest one - a short card leaves a hole beside it. These flow into
-     columns instead and pack, which only works because they are independent
-     lists where reading down a column is as good as reading across. The
-     Overview keeps its grid: the pairings there are deliberate. */
-  /* line-height:0 on the container because the cards below are inline blocks,
-     and an inline box otherwise adds a line's worth of space on top of the
-     margin - which is what made these gaps wider than every other gap here. */
-  .masonry { columns: 3 300px; column-gap: 16px; line-height: 0; }
-  /* inline-block, not the default block: a block card's bottom margin is
-     dropped where it meets a column break, which puts two cards flush against
-     each other. As an atomic inline block the margin always survives. */
-  .masonry .card {
-    break-inside: avoid;
-    display: inline-block; width: 100%; vertical-align: top;
-    margin: 0 0 16px; line-height: 1.5;
+  /* The far ends: six one-line facts as one card with a ruled grid inside,
+     instead of six small cards that never wrap evenly. Three, two or one
+     across, all of which divide six. */
+  .facts {
+    display: grid; grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 1px; background: var(--line-soft);
   }
+  .facts .fact { background: var(--surface); padding: 16px 18px; }
+  .fact .fact-k { display: block; margin-bottom: 6px; font-size: 13px; font-weight: 500; color: var(--ui-primary); }
+  .facts-foot {
+    padding: 14px 18px; border-top: 1px solid var(--line-soft);
+    font-size: 14px; color: var(--muted);
+  }
+  .facts-foot strong { color: var(--ui-text-highlighted); font-weight: 600; }
+  @media (max-width: 1100px) { .facts { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  @media (max-width: 560px) { .facts { grid-template-columns: minmax(0, 1fr); } }
 
   /* --------------------------------------------------------- stat tiles */
 
@@ -198,7 +150,7 @@
     border-radius: var(--radius); padding: 15px 16px;
   }
   .tile .n {
-    font-size: 25px; font-weight: 650; letter-spacing: -.03em;
+    font-size: 28px; font-weight: 700; letter-spacing: -.02em; color: var(--ui-text-highlighted);
     font-variant-numeric: tabular-nums; line-height: 1.15;
   }
   .tile .k { font-size: 12.5px; color: var(--muted); margin-top: 3px; }
@@ -214,14 +166,14 @@
      ignores the width and height this is drawn with entirely. */
   .bar .fill {
     display: block; height: 100%; border-radius: 999px;
-    background: linear-gradient(90deg, var(--accent), #b58cff);
+    background: var(--ui-primary-strong);
   }
   .bar .val { font-size: 12.5px; color: var(--faint); font-variant-numeric: tabular-nums; min-width: 2.5em; text-align: right; }
 
   /* Hour-of-day: 24 columns, so it reads as a shape rather than a list. */
   .hours { display: flex; align-items: flex-end; gap: 3px; height: 108px; }
   .hours .h { flex: 1; background: var(--surface-2); border-radius: 3px 3px 0 0; position: relative; min-height: 2px; }
-  .hours .h.on { background: linear-gradient(180deg, #b58cff, var(--accent)); }
+  .hours .h.on { background: var(--ui-primary-strong); }
   .hour-axis { display: flex; justify-content: space-between; margin-top: 7px; font-size: 11px; color: var(--faint); }
 
   .split { display: flex; height: 10px; border-radius: 999px; overflow: hidden; background: var(--surface-2); }
@@ -266,53 +218,63 @@
   .view.active { display: block; }
 
   @media (max-width: 860px) {
-    .shell { grid-template-columns: 1fr; }
-    .side {
-      position: static; height: auto;
-      flex-direction: row; flex-wrap: wrap; align-items: center;
-    }
-    .side .label, .side .foot { display: none; }
-    .brand { padding: 0 8px 0 0; }
-    .main { padding: 0 16px 80px; }
+    .page-head h1 { font-size: 30px; }
+    .page-head p { font-size: 16px; }
     /* The pills need the width once the Refresh button stops fitting beside
        them, so they take the row and it drops underneath. */
-    .pillbar { grid-template-columns: 1fr; justify-items: center; padding: 14px 0 12px; }
-    .pills { grid-column: 1; width: 100%; overflow-x: auto; }
-    .pills button { flex: 1; padding: 8px 12px; }
-    .bar-actions { grid-column: 1; }
+    .pillbar { position: static; margin-top: 0; flex-wrap: wrap; }
+    .pills { width: 100%; overflow-x: auto; }
+    .pills button { flex: 1; }
   }
+
+
+  /* ------------------------------------------------------------- frame */
+
+  /* The page sits in the frame from docus.css. Its title rule runs out to the
+     rails, and the panels under it do too, one straight after another, so the
+     page reads as one ruled table under its title instead of cards floating
+     in the middle. Each panel's text keeps the page's gutter, so it lines up
+     with the title above it. */
+  .inner { max-width: none; }
+  .page-head {
+    margin: 0 calc(-1 * var(--d-gutter));
+    padding-inline: var(--d-gutter);
+    border-bottom-color: var(--line);
+  }
+  .view > .card, #view > .card {
+    margin: 0 calc(-1 * var(--d-gutter));
+    border-width: 0 0 1px; border-radius: 0;
+  }
+  .card > header { padding-inline: var(--d-gutter); background: color-mix(in srgb, var(--ui-bg-elevated) 35%, transparent); }
+  .card > .body { padding-inline: var(--d-gutter); }
+
+  .tiles, .grid {
+    gap: 1px; margin: 0 calc(-1 * var(--d-gutter));
+    background: var(--line); border-bottom: 1px solid var(--line);
+  }
+  .tile { border: 0; border-radius: 0; padding: 18px var(--d-gutter); }
+  .grid .card { border: 0; border-radius: 0; }
+  /* Every panel takes the page's gutter, so whichever panel a row wraps to
+     the left edge, its text lines up with the title */
+  .grid .card > header, .grid .card > .body { padding-inline: var(--d-gutter); }
+  .facts .fact { padding-inline: var(--d-gutter); }
+  .facts-foot { padding-inline: var(--d-gutter); }
 
 </style>
 </head>
 <body>
 
-<div class="shell">
-  <aside class="side">
-    <!-- The wordmark is the way back to the dashboard, so there is no logo
-         tile and no separate "home" item. -->
-    <a class="brand" href="/">Queueify</a>
-
-    <div class="label">Elsewhere</div>
-    <a class="nav" href="/">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
-      Setup dashboard
-    </a>
-    <a class="nav" href="/admin.html">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-1.8-.3 1.6 1.6 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1A1.6 1.6 0 0 0 9 19.4a1.6 1.6 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.6 1.6 0 0 0 .3-1.8 1.6 1.6 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1A1.6 1.6 0 0 0 4.6 9a1.6 1.6 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.6 1.6 0 0 0 1.8.3H9a1.6 1.6 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.6 1.6 0 0 0 1 1.5 1.6 1.6 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0-.3 1.8V9a1.6 1.6 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1z"/></svg>
-      Admin Panel
-    </a>
-    <a class="nav" href="/editor.html">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M2 2l7.5 7.5"/><circle cx="11" cy="11" r="2"/></svg>
-      Theme editor
-    </a>
-
-    <div class="foot" id="since">Counted from the request log.</div>
+<q-header></q-header>
+<div class="d-shell">
+  <aside class="d-aside">
+    <q-nav active="stats"></q-nav>
+    <div class="d-aside-foot" id="since">Counted from the request log.</div>
   </aside>
 
-  <main class="main">
+  <main class="d-main">
     <div class="inner">
       <div class="pillbar">
-        <nav class="pills">
+        <nav class="pills d-tabs">
           <button class="active" data-view="overview">Overview</button>
           <button data-view="people">People</button>
           <button data-view="music">Music</button>
@@ -457,14 +419,16 @@ function barList(rows, label, value) {
     </div>`).join('')}</div>`;
 }
 
-function factCard(title, sub, track, note) {
-  if (!track) return card(title, sub, '<p class="empty">Nothing yet.</p>');
+/** One cell of the far-ends card: what it is, then the track. */
+function fact(label, track, note) {
+  const k = `<span class="fact-k">${escapeHtml(label)}</span>`;
+  if (!track) return `<div class="fact">${k}<span>Nothing yet.</span></div>`;
 
-  return card(title, sub, `<div class="fact">
+  return `<div class="fact">${k}
     <strong>${escapeHtml(track.name)}</strong>
     <span>${escapeHtml(track.artists || '')}</span>
     ${note ? `<em>${escapeHtml(note(track))}</em>` : ''}
-  </div>`);
+  </div>`;
 }
 
 function nothingYet(what) {
@@ -505,11 +469,11 @@ async function renderOverview() {
   const whereFrom = card('Where requests come from', `${number(sources)} in total`, `
     <div class="split">
       <span style="width:${(data.sources.chat / Math.max(sources, 1)) * 100}%;background:var(--accent)"></span>
-      <span style="width:${(data.sources.redeem / Math.max(sources, 1)) * 100}%;background:var(--green)"></span>
+      <span style="width:${(data.sources.redeem / Math.max(sources, 1)) * 100}%;background:var(--series-2)"></span>
     </div>
     <div class="legend">
       <span><i style="background:var(--accent)"></i>Chat &middot; ${number(data.sources.chat)}</span>
-      <span><i style="background:var(--green)"></i>Channel points &middot; ${number(data.sources.redeem)}</span>
+      <span><i style="background:var(--series-2)"></i>Channel points &middot; ${number(data.sources.redeem)}</span>
     </div>`);
 
   // The most useful card on the page: it says which setting is turning people
@@ -597,7 +561,13 @@ async function renderPeople() {
       row => number(row.longest),
       row => (row.current ? `still going - ${number(row.current)}` : 'ended')));
 
-  $('view-people').innerHTML = title + `<div class="masonry">${requesters}${signatures}${twins}${streaks}</div>`;
+  // The three lists with a row per viewer run to about the same length, so
+  // they share a row. Twins has a row per pair, which is usually far fewer,
+  // and stretched beside the others it was mostly empty box - it gets a row
+  // of its own instead.
+  $('view-people').innerHTML = title
+    + `<div class="grid three">${requesters}${signatures}${streaks}</div>`
+    + twins;
 }
 
 async function renderMusic() {
@@ -633,26 +603,27 @@ async function renderMusic() {
   const popularity = track => `Spotify popularity ${track.popularity} out of 100`;
 
   const e = data.extremes;
-  const facts = `
-    ${factCard('Longest song', 'By how long it runs', e.longest, track => trackTime(track.durationMs))}
-    ${factCard('Shortest song', 'By how long it runs', e.shortest, track => trackTime(track.durationMs))}
-    ${factCard('Deepest cut', 'The most obscure song anyone asked for', e.obscurest, popularity)}
-    ${factCard('Biggest crowd-pleaser', 'The best known song anyone asked for', e.mainstream, popularity)}
-    ${factCard('Oldest', 'By release date', e.oldest, track => track.releaseDate)}
-    ${factCard('Newest', 'By release date', e.newest, track => track.releaseDate)}`;
+  const facts = `<section class="card">
+    <header><h2>The far ends</h2><span class="sub">The extremes of everything that got queued</span></header>
+    <div class="facts">
+      ${fact('Longest song', e.longest, track => trackTime(track.durationMs))}
+      ${fact('Shortest song', e.shortest, track => trackTime(track.durationMs))}
+      ${fact('Deepest cut', e.obscurest, popularity)}
+      ${fact('Biggest crowd-pleaser', e.mainstream, popularity)}
+      ${fact('Oldest', e.oldest, track => track.releaseDate)}
+      ${fact('Newest', e.newest, track => track.releaseDate)}
+    </div>
+    <footer class="facts-foot"><strong>${number(data.oneHitWonders)}</strong>
+      ${data.oneHitWonders === 1 ? 'artist has' : 'artists have'} been asked for exactly once, ever.</footer>
+  </section>`;
 
-  const oneHit = card('One-hit wonders', '', `<p class="empty">
-    <strong>${number(data.oneHitWonders)}</strong>
-    ${data.oneHitWonders === 1 ? 'artist has' : 'artists have'} been asked for exactly once, ever.
-  </p>`);
-
-  // Grouped by how tall they are, not by subject. The two ten-row lists next to
-  // seven three-line cards is what CSS columns balance worst: the long ones
-  // cannot be split, so one column ends up nearly empty. Side by side they are
-  // the same height as each other, and the short ones tile evenly below.
+  // Grouped by shape, not by subject: the ranked lists in one row, stretched
+  // to the same height, and the one-liners together in a card of their own.
+  // Mixed together, a ten-row list next to three-line cards left a hole.
+  const lists = [tracks, artistBoard, data.mostSkipped.length ? skipped : ''].join('');
   $('view-music').innerHTML = title
-    + `<div class="grid pair">${tracks}${artistBoard}</div>`
-    + `<div class="grid">${data.mostSkipped.length ? skipped : ''}${facts}${oneHit}</div>`;
+    + `<div class="grid ${data.mostSkipped.length ? 'three' : 'pair'}">${lists}</div>`
+    + facts;
 }
 
 async function renderStreams() {

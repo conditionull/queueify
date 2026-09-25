@@ -15,33 +15,34 @@
     document.head.insertAdjacentHTML('beforeend', `<style>
     .qask {
         width: min(420px, calc(100vw - 32px));
-        padding: 0; border: 0; border-radius: 14px;
-        background: #16161f; color: #f2f2f7;
-        box-shadow: 0 24px 70px rgba(0, 0, 0, .55), 0 0 0 1px rgba(255, 255, 255, .1);
+        padding: 0; border: 0; border-radius: 8px;
+        /* The docs palette from docus.css, with the old dark values behind it */
+        background: var(--ui-bg, #16161f); color: var(--ui-text-highlighted, #f2f2f7);
+        box-shadow: var(--ui-shadow, 0 24px 70px rgba(0, 0, 0, .55)), 0 0 0 1px var(--ui-border-muted, rgba(255, 255, 255, .1));
         font-family: inherit;
     }
-    .qask::backdrop { background: rgba(6, 6, 10, .62); backdrop-filter: blur(2px); }
+    .qask::backdrop { background: var(--ui-scrim, rgba(6, 6, 10, .62)); backdrop-filter: blur(2px); }
 
     .qask-body { padding: 22px 22px 6px; }
-    .qask h2 { margin: 0 0 8px; font-size: 16.5px; letter-spacing: -.01em; }
-    .qask p { margin: 0; color: #a8a8b8; font-size: 13.5px; line-height: 1.55; }
+    .qask h2 { margin: 0 0 8px; font-size: 16px; font-weight: 600; }
+    .qask p { margin: 0; color: var(--ui-text-muted, #a8a8b8); font-size: 14px; line-height: 1.55; }
 
     .qask-buttons {
         display: flex; justify-content: flex-end; gap: 8px;
         padding: 18px 22px 20px;
     }
     .qask button {
-        font: inherit; font-size: 13.5px; font-weight: 600;
-        padding: 9px 16px; border: 0; border-radius: 8px;
-        color: #fff; background: #9147ff; cursor: pointer;
+        font: inherit; font-size: 14px; font-weight: 500; line-height: 20px;
+        padding: 6px 12px; border: 0; border-radius: 6px;
+        color: var(--ui-on-primary, #fff); background: var(--ui-primary-strong, #9147ff); cursor: pointer;
         transition: background .15s, transform .1s;
     }
-    .qask button:hover { background: #a061ff; }
+    .qask button:hover { background: var(--ui-primary, #a061ff); }
     .qask button:active { transform: translateY(1px); }
-    .qask button.quiet { background: #2b2b38; color: #e7e7ef; }
-    .qask button.quiet:hover { background: #363646; }
-    .qask button.danger { background: #b32744; }
-    .qask button.danger:hover { background: #c93254; }
+    .qask button.quiet { background: var(--ui-bg-elevated, #2b2b38); color: var(--ui-text, #e7e7ef); }
+    .qask button.quiet:hover { background: var(--ui-bg-accented, #363646); }
+    .qask button.danger { background: #dc2626; color: #fff; }
+    .qask button.danger:hover { background: #ef4444; }
 
     /* Opening from nothing, so it does not simply blink into existence. */
     .qask[open] { animation: qask-in .16s ease-out; }

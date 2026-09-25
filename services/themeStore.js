@@ -712,6 +712,27 @@ function shadowStep(module) {
     return `drop-shadow(${x}px ${y}px ${module.shadowBlur}px ${module.shadowColor})`;
 }
 
+/**
+ * Lines a text part up inside its box, for a flex container.
+ *
+ * `safe` is what keeps a centred or right-aligned line that is too long to fit
+ * readable: without it the overflow spills off *both* sides, so a scrolling
+ * artist started with its first word already cut off and stopped short of its
+ * last. `safe` falls back to the start edge the moment the text overflows,
+ * which is where the scroll animation expects it to begin.
+ *
+ * The plain value goes first for OBS builds whose browser predates `safe`
+ * (Chromium 115): they drop the second line and keep the first, and the
+ * `.scrolling` rules in generateCss put a long line back at the start there.
+ */
+function justifyRules(module) {
+    const value = module.align === 'center' ? 'center' : module.align === 'right' ? 'flex-end' : 'flex-start';
+    return value === 'flex-start'
+        ? `justify-content: flex-start;`
+        : `justify-content: ${value};
+    justify-content: safe ${value};`;
+}
+
 function textRules(selector, module) {
     // The glow is a filter on the box, not a text-shadow on the text: the box
     // clips its overflow so long titles can scroll, and a shadow inside it gets
@@ -773,7 +794,7 @@ ${box(module)}
     display: flex;
     align-items: center;
     white-space: nowrap;
-    justify-content: ${module.align === 'center' ? 'center' : module.align === 'right' ? 'flex-end' : 'flex-start'};
+    ${justifyRules(module)}
     overflow: hidden;${room}
     z-index: 2;${filter}
     ${module.hidden ? 'display: none;' : ''}
@@ -1142,6 +1163,19 @@ ${textRules('.title-wrapper', title)}
 
 .title-container {
     width: 100%;
+    /* Full width on purpose - app.js measures it to decide whether the title
+       fits - which leaves the wrapper's alignment nothing to move. So the
+       title is aligned in here instead, or it always sat on the left. */
+    display: flex;
+    ${justifyRules(title)}
+}
+
+/* A line that scrolls starts at its beginning whatever its alignment, for the
+   browsers that ignore \`safe\` above. The title's own \`scrolling\` class
+   arrives 250ms late for the fade, so app.js marks the container at once. */
+.title-container.overflowing,
+.artist-wrapper.scrolling {
+    justify-content: flex-start;
 }
 
 .title {
@@ -1274,60 +1308,67 @@ function generateHtml(name, model) {
  * someone, so "New" offers finished layouts to pull apart instead.
  */
 const PRESETS = {
-    classic: {
-        label: 'Classic',
-        description: 'Square art on the left, title and artist stacked beside it.',
-        build: () => defaultModel('Classic')
-    },
-
-    spotlight: {
-        label: 'Spotlight',
-        description: 'Big art, glowing title, gradient behind it all.',
+    // The same design as the built-in default theme, which is generated from
+    // this (scripts/build-default-theme.js) so the two cannot drift apart.
+    default: {
+        label: 'Default',
+        description: 'Square art flush to the left edge, title and artist beside it, on an album-colored gradient.',
         build: () => {
-            const model = defaultModel('Spotlight');
+            const model = defaultModel('Default');
 
-            Object.assign(model.canvas, {
-                width: 720, height: 220, radius: 26,
-                backgroundMode: 'gradient',
-                background: 'var(--album-dark)',
-                backgroundTo: 'var(--album-vibrant)',
-                gradientAngle: 120,
-                borderWidth: 0
-            });
+            Object.assign(model.canvas, { height: 160, borderWidth: 0, backgroundMode: 'gradient' });
 
-            Object.assign(moduleOf(model, 'art'), { x: 20, y: 20, w: 180, h: 180, radius: 18, shadow: 34 });
+            // Rounded only on the outside, so the art reads as the canvas's
+            // own left edge rather than a tile sitting on it.
+            Object.assign(moduleOf(model, 'art'), { x: 0, y: 0, w: 160, h: 160, corners: [24, 0, 0, 24], shadow: 44 });
             Object.assign(moduleOf(model, 'title'), {
-                x: 222, y: 48, w: 476, h: 44, fontSize: 32, fontWeight: 800,
-                glow: 18, glowColor: 'var(--album-light)'
+                x: 200, y: 17, w: 448, h: 52, font: 'righteous', fontSize: 37, fontWeight: 400
             });
-            Object.assign(moduleOf(model, 'artist'), { x: 222, y: 98, w: 476, h: 28, fontSize: 18, opacity: 0.9 });
-            Object.assign(moduleOf(model, 'progress'), { x: 272, y: 150, w: 376, h: 8, fillColor: 'var(--album-light)' });
-            Object.assign(moduleOf(model, 'elapsed'), { x: 222, y: 143, w: 42, h: 22, fontSize: 13 });
-            Object.assign(moduleOf(model, 'duration'), { x: 656, y: 143, w: 42, h: 22, fontSize: 13 });
+            Object.assign(moduleOf(model, 'artist'), { x: 201, y: 82, w: 448, fontSize: 21, fontWeight: 600 });
+            Object.assign(moduleOf(model, 'progress'), { x: 266, y: 131, w: 317, h: 15, trackColor: 'var(--album-light)' });
+
+            // Elapsed flush with the text above, the length with the bar's far
+            // side. Both boxes fit 00:00, and past ten minutes elapsed is
+            // padded to match (clock() in widget/public/app.js), so the two
+            // gaps to the bar stay even.
+            const time = { y: 126, w: 58, h: 20, fontSize: 20 };
+            Object.assign(moduleOf(model, 'elapsed'), { ...time, x: 201, align: 'left' });
+            Object.assign(moduleOf(model, 'duration'), { ...time, x: 590, align: 'right' });
 
             return model;
         }
     },
 
-    ticker: {
-        label: 'Ticker',
-        description: 'A slim strip: small art, one line of text, thin bar.',
+    spiffy: {
+        label: 'Spiffy',
+        description: 'One slim row - title, waveform, artist, and a pill bar - on an album-colored gradient.',
         build: () => {
-            const model = defaultModel('Ticker');
+            const model = defaultModel('Spiffy');
 
             Object.assign(model.canvas, {
-                width: 560, height: 84, radius: 12, borderWidth: 0,
-                background: 'rgba(10,10,14,0.86)'
+                width: 700, height: 73, radius: 28, borderWidth: 0, dim: 0.2,
+                backgroundMode: 'gradient', gradientAngle: 80,
+                backgroundTo: 'var(--album-muted)'
             });
 
-            Object.assign(moduleOf(model, 'art'), { x: 10, y: 10, w: 64, h: 64, radius: 8, shadow: 8 });
+            const mono = { font: 'share-tech-mono', fontSize: 27, fontWeight: 400, align: 'center' };
+
+            // Art and the clocks are there, just switched off - one click in
+            // the parts list brings them back without having to place them.
+            Object.assign(moduleOf(model, 'art'), { hidden: true, x: 10, y: 10, w: 53, h: 53, radius: 8, shadow: 8 });
             Object.assign(moduleOf(model, 'title'), {
-                x: 86, y: 14, w: 460, h: 26, fontSize: 18, fontWeight: 700, letterSpacing: 0.5
+                ...mono, x: 22, y: 20, w: 210, h: 32, color: 'var(--album-light)', letterSpacing: 0.5
             });
-            Object.assign(moduleOf(model, 'artist'), { x: 86, y: 40, w: 460, h: 20, fontSize: 13, opacity: 0.75 });
-            Object.assign(moduleOf(model, 'progress'), { x: 122, y: 64, w: 388, h: 4 });
-            Object.assign(moduleOf(model, 'elapsed'), { x: 86, y: 57, w: 32, h: 18, fontSize: 11 });
-            Object.assign(moduleOf(model, 'duration'), { x: 514, y: 57, w: 32, h: 18, fontSize: 11 });
+            Object.assign(moduleOf(model, 'artist'), { ...mono, x: 322, y: 20, w: 172, h: 32, opacity: 1 });
+            Object.assign(moduleOf(model, 'progress'), {
+                x: 556, y: 30, w: 122, h: 12,
+                trackColor: 'var(--album-muted)', fillColor: 'var(--album-light)'
+            });
+            Object.assign(moduleOf(model, 'elapsed'), { hidden: true, x: 86, y: 46, w: 32, h: 18, fontSize: 11 });
+            Object.assign(moduleOf(model, 'duration'), { hidden: true, x: 514, y: 46, w: 32, h: 18, fontSize: 11 });
+
+            const icon = (name, x) => Object.assign(defaultIcon(name), { x, y: 20, color: 'var(--album-muted)' });
+            model.icons = [icon('audio-lines', 261), icon('ellipsis-vertical', 509)];
 
             return model;
         }
@@ -1335,7 +1376,7 @@ const PRESETS = {
 
     stacked: {
         label: 'Stacked',
-        description: 'Art on top, centerd text underneath - good for a corner.',
+        description: 'Art on top, centered text underneath - good for a corner.',
         build: () => {
             const model = defaultModel('Stacked');
 
