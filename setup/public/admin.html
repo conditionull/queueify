@@ -49,8 +49,11 @@
   .pillbar {
     position: sticky; top: 64px; z-index: 10;
     display: flex; justify-content: flex-start;
-    padding: 0 0 20px; margin-top: -8px;
-    background: linear-gradient(var(--bg) 70%, transparent);
+    /* The top padding is solid page, so once stuck the tabs sit a little
+       below the header instead of against its border. The margin takes the
+       same amount back, so nothing moves before you scroll. */
+    padding: 14px 0 20px; margin-top: -22px;
+    background: linear-gradient(var(--bg) 75%, transparent);
   }
   .pills { display: flex; }
 
