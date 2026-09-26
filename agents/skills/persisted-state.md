@@ -61,7 +61,7 @@ it idempotent and check the existing state before changing it.
 `core/state.js` loads once at require time and writes on a 100ms debounce, with
 per-file chaining so writes cannot overtake each other. Two consequences:
 
-- A new persisted field has to be added in **both** places — the initialiser and
+- A new persisted field has to be added in **both** places — the initializer and
   `saveSettings()`. Adding it to only one is a field that never survives a
   restart, and nothing fails loudly
 - Anything asserting on the written file has to let the debounce settle first

@@ -425,7 +425,12 @@ function createApp() {
         }
 
         try {
-            res.json(await obs.testConnection({ ip, port, password }));
+            // The page is never sent the saved password, so its box is empty
+            // on every load. Empty means "the one in .env", not "none" -
+            // otherwise the check logs in without it, OBS refuses, and the
+            // page reports OBS closed while the bot is using it fine. An OBS
+            // without a password just ignores it.
+            res.json(await obs.testConnection({ ip, port, password: password || getObsConfig().password }));
         } catch (err) {
             res.status(500).json({ ok: false, error: err.message });
         }
@@ -447,8 +452,8 @@ function createApp() {
     // from what chat actually answers to.
     app.get('/api/commands', (req, res) => {
         try {
-            const { buildCatalogue } = require('../services/commandCatalogue');
-            res.json({ groups: buildCatalogue() });
+            const { buildCatalog } = require('../services/commandCatalog');
+            res.json({ groups: buildCatalog() });
         } catch (err) {
             res.status(500).json({ error: `Could not read the command list: ${err.message}` });
         }
@@ -575,10 +580,18 @@ function createApp() {
      */
     app.get('/api/scene-themes', async (req, res) => {
         try {
+            const scenes = await sceneThemes.listScenes().catch(err => ({ ok: false, error: err.message }));
+
+            // Only asked once OBS has answered, so an unreachable OBS costs
+            // one connection attempt rather than two.
+            if (scenes.ok) {
+                scenes.current = await obs.currentProgramScene().catch(() => null);
+            }
+
             res.json({
                 mapping: sceneThemes.read(),
                 themes: await themeStore.listThemes(),
-                obs: await sceneThemes.listScenes().catch(err => ({ ok: false, error: err.message }))
+                obs: scenes
             });
         } catch (err) {
             res.status(500).json({ error: err.message });
@@ -797,7 +810,7 @@ function createApp() {
 
     app.get('/api/icons', (req, res) => {
         if (!iconPayload) {
-            iconPayload = themeStore.iconCatalogue()
+            iconPayload = themeStore.iconCatalog()
                 .map(icon => ({ ...icon, body: themeStore.iconBody(icon.name) }))
                 .filter(icon => icon.body);
         }

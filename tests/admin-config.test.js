@@ -155,7 +155,7 @@ test('a message that drops a placeholder is refused, not silently broken', async
     }
 });
 
-test('a good message edit is written and read back as customised', async () => {
+test('a good message edit is written and read back as customized', async () => {
     const { admin, sandbox } = freshAdmin();
 
     try {
@@ -166,7 +166,7 @@ test('a good message edit is written and read back as customised', async () => {
         const closed = queue.messages.find(entry => entry.key === 'closed');
 
         assert.strictEqual(closed.text, '@{{username}} the queue is shut, sorry!');
-        assert.strictEqual(closed.customised, true);
+        assert.strictEqual(closed.customized, true);
         assert.ok(closed.fallback.includes('{{username}}'), 'the original is kept for the reset button');
         assert.deepStrictEqual(closed.placeholders, ['{{username}}']);
     } finally {

@@ -45,7 +45,7 @@
   .rail-item.done:not(.active) .d-link-name { color: var(--ui-text-dimmed); }
 
   /* What's new is the one item that is an announcement rather than a place,
-     so it carries the accent colour even when it is not selected. */
+     so it carries the accent color even when it is not selected. */
   #nav-changelog:not(.active) { color: var(--ui-text-toned); }
   #nav-changelog > svg { color: var(--ui-primary); }
 
@@ -146,7 +146,7 @@
   .step-body strong { color: var(--ui-text-highlighted); font-weight: 600; }
   .step-body h3 { margin: 32px 0 12px; font-size: 20px; font-weight: 700; color: var(--ui-text-highlighted); }
 
-  /* Buttons, the Nuxt UI way: solid green for the thing to do, a soft grey for
+  /* Buttons, the Nuxt UI way: solid green for the thing to do, a soft gray for
      everything beside it. */
   button {
     font: inherit; font-weight: 500; font-size: 14px; line-height: 20px;
@@ -274,20 +274,127 @@
   }
   .dot.pop { animation: pop .42s cubic-bezier(.34, 1.56, .64, 1); }
 
-  .confetti {
-    position: fixed; top: -12px; width: 8px; height: 13px;
-    border-radius: 2px; pointer-events: none; z-index: 60;
-    animation: fall linear forwards;
-  }
-  @keyframes fall {
-    to { transform: translateY(102vh) rotate(var(--spin, 540deg)); opacity: .1; }
-  }
-
   @media (prefers-reduced-motion: reduce) {
     .progress span { transition: none; }
     .view.active { animation: none; }
     .dot.pop { animation: none; }
-    .confetti { display: none; }
+  }
+
+  /* A theme per OBS scene */
+
+  /* Linked to from the theme editor; clear of the sticky header on arrival */
+  #scene-themes-heading { scroll-margin-top: 96px; }
+
+  /* One line per scene, the way OBS lists them, with the theme it gets on the
+     right. A column of full-width selects each under its own label read as a
+     form to fill in, when most rows are meant to be left alone. */
+  .scene-map {
+    border: 1px solid var(--border-soft); border-radius: 8px;
+    background: var(--card); overflow: hidden;
+  }
+  .scene-map-head {
+    display: flex; align-items: baseline; justify-content: space-between; gap: 12px;
+    padding: 9px 14px; border-bottom: 1px solid var(--border-soft);
+    font-size: 12px; font-weight: 500; color: var(--faint);
+  }
+  .scene-map-count strong { color: var(--ui-text-highlighted); font-weight: 600; }
+
+  .scene-row {
+    display: flex; align-items: center; gap: 12px;
+    min-height: 48px; padding: 7px 8px 7px 14px;
+  }
+  .scene-row + .scene-row { border-top: 1px solid var(--border); }
+  .scene-row:hover { background: color-mix(in srgb, var(--ui-bg-elevated) 45%, transparent); }
+
+  .scene-name {
+    flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px;
+    font-size: 14px; font-weight: 500; color: var(--ui-text-highlighted);
+  }
+  .scene-name-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .scene-row:not(.mapped) .scene-name { color: var(--muted); font-weight: 400; }
+
+  .scene-live {
+    flex: none; display: inline-flex; align-items: center; gap: 5px;
+    font-size: 11px; font-weight: 600; letter-spacing: .02em;
+    color: var(--ui-error-text);
+    background: color-mix(in srgb, var(--ui-error) 10%, transparent);
+    border: 1px solid color-mix(in srgb, var(--ui-error) 25%, transparent);
+    border-radius: 999px; padding: 0 7px; line-height: 18px;
+  }
+  .scene-live::before {
+    content: ''; width: 6px; height: 6px; border-radius: 50%;
+    background: var(--ui-error); animation: live 2s ease-in-out infinite;
+  }
+  @keyframes live { 50% { opacity: .35; } }
+
+  /* The picker is a chip, not a form control: loud once a scene has a theme,
+     quiet while it is left as it is. */
+  button.theme-pick {
+    flex: none; display: inline-flex; align-items: center; gap: 8px;
+    width: 220px; max-width: 48%; padding: 5px 8px 5px 10px;
+    background: transparent; color: var(--muted);
+    border: 1px dashed var(--ui-border-accented); border-radius: 6px;
+    text-align: left; font-weight: 400;
+  }
+  button.theme-pick:hover:not(:disabled) { background: var(--ui-bg-elevated); color: var(--ui-text-highlighted); }
+  button.theme-pick[aria-expanded="true"] { border-color: var(--ui-primary); background: var(--ui-bg-elevated); }
+  .scene-row.mapped button.theme-pick {
+    border-style: solid; font-weight: 500;
+    color: var(--ui-text-highlighted);
+    border-color: color-mix(in srgb, var(--ui-primary) 35%, transparent);
+    background: color-mix(in srgb, var(--ui-primary) 9%, transparent);
+  }
+  .scene-row.mapped button.theme-pick:hover {
+    background: color-mix(in srgb, var(--ui-primary) 16%, transparent);
+  }
+  .scene-row.missing button.theme-pick {
+    border-color: color-mix(in srgb, var(--ui-warning) 45%, transparent);
+    background: color-mix(in srgb, var(--ui-warning) 10%, transparent);
+    color: var(--ui-warning-text);
+  }
+  .theme-pick-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .theme-pick svg { flex: none; width: 14px; height: 14px; opacity: .6; }
+  .theme-pick .theme-pick-icon { opacity: 1; color: var(--ui-primary); }
+  .scene-row.missing .theme-pick .theme-pick-icon { color: var(--ui-warning); }
+
+  .scene-actions { margin-top: 12px; }
+  .scene-dirty { font-size: 13px; color: var(--ui-warning-text); }
+
+  /* One menu, moved to whichever chip opened it. Fixed rather than absolute
+     so the card's overflow cannot clip it. */
+  .theme-menu {
+    position: fixed; z-index: 40; min-width: 220px; max-height: 320px;
+    overflow-y: auto; padding: 4px;
+    background: var(--ui-bg); border: 1px solid var(--ui-border-accented); border-radius: 8px;
+    box-shadow: var(--ui-shadow, 0 16px 40px rgba(0, 0, 0, .45));
+    animation: menu-in .12s ease-out;
+  }
+  .theme-menu:focus { outline: none; }
+  @keyframes menu-in { from { opacity: 0; transform: translateY(-3px); } }
+  .theme-menu-group {
+    padding: 8px 8px 4px; font-size: 11px; font-weight: 600;
+    letter-spacing: .04em; text-transform: uppercase; color: var(--faint);
+  }
+  .theme-menu-sep { height: 1px; margin: 4px 2px; background: var(--border-soft); }
+  .theme-option {
+    display: flex; align-items: center; gap: 8px;
+    padding: 6px 8px; border-radius: 5px; cursor: pointer;
+    font-size: 14px; color: var(--ui-text);
+  }
+  .theme-option.active { background: var(--ui-bg-elevated); color: var(--ui-text-highlighted); }
+  .theme-option-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .theme-option-hint { font-size: 12px; color: var(--faint); }
+  .theme-option svg { flex: none; width: 14px; height: 14px; color: var(--ui-primary); visibility: hidden; }
+  .theme-option[aria-selected="true"] svg { visibility: visible; }
+  .theme-option[aria-selected="true"] .theme-option-label { font-weight: 500; }
+
+  @media (max-width: 560px) {
+    .scene-row { flex-wrap: wrap; }
+    button.theme-pick { width: 100%; max-width: none; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .scene-live::before, .theme-menu { animation: none; }
   }
 
   /* Commands */
@@ -336,7 +443,7 @@
 
   /* The end of setup, as a docs-site tip rather than a banner: left-aligned
      with the page it belongs to, the tick beside the heading, and the address
-     on one line with what to do with it. A centred box with room to spare on
+     on one line with what to do with it. A centered box with room to spare on
      every side looked like it had drifted off the page. */
   .final {
     display: grid; grid-template-columns: 20px minmax(0, 1fr); column-gap: 12px;
@@ -650,15 +757,16 @@
         Open the theme editor
       </button></a></div>
 
-      <h3>A theme per OBS scene</h3>
+      <h3 id="scene-themes-heading">A theme per OBS scene</h3>
       <p>Give a scene a theme and Queueify switches to it the moment OBS cuts to that scene -
       a slim strip while you play, the big panel while you talk to chat. Scenes left on
       <em>Leave as-is</em> change nothing, so this is safe to fill in one scene at a time.</p>
 
       <div id="scene-themes"></div>
-      <div class="row" style="margin-top:10px">
-        <button id="btn-scene-themes-save" class="ghost">Save scene themes</button>
+      <div class="row scene-actions">
+        <button id="btn-scene-themes-save" disabled>Save scene themes</button>
         <button id="btn-scene-themes-reload" class="ghost" title="Ask OBS for its scenes again">Reload scenes</button>
+        <span class="scene-dirty hidden" id="scene-themes-dirty">Unsaved changes</span>
       </div>
       <div id="scene-themes-notes"></div>
     </div>
@@ -758,6 +866,10 @@ let sawComplete = false, obsScenes = [], migrating = false;
 // Set once the OBS box has been filled in from a status poll, so a later poll
 // cannot overwrite what the user is in the middle of typing.
 let obsPrefilled = false, obsAutoConnected = false, canvasPrefilled = false;
+// Once OBS has been asked, its answer owns the OBS step. The status poll only
+// sees .env, which says "configured" whether OBS is open or not, so letting it
+// repaint the step every 3s made it flicker against the live answer.
+let obsProbed = false, obsProbing = false, obsUnreachable = false;
 
 function setDot(name, cls, text) {
   const dot = $('dot-' + name);
@@ -874,11 +986,15 @@ async function refreshStatus() {
   setDot('reward', status.reward.created ? 'done' : '', status.reward.created ? 'Created' : 'Not created');
   $('btn-reward').disabled = !status.twitch.connected || status.reward.created;
 
-  setDot('obs', status.obs.configured ? 'done' : '', status.obs.configured ? 'Configured' : 'Not configured');
+  if (!obsProbed) {
+    setDot('obs', status.obs.configured ? 'done' : '', status.obs.configured ? 'Configured' : 'Not configured');
+  }
   if (!obsPrefilled) {
     obsPrefilled = true;
     if (status.obs.ip) $('obs-ip').value = status.obs.ip;
     if (status.obs.port) $('obs-port').value = status.obs.port;
+    // Only shows that one is set; the password itself never leaves .env.
+    if (status.obs.hasPassword) $('obs-pass').placeholder = 'saved — type a new one to replace it';
     savedObsScene = status.obs.scene || '';
     savedObsSource = status.obs.source || '';
 
@@ -918,7 +1034,6 @@ async function refreshStatus() {
 
 
   if (status.complete) {
-    if (!sawComplete) celebrate();
     sawComplete = true;
     setupFinished = true;
     updateFinalCard();
@@ -991,7 +1106,7 @@ function watchTwitch() {
       const friendly = {
         denied: 'You denied the request on Twitch. Try connecting again.',
         expired: 'The code expired before it was approved. Try again for a new one.',
-        cancelled: 'Cancelled.',
+        canceled: 'Canceled.',
         network: 'Lost connection to Twitch. Check your internet and try again.',
         config: 'Missing or invalid Twitch client ID.'
       };
@@ -1105,20 +1220,27 @@ async function saveObs() {
   const source = $('obs-source').value;
   if (!scene || !source) return false;
 
+  const settings = {
+    OBS_WEBSOCKET_IP: $('obs-ip').value.trim(),
+    OBS_WEBSOCKET_PORT: $('obs-port').value.trim(),
+    OBS_SCENE: scene,
+    OBS_SOURCE: source
+  };
+  // The box starts empty even when a password is saved - the page is never
+  // sent it - so empty means "keep it". Sending it anyway would wipe the saved
+  // password the moment somebody picked a scene, and !tr / !bc with it.
+  if ($('obs-pass').value) settings.OBS_WEBSOCKET_PASSWORD = $('obs-pass').value;
+
   try {
     await api('/api/env', {
       method: 'POST',
-      body: JSON.stringify({
-        OBS_WEBSOCKET_IP: $('obs-ip').value.trim(),
-        OBS_WEBSOCKET_PORT: $('obs-port').value.trim(),
-        OBS_WEBSOCKET_PASSWORD: $('obs-pass').value,
-        OBS_SCENE: scene,
-        OBS_SOURCE: source
-      })
+      body: JSON.stringify(settings)
     });
 
     savedObsScene = scene;
     savedObsSource = source;
+    // The choices came from a live OBS, so this is as confirmed as it gets.
+    setDot('obs', 'done', 'Configured');
     note('obs-notes', 'Saved "' + escapeHtml(source) + '" in "' + escapeHtml(scene) +
       '". Queueify uses it on the next !tr / !bc - no restart needed.', 'good');
     await refreshStatus();
@@ -1135,8 +1257,17 @@ $('obs-scene').addEventListener('change', e => {
 });
 $('obs-source').addEventListener('change', saveObs);
 
+// A silent probe that finds OBS closed. Saved choices are not wrong just
+// because OBS is not running right now, so they should not read as unset.
+function obsNotOpen() {
+  setDot('obs', '', savedObsScene ? 'Saved - OBS is not open' : 'Not configured');
+}
+
 async function connectObs(options) {
   const silent = Boolean(options && options.silent);
+  // A retry in the background repaints nothing until it has an answer, or
+  // every refocus of the tab would blink the step through "Connecting...".
+  const retry = Boolean(options && options.retry);
   const button = $('btn-obs-test');
   const ip = $('obs-ip').value.trim();
   const port = $('obs-port').value.trim();
@@ -1146,9 +1277,11 @@ async function connectObs(options) {
     return;
   }
 
+  obsProbed = true;
+  obsProbing = true;
   button.disabled = true;
   if (!silent) note('obs-notes', '');
-  setDot('obs', 'busy', 'Connecting...');
+  if (!retry) setDot('obs', 'busy', 'Connecting...');
 
   try {
     const result = await api('/api/obs/test', {
@@ -1157,11 +1290,14 @@ async function connectObs(options) {
     });
 
     if (!result.ok) {
+      obsUnreachable = true;
+      // Still closed: the step already says so.
+      if (retry) return;
       // The page probes on load, and .env ships with a default address: a
       // first-run visitor who has not touched OBS yet should not be met with
       // a red step for something they never asked for.
       if (silent) {
-        setDot('obs', '', 'Not configured');
+        obsNotOpen();
         return;
       }
       setDot('obs', 'error', 'Not connected');
@@ -1169,6 +1305,7 @@ async function connectObs(options) {
       return;
     }
 
+    obsUnreachable = false;
     obsScenes = result.scenes || [];
     const scene = fillSelect($('obs-scene'), obsScenes.map(s => s.scene), savedObsScene);
     const source = fillSources(scene, savedObsSource);
@@ -1200,18 +1337,28 @@ async function connectObs(options) {
     setDot('obs', '', 'Connected - pick your scene');
     note('obs-notes', 'Connected. Pick the scene and the browser source your widget uses - it saves as you choose.', 'good');
   } catch (err) {
+    obsUnreachable = true;
+    if (retry) return;
     if (silent) {
-      setDot('obs', '', 'Not configured');
+      obsNotOpen();
       return;
     }
     setDot('obs', 'error', 'Not connected');
     note('obs-notes', err.message, 'bad');
   } finally {
+    obsProbing = false;
     button.disabled = false;
   }
 }
 
 $('btn-obs-test').addEventListener('click', () => connectObs());
+
+// No timer: with OBS closed there is nothing to find, so OBS is only asked
+// again when the user comes back to this tab - usually straight after opening
+// OBS. Nothing is re-asked while OBS is answering, or while a probe is out.
+window.addEventListener('focus', () => {
+  if (obsUnreachable && !obsProbing) connectObs({ silent: true, retry: true });
+});
 
 $('btn-quality').addEventListener('click', async () => {
   const button = $('btn-quality');
@@ -1307,7 +1454,14 @@ let view = null;
  * it you are looking at. The name goes in the address bar, so a refresh comes
  * back to the same place and the terminal can link straight to a section.
  */
+// Addresses for a part of a section rather than the top of it, so another page
+// can link straight to the thing it means - the theme editor's "Assign to OBS
+// scenes" lands on the scene list, not on a page it has to be found on.
+const ANCHORS = { 'scene-themes': 'themes' };
+
 function showView(name, options = {}) {
+  const anchor = ANCHORS[name] ? $(name + '-heading') : null;
+  if (anchor) name = ANCHORS[name];
   if (!VIEWS.includes(name)) name = VIEWS[0];
   view = name;
 
@@ -1323,11 +1477,24 @@ function showView(name, options = {}) {
   if (name === 'changelog') loadChangelog();
   // Scenes and themes both change outside this page, so they are re-read every
   // time the section is opened rather than once at startup.
-  if (name === 'themes') loadSceneThemes();
+  const loading = name === 'themes' ? loadSceneThemes() : null;
 
   updateNextBar();
   updateFinalCard();
-  window.scrollTo({ top: 0, behavior: options.jumped ? 'smooth' : 'auto' });
+
+  if (anchor) {
+    anchor.scrollIntoView({ block: 'start' });
+
+    // Whatever sits under the heading may still be loading, and until it
+    // arrives the page can be too short to scroll that far. Go again once it
+    // has - unless the reader has scrolled somewhere of their own meanwhile.
+    const at = window.scrollY;
+    Promise.resolve(loading).then(() => {
+      if (window.scrollY === at) anchor.scrollIntoView({ block: 'start' });
+    });
+  } else {
+    window.scrollTo({ top: 0, behavior: options.jumped ? 'smooth' : 'auto' });
+  }
 }
 
 for (const button of document.querySelectorAll('.rail-item')) {
@@ -1382,15 +1549,44 @@ const LABELS = {
 /* --------------------------------------------------- a theme per OBS scene */
 
 let sceneThemes = { mapping: {}, themes: [], obs: null };
+// What the list shows: the saved mapping until somebody picks something, and
+// what Save sends. Kept apart so "Unsaved changes" means exactly that.
+let sceneDraft = {};
 let loadingSceneThemes = false;
 
+const SCENE_ICONS = {
+  check: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"></path></svg>',
+  chevron: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg>',
+  warning: '<svg class="theme-pick-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21.7 18-8-14a2 2 0 0 0-3.4 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.7-3z"></path><path d="M12 9v4"></path><path d="M12 17h.01"></path></svg>'
+};
+
+function mappableScenes() {
+  return sceneThemes.obs && sceneThemes.obs.ok ? sceneThemes.obs.scenes : [];
+}
+
+function sceneThemesDirty() {
+  return mappableScenes().some(scene => (sceneDraft[scene] || '') !== (sceneThemes.mapping[scene] || ''));
+}
+
+function findTheme(name) {
+  return sceneThemes.themes.find(theme => theme.name === name) || null;
+}
+
+function updateSceneDirty() {
+  const dirty = sceneThemesDirty();
+  $('btn-scene-themes-save').disabled = !dirty;
+  $('scene-themes-dirty').classList.toggle('hidden', !dirty);
+}
+
 /**
- * The scene-to-theme table.
+ * The scene-to-theme list.
  *
  * Nothing here is compulsory, so an unmapped scene is the default and reads as
  * "Leave as-is" rather than as an empty box waiting to be filled in.
  */
 function renderSceneThemes() {
+  closeThemeMenu();
+
   const host = $('scene-themes');
   const obs = sceneThemes.obs;
 
@@ -1401,51 +1597,234 @@ function renderSceneThemes() {
       (obs && obs.error ? '<span class="why">' + escapeHtml(obs.error) + '</span>' : '') +
       '</div>';
     $('btn-scene-themes-save').disabled = true;
+    $('scene-themes-dirty').classList.add('hidden');
     return;
   }
 
   if (!obs.scenes.length) {
     host.innerHTML = '<div class="note">OBS has no scenes yet.</div>';
     $('btn-scene-themes-save').disabled = true;
+    $('scene-themes-dirty').classList.add('hidden');
     return;
   }
 
-  $('btn-scene-themes-save').disabled = false;
-  host.innerHTML = '';
+  const mapped = obs.scenes.filter(scene => sceneDraft[scene]).length;
+
+  const map = document.createElement('div');
+  map.className = 'scene-map';
+  map.innerHTML = '<div class="scene-map-head"><span>Scene</span>' +
+    '<span class="scene-map-count"><strong>' + mapped + '</strong> of ' + obs.scenes.length +
+    ' switch theme</span></div>';
 
   for (const scene of obs.scenes) {
+    const name = sceneDraft[scene] || '';
+    const theme = name ? findTheme(name) : null;
+
     const row = document.createElement('div');
-    row.className = 'field';
+    row.className = 'scene-row' + (name ? ' mapped' : '') + (name && !theme ? ' missing' : '');
 
-    const label = document.createElement('label');
-    label.textContent = scene;
-
-    const select = document.createElement('select');
-    select.dataset.scene = scene;
-    select.title = 'The theme to switch to when OBS cuts to "' + scene + '"';
-
-    const none = document.createElement('option');
-    none.value = '';
-    none.textContent = 'Leave as-is';
-    select.appendChild(none);
-
-    for (const theme of sceneThemes.themes) {
-      const option = document.createElement('option');
-      option.value = theme.name;
-      option.textContent = theme.label + (theme.builtIn ? ' (built-in)' : '');
-      select.appendChild(option);
+    const label = document.createElement('div');
+    label.className = 'scene-name';
+    label.innerHTML = '<span class="scene-name-text"></span>';
+    label.firstChild.textContent = scene;
+    label.firstChild.title = scene;
+    if (scene === obs.current) {
+      label.insertAdjacentHTML('beforeend', '<span class="scene-live" title="The scene OBS is showing right now">On screen</span>');
     }
 
-    select.value = sceneThemes.mapping[scene] || '';
+    const pick = document.createElement('button');
+    pick.type = 'button';
+    pick.className = 'theme-pick';
+    pick.dataset.scene = scene;
+    pick.setAttribute('aria-haspopup', 'listbox');
+    pick.setAttribute('aria-expanded', 'false');
 
-    row.append(label, select);
-    host.appendChild(row);
+    // A theme deleted since it was picked still shows, by its name, so the
+    // row says what is wrong instead of quietly reading "Leave as-is".
+    const text = !name ? 'Leave as-is' : theme ? theme.label : name + ' (deleted)';
+    pick.innerHTML = (name && !theme ? SCENE_ICONS.warning : '') +
+      '<span class="theme-pick-label"></span>' + SCENE_ICONS.chevron;
+    pick.querySelector('.theme-pick-label').textContent = text;
+    pick.title = name && !theme
+      ? 'The "' + name + '" theme is gone - pick another, or Leave as-is'
+      : 'The theme to switch to when OBS cuts to "' + scene + '"';
+    pick.setAttribute('aria-label', scene + ': ' + text);
+
+    pick.addEventListener('click', () => {
+      if (themeMenu && themeMenu.button === pick) closeThemeMenu();
+      else openThemeMenu(pick, scene);
+    });
+    pick.addEventListener('keydown', event => {
+      if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+        event.preventDefault();
+        openThemeMenu(pick, scene);
+      }
+    });
+
+    row.append(label, pick);
+    map.appendChild(row);
   }
+
+  host.innerHTML = '';
+  host.appendChild(map);
+  updateSceneDirty();
+}
+
+/* A listbox of its own rather than a <select>, so a theme picker can be a
+   quiet chip on the end of a row instead of a full-width form control. */
+
+let themeMenu = null;
+
+function closeThemeMenu(refocus) {
+  if (!themeMenu) return;
+  const { menu, button } = themeMenu;
+  themeMenu = null;
+
+  menu.remove();
+  button.setAttribute('aria-expanded', 'false');
+  button.removeAttribute('aria-controls');
+  document.removeEventListener('pointerdown', onThemeMenuOutside, true);
+  window.removeEventListener('scroll', onThemeMenuScroll, true);
+  window.removeEventListener('resize', onThemeMenuScroll);
+
+  if (refocus) button.focus();
+}
+
+function onThemeMenuOutside(event) {
+  if (!themeMenu) return;
+  if (themeMenu.menu.contains(event.target) || themeMenu.button.contains(event.target)) return;
+  closeThemeMenu();
+}
+
+// A fixed menu would be left floating where the chip used to be.
+function onThemeMenuScroll(event) {
+  if (themeMenu && event.target !== themeMenu.menu) closeThemeMenu();
+}
+
+function openThemeMenu(button, scene) {
+  closeThemeMenu();
+
+  const menu = document.createElement('div');
+  menu.className = 'theme-menu';
+  menu.id = 'theme-menu';
+  menu.tabIndex = -1;
+  menu.setAttribute('role', 'listbox');
+  menu.setAttribute('aria-label', 'Theme for ' + scene);
+
+  const current = sceneDraft[scene] || '';
+  const options = [];
+
+  const addOption = (value, label, hint) => {
+    const option = document.createElement('div');
+    option.className = 'theme-option';
+    option.id = 'theme-option-' + options.length;
+    option.dataset.value = value;
+    option.setAttribute('role', 'option');
+    option.setAttribute('aria-selected', String(value === current));
+    option.innerHTML = SCENE_ICONS.check + '<span class="theme-option-label"></span>' +
+      (hint ? '<span class="theme-option-hint">' + hint + '</span>' : '');
+    option.querySelector('.theme-option-label').textContent = label;
+    option.addEventListener('pointermove', () => setActive(options.indexOf(option)));
+    option.addEventListener('click', () => choose(value));
+    options.push(option);
+    menu.appendChild(option);
+  };
+
+  const addGroup = (title, themes) => {
+    if (!themes.length) return;
+    menu.insertAdjacentHTML('beforeend', '<div class="theme-menu-sep" role="presentation"></div>' +
+      '<div class="theme-menu-group" role="presentation">' + title + '</div>');
+    for (const theme of themes) addOption(theme.name, theme.label);
+  };
+
+  addOption('', 'Leave as-is', 'no change');
+  addGroup('Your themes', sceneThemes.themes.filter(theme => !theme.builtIn));
+  addGroup('Built-in', sceneThemes.themes.filter(theme => theme.builtIn));
+
+  function setActive(index) {
+    if (index < 0 || index >= options.length || index === themeMenu.active) return;
+    if (themeMenu.active >= 0) options[themeMenu.active].classList.remove('active');
+    themeMenu.active = index;
+    options[index].classList.add('active');
+    options[index].scrollIntoView({ block: 'nearest' });
+    menu.setAttribute('aria-activedescendant', options[index].id);
+  }
+
+  function choose(value) {
+    if (value) sceneDraft[scene] = value;
+    else delete sceneDraft[scene];
+
+    closeThemeMenu();
+    note('scene-themes-notes', '');
+    renderSceneThemes();
+
+    // The list was redrawn, so the chip that had focus is a new element.
+    const again = [...document.querySelectorAll('#scene-themes .theme-pick')]
+      .find(pick => pick.dataset.scene === scene);
+    if (again) again.focus();
+  }
+
+  menu.addEventListener('keydown', event => {
+    const { active } = themeMenu;
+
+    if (event.key === 'ArrowDown') setActive(Math.min(active + 1, options.length - 1));
+    else if (event.key === 'ArrowUp') setActive(Math.max(active - 1, 0));
+    else if (event.key === 'Home') setActive(0);
+    else if (event.key === 'End') setActive(options.length - 1);
+    else if (event.key === 'Enter' || event.key === ' ') choose(options[active].dataset.value);
+    else if (event.key === 'Escape') closeThemeMenu(true);
+    else if (event.key === 'Tab') { closeThemeMenu(true); return; }
+    else if (event.key.length === 1 && /\S/.test(event.key)) {
+      // Type a letter to jump to the next theme starting with it
+      const letter = event.key.toLowerCase();
+      for (let step = 1; step <= options.length; step += 1) {
+        const index = (active + step) % options.length;
+        if (options[index].textContent.trim().toLowerCase().startsWith(letter)) {
+          setActive(index);
+          break;
+        }
+      }
+    } else return;
+
+    event.preventDefault();
+  });
+
+  document.body.appendChild(menu);
+  themeMenu = { menu, button, active: -1 };
+
+  // Below the chip, or above it when there is more room there; never taller
+  // than the stylesheet's cap, however many themes there are.
+  const rect = button.getBoundingClientRect();
+  menu.style.minWidth = rect.width + 'px';
+  const cap = parseFloat(getComputedStyle(menu).maxHeight) || 320;
+  const below = window.innerHeight - rect.bottom - 12;
+  const above = rect.top - 12;
+  const downwards = Math.min(menu.scrollHeight, cap) <= below || below >= above;
+  menu.style.maxHeight = Math.max(120, Math.min(cap, downwards ? below : above)) + 'px';
+
+  const width = menu.offsetWidth;
+  const height = menu.offsetHeight;
+  menu.style.top = (downwards ? rect.bottom + 4 : Math.max(8, rect.top - height - 4)) + 'px';
+  menu.style.left = Math.max(8, Math.min(rect.right - width, window.innerWidth - width - 8)) + 'px';
+
+  button.setAttribute('aria-expanded', 'true');
+  button.setAttribute('aria-controls', menu.id);
+
+  setActive(Math.max(0, options.findIndex(option => option.dataset.value === current)));
+  menu.focus({ preventScroll: true });
+
+  document.addEventListener('pointerdown', onThemeMenuOutside, true);
+  window.addEventListener('scroll', onThemeMenuScroll, true);
+  window.addEventListener('resize', onThemeMenuScroll);
 }
 
 async function loadSceneThemes() {
   if (loadingSceneThemes) return;
   loadingSceneThemes = true;
+
+  // A reload is for picking up a scene added in OBS; it should not throw away
+  // choices that have not been saved yet.
+  const keepDraft = sceneThemesDirty();
 
   try {
     sceneThemes = await api('/api/scene-themes');
@@ -1455,6 +1834,7 @@ async function loadSceneThemes() {
     loadingSceneThemes = false;
   }
 
+  if (!keepDraft) sceneDraft = Object.assign({}, sceneThemes.mapping);
   renderSceneThemes();
 }
 
@@ -1464,9 +1844,11 @@ $('btn-scene-themes-reload').addEventListener('click', () => {
 });
 
 $('btn-scene-themes-save').addEventListener('click', async () => {
+  // Only scenes OBS still has, as before: a scene renamed or deleted in OBS
+  // takes its entry with it on the next save.
   const mapping = {};
-  for (const select of document.querySelectorAll('#scene-themes select')) {
-    if (select.value) mapping[select.dataset.scene] = select.value;
+  for (const scene of mappableScenes()) {
+    if (sceneDraft[scene]) mapping[scene] = sceneDraft[scene];
   }
 
   const button = $('btn-scene-themes-save');
@@ -1479,19 +1861,24 @@ $('btn-scene-themes-save').addEventListener('click', async () => {
     });
 
     sceneThemes.mapping = result.mapping;
+    sceneDraft = Object.assign({}, result.mapping);
+    renderSceneThemes();
 
     const count = Object.keys(result.mapping).length;
     const applied = result.applied && result.applied.changed
       ? ' Switched to "' + escapeHtml(result.applied.theme) + '" for the scene OBS is on now.'
       : '';
+    const dropped = result.dropped && result.dropped.length
+      ? ' Left out ' + result.dropped.map(entry => '"' + escapeHtml(entry.scene) + '"').join(', ') +
+        ' - that theme no longer exists.'
+      : '';
 
-    note('scene-themes-notes', count
+    note('scene-themes-notes', (count
       ? 'Saved. ' + count + ' scene' + (count === 1 ? '' : 's') + ' will switch theme automatically.' + applied
-      : 'Saved. No scene changes the theme any more.', 'good');
+      : 'Saved. No scene changes the theme any more.') + dropped, 'good');
   } catch (err) {
     note('scene-themes-notes', escapeHtml(err.message), 'bad');
-  } finally {
-    button.disabled = false;
+    updateSceneDirty();
   }
 });
 
@@ -1593,23 +1980,6 @@ function wirePath(count) {
   for (let index = 0; index < count; index++) watcher.observe($('release-' + index));
 }
 
-// One burst, the first time everything required is finished.
-function celebrate() {
-  const colors = ['#9147ff', '#24d17e', '#f5a524', '#ff41a6', '#4ac9ff'];
-
-  for (let i = 0; i < 70; i++) {
-    const bit = document.createElement('div');
-    bit.className = 'confetti';
-    bit.style.left = Math.random() * 100 + 'vw';
-    bit.style.background = colors[i % colors.length];
-    bit.style.animationDuration = (2.4 + Math.random() * 1.8) + 's';
-    bit.style.animationDelay = (Math.random() * .5) + 's';
-    bit.style.setProperty('--spin', (Math.random() * 1080 - 540) + 'deg');
-    bit.addEventListener('animationend', () => bit.remove());
-    document.body.appendChild(bit);
-  }
-}
-
 let commandGroups = null;
 
 const WHO = {
@@ -1709,7 +2079,7 @@ loadChangelog();
   const asked = location.hash.slice(1);
   const status = await refreshStatus();
 
-  if (VIEWS.includes(asked)) {
+  if (VIEWS.includes(asked) || ANCHORS[asked]) {
     showView(asked, { silent: true });
   } else {
     showView(REQUIRED.find(name => !done.has(name)) || 'themes', { silent: !status });

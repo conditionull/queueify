@@ -238,7 +238,8 @@ async function main() {
 
   // Registered before connecting, and kept whether or not that succeeds: these
   // are listeners on the OBS client itself, so opening OBS an hour from now
-  // still resizes and reloads the widget.
+  // still resizes and reloads the widget - keepConnected() below is what
+  // actually notices it opening.
   widgetLayout.watchObsResizes();
   widgetLayout.refreshOnConnect();
 
@@ -258,11 +259,15 @@ async function main() {
       }
     } catch (err) {
       console.warn("Could not connect to OBS yet:", err.message);
-      console.warn("Queueify will retry on the next widget command.");
+      console.warn("Queueify connects on its own as soon as OBS is open.");
     }
   } else {
     console.log('OBS is not set up yet. The dashboard link below adds it - no restart needed afterwards.');
   }
+
+  // Started after the first attempt, so a boot with OBS already open does not
+  // race it. Knocks only while OBS is closed.
+  obs.keepConnected();
 
   const client = createClient();
   client.on('message', (channel, tags, message, self) => handleMessage(client, channel, tags, message, self));

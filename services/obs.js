@@ -10,8 +10,16 @@ let activeCredentials = null;
 // One in-flight connect attempt, shared by concurrent commands.
 let connecting = null;
 
+// How often to knock while OBS is closed. A refused connection on this machine
+// fails in well under a millisecond, so this costs next to nothing.
+const RECONNECT_MS = 10000;
+let reconnectMs = RECONNECT_MS;
+let reconnecting = false;
+let reconnectTimer = null;
+
 obs.on("ConnectionClosed", () => {
     activeCredentials = null;
+    scheduleReconnect();
 });
 
 function credentialsOf(config) {
@@ -128,6 +136,60 @@ async function connect() {
     const config = await ensureConnected();
     console.log(`Connected to OBS at ${config.ip}:${config.port}`);
     return config;
+}
+
+/**
+ * Connects whenever OBS opens, without waiting for a chat command.
+ *
+ * OBS does not announce that it has started, so the only way to notice is to
+ * knock - but only while there is no connection. Once OBS answers it pushes
+ * every scene change and resize itself, and nothing is asked again until it
+ * closes. Without this, starting Queueify before OBS (or restarting OBS
+ * mid-stream) left scene themes and widget sizing dead until someone happened
+ * to type !tr or !bc.
+ */
+function keepConnected({ retryMs = RECONNECT_MS } = {}) {
+    reconnecting = true;
+    reconnectMs = retryMs;
+    scheduleReconnect();
+
+    return () => {
+        reconnecting = false;
+        clearTimeout(reconnectTimer);
+        reconnectTimer = null;
+    };
+}
+
+// One timer at most. A failed attempt closes its socket, and that close lands
+// back here - so the timer, not the event, is what keeps attempts from stacking.
+// No `obs.identified` check here: ConnectionClosed fires before the client
+// clears that flag, so OBS closing would read as still connected and nothing
+// would ever reconnect. The timer checks it instead, once it is accurate.
+function scheduleReconnect() {
+    if (!reconnecting || reconnectTimer) return;
+
+    reconnectTimer = setTimeout(async () => {
+        reconnectTimer = null;
+        if (!reconnecting || obs.identified) return;
+
+        // Re-read every time: OBS details added from the dashboard later are
+        // picked up without a restart.
+        if (!getObsConfig().connectable) {
+            scheduleReconnect();
+            return;
+        }
+
+        try {
+            await connect();
+        } catch {
+            // Still closed. The close event has usually re-armed the timer
+            // already; this covers a failure that never opened a socket.
+            scheduleReconnect();
+        }
+    }, reconnectMs);
+
+    // A waiting reconnect is no reason to keep the process alive.
+    reconnectTimer.unref?.();
 }
 
 async function setTransform(transform) {
@@ -554,6 +616,7 @@ function describeFailure(err) {
 
 module.exports = {
     connect,
+    keepConnected,
     ensureConnected,
     moveSource,
     getTransform,

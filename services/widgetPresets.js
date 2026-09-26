@@ -19,7 +19,7 @@
  * worked out at the moment it is recalled.
  */
 
-// OBS packs alignment into bits: 1 left, 2 right, 4 top, 8 bottom, 0 centre.
+// OBS packs alignment into bits: 1 left, 2 right, 4 top, 8 bottom, 0 center.
 // 5 is top-left, which is what a scene item has unless somebody changed it.
 const TOP_LEFT = 5;
 
@@ -28,13 +28,13 @@ const TOP_LEFT = 5;
  *
  * Only used when a design's shape has changed since it was framed, and the
  * widget can no longer be exactly the size it was: `!bc` then keeps its bottom
- * edge and its centre line, `!tr` its top and right. Anchoring by the top-left
+ * edge and its center line, `!tr` its top and right. Anchoring by the top-left
  * corner instead - which is what OBS does on its own - is what makes a widget
  * appear to wander off the bottom of the screen.
  */
 const KINDS = {
     topright: { command: '!tr', holds: 'the top-right corner', x: 'end', y: 'start' },
-    bottomcenter: { command: '!bc', holds: 'the bottom centre', x: 'center', y: 'end' }
+    bottomcenter: { command: '!bc', holds: 'the bottom center', x: 'center', y: 'end' }
 };
 
 function kindOf(name) {
@@ -91,7 +91,7 @@ const NO_ANCHOR = { x: 'start', y: 'start' };
  * Where a rectangle's top-left corner goes when the widget cannot be exactly
  * the size it was framed at.
  *
- * `!bc` holds the bottom edge and the centre line, `!tr` the top and the
+ * `!bc` holds the bottom edge and the center line, `!tr` the top and the
  * right. Without this the widget keeps its top-left corner and shrinks away
  * from the bottom of the screen, which is what "it moved" looks like.
  */

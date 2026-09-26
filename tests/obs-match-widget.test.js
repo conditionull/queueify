@@ -190,7 +190,7 @@ test('a source that is not a browser source is refused, by name', () => {
     }, { inputKind: 'image_source' });
 });
 
-/** Framed filling a 680 x 192 source at 1:1, bottom-centred on 1920 x 1080. */
+/** Framed filling a 680 x 192 source at 1:1, bottom-centered on 1920 x 1080. */
 const framedBottom = {
     x: 620, y: 888,
     width: 680, height: 192,
@@ -278,7 +278,7 @@ test('a widget that has to change size keeps the edges its command names', () =>
         const height = resize.payload.inputSettings.height * wanted.scaleY;
         const width = resize.payload.inputSettings.width * wanted.scaleX;
 
-        // Bottom edge and centre line held, which is what "bottom centre" means.
+        // Bottom edge and center line held, which is what "bottom center" means.
         assert.ok(Math.abs((wanted.positionY + height) - (888 + 192)) < 0.5);
         assert.ok(Math.abs((wanted.positionX + width / 2) - (620 + 340)) < 0.5);
     });
@@ -328,11 +328,11 @@ test('switching back and forth between two themes never drifts', () => {
             const shownWidth = now.sourceWidth * now.scaleX;
             const shownHeight = now.sourceHeight * now.scaleY;
 
-            // Bottom edge and centre line, which is what !bc framed.
+            // Bottom edge and center line, which is what !bc framed.
             assert.ok(Math.abs((now.positionY + shownHeight) - (theme.place.y + theme.place.height)) < 1,
                 'the bottom edge drifted to ' + (now.positionY + shownHeight));
             assert.ok(Math.abs((now.positionX + shownWidth / 2) - (theme.place.x + theme.place.width / 2)) < 1,
-                'the centre line drifted to ' + (now.positionX + shownWidth / 2));
+                'the center line drifted to ' + (now.positionX + shownWidth / 2));
 
             assert.strictEqual(now.scaleX, now.scaleY, 'the widget came back stretched');
         }

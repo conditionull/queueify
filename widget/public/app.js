@@ -25,7 +25,7 @@ function applyTheme(theme) {
 /**
  * Lays the widget out larger instead of letting OBS stretch it.
  *
- * OBS rasterises a browser source at its configured pixel size, so a source
+ * OBS rasterizes a browser source at its configured pixel size, so a source
  * enlarged in the scene is an upscaled bitmap - soft edges, mushy text. `zoom`
  * re-runs layout at the bigger size, so every pixel is drawn rather than
  * interpolated; the scene item is scaled back down to keep the same footprint.
@@ -172,7 +172,7 @@ async function loadThemeProperties() {
         // Keep the high-level duration available to CSS animations.
         // More precise distances are computed per-song in `updateSong()`.
         const pauseDuration = props.scroll.pauseDuration || 0;
-        // Default behaviour: treat `speed` as a nominal time value used
+        // Default behavior: treat `speed` as a nominal time value used
         // as a baseline for total animation duration when distance is unknown.
         const baseline = props.scroll.speed;
         const totalDuration = baseline + pauseDuration + baseline;
@@ -360,7 +360,7 @@ async function updateSong() {
             `${totalDuration}s`
         );
 
-        // Straight away, unlike `scrolling` below: it puts a centred or
+        // Straight away, unlike `scrolling` below: it puts a centered or
         // right-aligned title back at its start on browsers without `safe`
         // alignment, and a quarter of a second late shows the middle of the
         // title on the first frames of every song.

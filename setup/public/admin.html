@@ -693,7 +693,7 @@ function cooldownStepper(value) {
  * wide and already hold the alias field and a Reset, and the labels only make
  * sense written out, which there is no room for twenty-odd times over.
  *
- * Resolves to the new pair, or null if it was cancelled. Nothing is saved here
+ * Resolves to the new pair, or null if it was canceled. Nothing is saved here
  * - it edits the draft, and the savebar writes it like every other change.
  */
 function editCooldowns(command, current) {
@@ -912,7 +912,7 @@ async function renderMessages() {
       const label = document.createElement('div');
       label.className = 'name';
       label.innerHTML = escapeHtml(entry.key) +
-        (entry.customised ? ' <span class="tag edited">edited</span>' : '') +
+        (entry.customized ? ' <span class="tag edited">edited</span>' : '') +
         (entry.placeholders.length
           ? '<span class="why mono">' + entry.placeholders.map(escapeHtml).join('  ') + '</span>'
           : '');

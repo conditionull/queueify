@@ -5,7 +5,7 @@ const store = require('../services/themeStore');
 
 /**
  * The progress bar as a waveform: a row of lines of differing heights, with
- * the played part in the fill colour.
+ * the played part in the fill color.
  *
  * Both shapes keep the same contract with the widget runtime - `.progress` is
  * the played part and app.js sets its width as a percentage - so the waveform

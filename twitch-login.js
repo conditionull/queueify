@@ -65,8 +65,8 @@ const BROADCASTER = process.env.TWITCH_BROADCASTER_USERNAME;
         console.error('');
 
         switch (err.code) {
-            case 'cancelled':
-                console.error('Cancelled.');
+            case 'canceled':
+                console.error('Canceled.');
                 break;
             case 'denied':
                 console.error('Authorization was denied on Twitch. Re-run this command and click Authorize.');

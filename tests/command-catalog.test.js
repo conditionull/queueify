@@ -6,7 +6,7 @@ const test = require('node:test');
 // Nothing is listening here, so the file-writing fallback is what runs.
 process.env.QUEUEIFY_WIDGET_URL = 'http://127.0.0.1:9';
 
-const { buildCatalogue, GROUPS, HELP } = require('../services/commandCatalogue');
+const { buildCatalog, GROUPS, HELP } = require('../services/commandCatalog');
 
 const COMMANDS_DIR = path.join(__dirname, '..', 'commands');
 
@@ -18,7 +18,7 @@ function commandModules() {
 }
 
 test('the dashboard lists every command chat answers to', () => {
-    const listed = buildCatalogue().flatMap(group => group.commands).map(command => command.name).sort();
+    const listed = buildCatalog().flatMap(group => group.commands).map(command => command.name).sort();
     const actual = commandModules().map(command => command.name).sort();
 
     assert.deepStrictEqual(listed, actual);
@@ -33,12 +33,12 @@ test('every command is documented', () => {
         .map(command => command.name)
         .filter(name => !HELP[name]?.summary);
 
-    assert.deepStrictEqual(missing, [], `add these to services/commandCatalogue.js: ${missing.join(', ')}`);
+    assert.deepStrictEqual(missing, [], `add these to services/commandCatalog.js: ${missing.join(', ')}`);
 });
 
 test('who may run a command comes from the command itself', () => {
     const commands = Object.fromEntries(
-        buildCatalogue().flatMap(group => group.commands).map(command => [command.name, command])
+        buildCatalog().flatMap(group => group.commands).map(command => [command.name, command])
     );
 
     for (const command of commandModules()) {
@@ -59,9 +59,9 @@ test('who may run a command comes from the command itself', () => {
 });
 
 test('commands arrive grouped, sorted and with their aliases', () => {
-    const catalogue = buildCatalogue();
+    const catalog = buildCatalog();
 
-    for (const { group, commands } of catalogue) {
+    for (const { group, commands } of catalog) {
         assert.ok(GROUPS.includes(group), `unexpected group ${group}`);
         assert.deepStrictEqual(
             commands.map(command => command.name),
@@ -70,7 +70,7 @@ test('commands arrive grouped, sorted and with their aliases', () => {
         );
     }
 
-    const queue = catalogue.flatMap(group => group.commands).find(command => command.name === 'queue');
+    const queue = catalog.flatMap(group => group.commands).find(command => command.name === 'queue');
     assert.ok(queue.aliases.includes('q'), 'aliases should come from the live alias list');
     assert.ok(queue.forms.length >= 2, 'a command with several forms should show them');
 });

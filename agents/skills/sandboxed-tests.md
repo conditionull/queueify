@@ -83,8 +83,8 @@ wait into a test that only touches the log.
 
 `services/obs.js` constructs its client at module load, so a fake goes into
 `require.cache` for `obs-websocket-js` *before* requiring it — see
-`tests/obs-match-widget.test.js`. That fake is also where OBS's real behaviour
-gets modelled: `laggyResize` reproduces a browser source resize that OBS has
+`tests/obs-match-widget.test.js`. That fake is also where OBS's real behavior
+gets modeled: `laggyResize` reproduces a browser source resize that OBS has
 not applied yet, which is a real bug this repo has already shipped once.
 
 ## Scratch scripts count

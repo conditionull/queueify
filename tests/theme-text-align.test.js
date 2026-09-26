@@ -8,7 +8,7 @@ const store = require('../services/themeStore');
  *
  * The title used to ignore it: its wrapper was aligned, but the only thing
  * inside the wrapper is a full-width container, so there was nothing to move.
- * And a centred or right-aligned line long enough to scroll spilled off both
+ * And a centered or right-aligned line long enough to scroll spilled off both
  * sides, starting with its first word cut off.
  *
  * What it looks like is checked in a browser; this pins the rules that do it.
@@ -49,7 +49,7 @@ for (const [align, value] of Object.entries(JUSTIFY)) {
     });
 }
 
-test('centred and right-aligned text falls back to the start when it overflows', () => {
+test('centered and right-aligned text falls back to the start when it overflows', () => {
     for (const align of ['center', 'right']) {
         const css = cssWith(align);
         const value = JUSTIFY[align];

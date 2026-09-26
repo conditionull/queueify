@@ -48,7 +48,7 @@ function getObsConfig() {
     return config;
 }
 
-/** Where the settings dashboard is reachable, honouring SETUP_PORT. */
+/** Where the settings dashboard is reachable, honoring SETUP_PORT. */
 function getDashboardUrl() {
     const port = Number(getLiveValue('SETUP_PORT')) || DEFAULT_DASHBOARD_PORT;
     return `http://127.0.0.1:${port}`;

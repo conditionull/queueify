@@ -42,7 +42,7 @@ test('a theme saved before they existed keeps the widget it had', () => {
     assert.ok(!store.generateCss(model).includes('/* Icons */'));
 });
 
-test('an icon is positioned and coloured like everything else on the canvas', () => {
+test('an icon is positioned and colored like everything else on the canvas', () => {
     const model = withIcons([{ name: 'play', x: 600, y: 20, w: 28, h: 28, color: '#ff8800' }]);
     const rule = iconRule(store.generateCss(model), 'i0');
 
@@ -56,9 +56,9 @@ test('an icon is positioned and coloured like everything else on the canvas', ()
 /**
  * Lucide draws every shape with `stroke="currentColor"`, so one `color` on the
  * wrapper reaches the whole icon - which is what lets an icon follow the
- * artwork the way the text colours already do.
+ * artwork the way the text colors already do.
  */
-test('an icon can take an album colour, and it reaches the drawing', () => {
+test('an icon can take an album color, and it reaches the drawing', () => {
     const model = withIcons([{ name: 'heart', color: 'var(--album-vibrant)' }]);
     const css = store.generateCss(model);
 
@@ -138,7 +138,7 @@ test('the id is rebuilt from position, so a theme cannot choose its own selector
     assert.ok(!css.includes('display: none } .y'));
 });
 
-test('a colour that is not one falls back rather than reaching the CSS', () => {
+test('a color that is not one falls back rather than reaching the CSS', () => {
     const model = withIcons([{ name: 'play', color: 'red; } body { display: none } .x { color: red' }]);
 
     assert.strictEqual(model.icons[0].color, 'var(--album-light)');
@@ -151,7 +151,7 @@ test('no icon in the set carries a script or an event handler', () => {
     // assumed, because the package is updated by npm and not by this repo.
     const dangerous = [];
 
-    for (const { name } of store.iconCatalogue()) {
+    for (const { name } of store.iconCatalog()) {
         const body = store.iconBody(name) || '';
         if (/<script|\son[a-z]+\s*=|javascript:|<foreignObject/i.test(body)) dangerous.push(name);
     }
@@ -196,16 +196,16 @@ test('a theme that uses icons survives a round trip through the model', () => {
     assert.strictEqual(icon.opacity, 0.6);
 });
 
-test('the catalogue the picker searches has names and keywords', () => {
-    const catalogue = store.iconCatalogue();
+test('the catalog the picker searches has names and keywords', () => {
+    const catalog = store.iconCatalog();
 
-    assert.ok(catalogue.length > 1000, 'the whole set, not a handful');
+    assert.ok(catalog.length > 1000, 'the whole set, not a handful');
 
-    const play = catalogue.find(icon => icon.name === 'play');
+    const play = catalog.find(icon => icon.name === 'play');
     assert.ok(play, 'play is table stakes for a music overlay');
     assert.ok(play.tags.includes('music'), 'searching "music" has to find it');
 
     // Sorted, so the picker does not have to sort 2,000 entries itself.
-    const names = catalogue.map(icon => icon.name);
+    const names = catalog.map(icon => icon.name);
     assert.deepStrictEqual(names, [...names].sort());
 });

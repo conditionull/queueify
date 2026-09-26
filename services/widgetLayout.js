@@ -198,7 +198,7 @@ function lastPositionFor(theme, kind) {
  * Puts the widget back where this theme was framed with `!tr` / `!bc`.
  *
  * Switching theme changes the widget's size, and OBS holds a scene item by its
- * top-left corner - so a bottom-centred widget that gets smaller creeps up and
+ * top-left corner - so a bottom-centered widget that gets smaller creeps up and
  * to the left, and one that gets bigger runs off the screen. Each theme has
  * its own saved position for exactly this reason; this is what puts it back.
  */

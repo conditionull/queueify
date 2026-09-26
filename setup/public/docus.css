@@ -4,7 +4,7 @@
  * The docs site is a Nuxt app; this dashboard is static files served by the
  * bot, and it has to stay that way - it opens instantly, with nothing to build
  * and no second server to start. So rather than share components, it shares
- * the numbers: the zinc greys, the Spotify green, the 4rem header and the
+ * the numbers: the zinc grays, the Spotify green, the 4rem header and the
  * sidebar are all measured off the rendered site, not guessed at.
  *
  * Every page links this before its own <style>, and a page's own variables
@@ -34,7 +34,7 @@
   --ui-primary-strong: #1db954;
   --ui-on-primary: #06140b;
 
-  /* Callout colours: the tint is the 400 shade, the text the 300 */
+  /* Callout colors: the tint is the 400 shade, the text the 300 */
   --ui-info: #51a2ff;
   --ui-info-text: #8ec5ff;
   --ui-success: #05df72;
@@ -108,7 +108,7 @@ q-header, q-nav { display: contents; }
 .d-header .d-spacer { flex: 1; }
 
 /* The wordmark, drawn the way the docs site draws it: green fading into the
-   page's text colour, so it stays legible on white as well as on zinc. */
+   page's text color, so it stays legible on white as well as on zinc. */
 .d-wordmark {
   display: inline-block;
   font: 700 20px/1 var(--font-sans); letter-spacing: -.7px;

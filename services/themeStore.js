@@ -65,13 +65,13 @@ const TEXT_TYPES = ['title', 'artist', ...TIME_TYPES];
  * Lucide, read straight out of the installed package.
  *
  * Only the shapes inside <svg> are kept. The wrapper is written fresh by the
- * generator so the size, colour and stroke width come from the theme rather
+ * generator so the size, color and stroke width come from the theme rather
  * than from whatever the file happened to ship with - Lucide draws every icon
  * with `stroke="currentColor"`, which is exactly what lets a theme point one
  * at `var(--album-vibrant)` and have it re-tint with the artwork.
  *
  * ISC, with a subset inherited from Feather under MIT. Both notices ship in
- * node_modules/lucide-static/LICENSE, which is what either licence asks for.
+ * node_modules/lucide-static/LICENSE, which is what either license asks for.
  */
 const LUCIDE_DIR = process.env.QUEUEIFY_LUCIDE_DIR
     || path.join(__dirname, '..', 'node_modules', 'lucide-static', 'icons');
@@ -140,7 +140,7 @@ function iconBody(name) {
 }
 
 /** The names and keywords the editor's picker searches over. */
-function iconCatalogue() {
+function iconCatalog() {
     let tags = {};
     try {
         tags = require(path.join(LUCIDE_DIR, '..', 'tags.json'));
@@ -254,7 +254,7 @@ function themeDir(name) {
     return path.join(THEMES_DIR, assertName(name));
 }
 
-/* ------------------------------------------------- value sanitising */
+/* ------------------------------------------------- value sanitizing */
 
 /** A color the generated CSS is allowed to contain, and nothing else. */
 function color(value, fallback) {
@@ -502,7 +502,7 @@ function normalizeIcons(raw, canvas) {
 }
 
 /**
- * Normalises whatever the editor sent into a model the generator can trust:
+ * Normalizes whatever the editor sent into a model the generator can trust:
  * every value clamped, every color checked, every mandatory module present.
  */
 function normalizeModel(input, { label } = {}) {
@@ -673,7 +673,7 @@ function box(module) {
 /**
  * How far past its box a text module paints, in pixels.
  *
- * `-webkit-text-stroke` is centred on the glyph edge, so half of a stroke is
+ * `-webkit-text-stroke` is centered on the glyph edge, so half of a stroke is
  * drawn outside the letter - and the width written into the CSS is doubled
  * (see below), which puts that outer half exactly `outline` pixels past the
  * glyph. The box clips its overflow, so without room for it that half is
@@ -715,7 +715,7 @@ function shadowStep(module) {
 /**
  * Lines a text part up inside its box, for a flex container.
  *
- * `safe` is what keeps a centred or right-aligned line that is too long to fit
+ * `safe` is what keeps a centered or right-aligned line that is too long to fit
  * readable: without it the overflow spills off *both* sides, so a scrolling
  * artist started with its first word already cut off and stopped short of its
  * last. `safe` falls back to the start edge the moment the text overflows,
@@ -758,7 +758,7 @@ function textRules(selector, module) {
 
     const filter = steps.length ? `\n    filter: ${steps.join(' ')};` : '';
 
-    // -webkit-text-stroke centres the stroke on the glyph edge, so half of it
+    // -webkit-text-stroke centers the stroke on the glyph edge, so half of it
     // eats into the letter. `paint-order` puts the stroke down first and the
     // fill over the top, which is what an outline is meant to look like -
     // otherwise a 3px outline visibly thins the text it is protecting.
@@ -874,7 +874,7 @@ function canvasBackground(canvas) {
  * Dim is part of the same filter rather than black laid over the top, because
  * a theme can have its panel hidden - and a black rectangle over a panel that
  * is meant to be transparent is a black rectangle on the stream. `brightness`
- * only touches colour, never alpha, so it darkens the artwork and leaves the
+ * only touches color, never alpha, so it darkens the artwork and leaves the
  * empty parts of the panel exactly as empty as they were.
  *
  * Nothing is emitted when both are off, so a theme that does not use them is
@@ -906,10 +906,10 @@ function veilRules(canvas) {
 /**
  * The rules for the theme's icons.
  *
- * Colour is set on the wrapper rather than on the SVG, because Lucide draws
+ * Color is set on the wrapper rather than on the SVG, because Lucide draws
  * every shape with `stroke="currentColor"` - so one `color` reaches the whole
  * icon, and `var(--album-vibrant)` re-tints it with the artwork exactly the
- * way the text colours already do.
+ * way the text colors already do.
  *
  * Stroke width stays an attribute on the SVG instead: it is in the 24-unit
  * space of the viewBox, so the browser scales it with the icon. That is why a
@@ -1008,7 +1008,7 @@ function waveHeights(count, seed) {
             0.5 + 0.32 * Math.sin(at * slow * Math.PI * 2 + phase)
                 + 0.18 * Math.sin(at * fast * Math.PI * 2 + phase * 1.7);
 
-        // Weighted towards the swell so neighbours stay related, with enough
+        // Weighted towards the swell so neighbors stay related, with enough
         // per-bar noise that no two bars in a run are the same height.
         const unit = Math.min(1, Math.max(0, swell * 0.62 + random() * 0.38));
 
@@ -1025,8 +1025,8 @@ function waveHeights(count, seed) {
  *
  * Both shapes keep the same contract with the widget runtime: `.progress` is
  * the played part and app.js sets its width as a percentage. For the waveform
- * that means two identical rows of bars, one in the track colour and one in
- * the fill colour, with the fill row clipped by `.progress`. The fill row is
+ * that means two identical rows of bars, one in the track color and one in
+ * the fill color, with the fill row clipped by `.progress`. The fill row is
  * pinned to the full width of the box in pixels so its bars stay lined up
  * with the track's however far along the song is - a percentage would squash
  * them together as the clip narrowed.
@@ -1056,7 +1056,7 @@ ${box(progress)}
 
     const heights = waveHeights(progress.bars, progress.seed);
 
-    // One rule per bar, on both rows at once. The bars are centred on the
+    // One rule per bar, on both rows at once. The bars are centered on the
     // midline, the way a waveform is drawn.
     const bands = heights.map((height, at) =>
         `.wave > i:nth-child(${at + 1}) { height: ${Math.round(height * 100)}%; }`
@@ -1580,7 +1580,7 @@ module.exports = {
     normalizeModel,
     generateCss,
     generateHtml,
-    iconCatalogue,
+    iconCatalog,
     iconBody,
     listThemes,
     readModel,

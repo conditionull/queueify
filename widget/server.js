@@ -15,7 +15,7 @@ const themeClients = [];
 const THEMES_DIR = process.env.QUEUEIFY_THEMES_DIR || path.join(__dirname, "themes");
 const CONFIG_FILE = process.env.QUEUEIFY_WIDGET_CONFIG_FILE || path.join(__dirname, "config.json");
 
-// The widget is laid out at 680x192 CSS pixels. OBS rasterises a browser
+// The widget is laid out at 680x192 CSS pixels. OBS rasterizes a browser
 // source at exactly its configured size and then stretches that texture, so a
 // source enlarged in the scene goes soft. Rendering at 2x or 3x and shrinking
 // the scene item back down keeps the same on-screen size with real pixels

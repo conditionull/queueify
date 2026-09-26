@@ -6,7 +6,7 @@ const state = require('../core/state');
 const setRewardEnabled = require('./setRewardEnabled');
 const aliases = require('./aliases');
 const userSettings = require('../config/userSettings');
-const { buildCatalogue } = require('./commandCatalogue');
+const { buildCatalog } = require('./commandCatalog');
 const commandCooldowns = require('./commandCooldowns');
 
 /**
@@ -195,7 +195,7 @@ function writeWhitelist(users) {
 /* -------------------------------------------------------------- aliases */
 
 function readAliases() {
-    const commands = buildCatalogue().flatMap(group => group.commands);
+    const commands = buildCatalog().flatMap(group => group.commands);
 
     let saved = {};
     try {
@@ -210,7 +210,7 @@ function readAliases() {
         summary: command.summary,
         defaults: aliases.getDefaults(command.name),
         aliases: command.aliases,
-        customised: Array.isArray(saved[command.name]),
+        customized: Array.isArray(saved[command.name]),
         cooldowns: commandCooldowns.limitsFor(state, command.name)
     }));
 }
@@ -227,7 +227,7 @@ const MAX_COOLDOWN_SECONDS = 3600;
  * falling back to the built-in default.
  */
 function writeCommandCooldowns(input = {}) {
-    const known = new Set(buildCatalogue().flatMap(group => group.commands).map(command => command.name));
+    const known = new Set(buildCatalog().flatMap(group => group.commands).map(command => command.name));
     const cleaned = {};
 
     for (const [name, pair] of Object.entries(input)) {
@@ -256,7 +256,7 @@ function writeCommandCooldowns(input = {}) {
 }
 
 async function writeAliases(input = {}) {
-    const known = new Set(buildCatalogue().flatMap(group => group.commands).map(command => command.name));
+    const known = new Set(buildCatalog().flatMap(group => group.commands).map(command => command.name));
     const cleaned = {};
     const taken = new Map();
 
@@ -319,7 +319,7 @@ function readMessages() {
                     // The bits that get replaced at runtime, so the editor can
                     // warn when one goes missing.
                     placeholders: [...new Set((fallback.match(/{{\s*[\w.]+\s*}}/g) || []))],
-                    customised: typeof current === 'string' && current !== fallback
+                    customized: typeof current === 'string' && current !== fallback
                 };
             })
         });

@@ -143,7 +143,7 @@ function sessionize(events) {
 
 /* ------------------------------------------------------------- the numbers */
 
-function summarise(allEvents) {
+function summarize(allEvents) {
     const events = sortByTime(allEvents);
     const loginToId = buildLoginIndex(events);
 
@@ -556,7 +556,7 @@ function cachedSummary() {
 
     if (cache.key === key && cache.value) return cache.value;
 
-    const value = summarise(history.readEvents());
+    const value = summarize(history.readEvents());
     cache = { key, value };
     return value;
 }
@@ -609,7 +609,7 @@ function clearCache() {
 }
 
 module.exports = {
-    summarise,
+    summarize,
     sessionize,
     getOverview,
     getLeaderboards,

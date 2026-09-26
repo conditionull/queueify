@@ -17,7 +17,7 @@ const presets = require('../services/widgetPresets');
  * stretching the widget as well as misplacing it.
  */
 
-/** Framed filling a 680 x 192 source at 1:1, bottom-centred on a 1920 canvas. */
+/** Framed filling a 680 x 192 source at 1:1, bottom-centered on a 1920 canvas. */
 const framed = {
     positionX: 620, positionY: 888,
     width: 680, height: 192,
@@ -67,7 +67,7 @@ test('a shape that no longer fits is anchored by the edges the command names', (
     // The design is now tall, so it cannot be the size it was framed at.
     const bottom = presets.transformFor(framed, source(300, 406), 'bottomcenter');
 
-    // Bottom edge and centre line held, which is what "bottom centre" means.
+    // Bottom edge and center line held, which is what "bottom center" means.
     assert.ok(Math.abs((bottom.positionY + bottom.height) - (888 + 192)) < 0.001);
     assert.ok(Math.abs((bottom.positionX + bottom.width / 2) - (620 + 340)) < 0.001);
 
@@ -88,8 +88,8 @@ test('a shape that no longer fits stays inside the space it was framed in', () =
 test('an item OBS is already anchoring is left where OBS put it', () => {
     // Anything but top-left means OBS holds that point still on its own, and
     // the saved position refers to it - moving it would undo that.
-    const centred = { ...framed, alignment: 0 };
-    const placed = presets.transformFor(centred, source(300, 406), 'bottomcenter');
+    const centered = { ...framed, alignment: 0 };
+    const placed = presets.transformFor(centered, source(300, 406), 'bottomcenter');
 
     assert.strictEqual(placed.positionX, 620);
     assert.strictEqual(placed.positionY, 888);

@@ -404,6 +404,38 @@ test('status follows .env as it is written, not as it was at startup', async () 
   });
 });
 
+test('obs test uses the saved password when the box is left empty', async () => {
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'queueify-env-'));
+  const envFile = path.join(tempDir, '.env');
+  fs.writeFileSync(envFile, 'OBS_WEBSOCKET_IP=127.0.0.1\nOBS_WEBSOCKET_PASSWORD=secret\n');
+
+  await withServerOn(envFile, async base => {
+    // Stands in for OBS, so this never reaches one the user has open.
+    const obs = require('../services/obs');
+    const real = obs.testConnection;
+    const tried = [];
+    obs.testConnection = async ({ password }) => { tried.push(password); return { ok: true, scenes: [] }; };
+
+    try {
+      const check = password => fetch(`${base}/api/obs/test`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ip: '127.0.0.1', port: '4455', password })
+      });
+
+      // What the page sends on every load: the password is never given to it.
+      await check('');
+      // Something typed is what the user wants tried.
+      await check('typed');
+
+      assert.deepStrictEqual(tried, ['secret', 'typed']);
+    } finally {
+      obs.testConnection = real;
+      fs.rmSync(tempDir, { recursive: true, force: true });
+    }
+  });
+});
+
 test('a scene named in .env but missing a source is not reported as configured', async () => {
   const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'queueify-env-'));
   const envFile = path.join(tempDir, '.env');

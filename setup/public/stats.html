@@ -24,7 +24,7 @@
     --amber: var(--ui-warning-text);
     --red: var(--ui-error);
     --radius: 8px;
-    /* The second colour in a split, beside the green: the docs site's blue */
+    /* The second color in a split, beside the green: the docs site's blue */
     --series-2: var(--ui-info);
   }
 
@@ -76,7 +76,7 @@
   }
   .page-head p { margin: 14px 0 0; color: var(--muted); font-size: 18px; line-height: 1.55; max-width: 62ch; }
 
-  /* A soft grey button, as Nuxt UI draws its neutral one */
+  /* A soft gray button, as Nuxt UI draws its neutral one */
   .ghost {
     font: inherit; font-size: 14px; font-weight: 500; line-height: 20px;
     background: var(--surface-2); border: 0;
@@ -97,7 +97,7 @@
     overflow: hidden;
   }
   /* Title over subtitle, always. Side by side, one card's note would fit and
-     its neighbour's would wrap, and the two headers - and every list row under
+     its neighbor's would wrap, and the two headers - and every list row under
      them - would stop lining up across the row. */
   .card > header {
     padding: 14px 18px;
@@ -497,7 +497,7 @@ async function renderOverview() {
     </div>
     <div class="hour-axis"><span>00:00</span><span>06:00</span><span>12:00</span><span>18:00</span><span>23:00</span></div>`);
 
-  const flavour = card('The shape of it', '', `
+  const flavor = card('The shape of it', '', `
     <div class="bars">
       ${data.obscurity !== null ? `
       <div class="bar">
@@ -519,7 +519,7 @@ async function renderOverview() {
     head('Overview', 'Every song request since Queueify started keeping count.')
     + tiles
     + `<div class="grid">${whereFrom}${turnedAway}</div>`
-    + `<div class="grid">${when}${flavour}</div>`;
+    + `<div class="grid">${when}${flavor}</div>`;
 }
 
 // Both People and Music come from the one leaderboards call, so it is fetched

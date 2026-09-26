@@ -113,7 +113,7 @@ test('the offset is kept to two decimals, so the CSS stays readable', () => {
 
 /**
  * Distance is the switch. A blur and an angle with nothing being thrown
- * describe a shadow that is not there, and a centred soft shadow is what the
+ * describe a shadow that is not there, and a centered soft shadow is what the
  * glow already does.
  */
 test('distance 0 emits nothing, whatever the rest of the settings say', () => {
@@ -185,7 +185,7 @@ test('every value is clamped like the rest of the model', () => {
     assert.strictEqual(negative.shadowBlur, 0);
 });
 
-test('a colour that is not one falls back rather than reaching the CSS', () => {
+test('a color that is not one falls back rather than reaching the CSS', () => {
     const model = textOf('title', {
         shadow: 4,
         shadowColor: 'red; } body { display: none } .x { color: red'

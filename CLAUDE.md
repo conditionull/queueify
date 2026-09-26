@@ -68,5 +68,5 @@ reading before the kind of work it covers:
 
 ## Reviewing a pull request
 
-See `.github/claude-review.md` for what to prioritise and how to write the
+See `.github/claude-review.md` for what to prioritize and how to write the
 reply.

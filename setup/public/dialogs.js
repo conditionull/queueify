@@ -131,7 +131,7 @@
 
         if (!supported) {
             // One confirm() per choice, in order - clumsy, but every choice
-            // stays reachable and cancelling all of them still means no.
+            // stays reachable and canceling all of them still means no.
             for (const choice of choices) {
                 if (window.confirm(`${title ? title + '\n\n' : ''}${message}\n\nOK: ${choice.label}`)) {
                     return Promise.resolve(choice.value);

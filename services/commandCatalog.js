@@ -113,7 +113,7 @@ function loadModules() {
  * except for aliases, which are re-read so a rename in config/aliases.json
  * shows up without a restart.
  */
-function buildCatalogue() {
+function buildCatalog() {
     const aliases = require('./aliases');
 
     if (!cache) {
@@ -148,4 +148,4 @@ function buildCatalogue() {
         .filter(entry => entry.commands.length);
 }
 
-module.exports = { buildCatalogue, GROUPS, HELP };
+module.exports = { buildCatalog, GROUPS, HELP };

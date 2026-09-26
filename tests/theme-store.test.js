@@ -192,7 +192,7 @@ test('hostile values cannot reach the generated stylesheet', async () => {
         const title = model.modules.find(m => m.type === 'title');
 
         title.color = 'red; } body { display: none; } .x {';
-        title.font = '"; behaviour: url(evil)';
+        title.font = '"; behavior: url(evil)';
         title.fontSize = 99999;
         model.canvas.background = 'url(http://example.com/track.png)';
 
@@ -200,7 +200,7 @@ test('hostile values cannot reach the generated stylesheet', async () => {
         const css = fs.readFileSync(path.join(dir, 'hostile', 'style.css'), 'utf8');
 
         assert.ok(!css.includes('display: none; } .x'), 'a color must not break out of its rule');
-        assert.ok(!css.includes('behaviour'), 'a font must come from the known list');
+        assert.ok(!css.includes('behavior'), 'a font must come from the known list');
         assert.ok(!css.includes('url('), 'no external references');
         // Clamped, not echoed.
         assert.ok(css.includes('font-size: 200px;'), 'an absurd size is clamped to the limit');

@@ -7,6 +7,33 @@ the dashboard shows this same list under **What's new**, at
 Newest version at the top. Nothing is ever removed: a new release goes above
 the others and pushes them down.
 
+## 43.4.0
+
+### New
+
+- **Queueify connects to OBS as soon as you open it.** Starting Queueify before OBS, or
+  restarting OBS mid-stream, used to leave scene themes and widget sizing switched off until
+  somebody typed `!tr` or `!bc`. While OBS is closed, Queueify now checks every 10 seconds and
+  connects the moment it opens. Once connected, it stops checking
+- **A tidier theme-per-scene list.** On the Widget themes page, each OBS scene is one row with its
+  theme on the right, and the scene OBS is showing right now is marked **On screen**. Save stays
+  off until you change something, **Unsaved changes** shows when you have, and a theme deleted
+  since you picked it is flagged instead of quietly reading Leave as-is. **Reload scenes** keeps
+  picks you have not saved yet
+- **Assign to OBS scenes from the theme editor.** A new button takes you straight to the scene list
+  on the dashboard, and asks first if the theme has unsaved changes
+
+### Fixed
+
+- **The OBS step on the dashboard no longer flickers.** It kept switching between Configured and
+  Not configured. It now shows what OBS actually answered, and **Saved - OBS is not open** while
+  OBS is closed. Coming back to the dashboard tab after opening OBS checks again
+- **The dashboard sees an OBS that has a password.** The OBS step said OBS was not open even while
+  `!tr` and `!bc` worked, because the page tried to connect without the saved password. It uses
+  the saved one now, and the password box shows that one is saved
+- **No more confetti every time you open the dashboard.** It went off on every visit once setup
+  was done
+
 ## 43.3.0
 
 ### New
@@ -60,9 +87,9 @@ the others and pushes them down.
 
 ### Fixed
 
-- **Title alignment works.** Setting the title to centred or right-aligned did nothing - it always
+- **Title alignment works.** Setting the title to centered or right-aligned did nothing - it always
   sat on the left. Every text part lines up the way you set it now
-- **Long centred or right-aligned lines no longer start cut off.** A title or artist too long to
+- **Long centered or right-aligned lines no longer start cut off.** A title or artist too long to
   fit spilled off both edges, so it began scrolling with its first word already missing. A line
   that does not fit starts at its beginning; one that fits stays where you aligned it
 - **The song times line up on long songs.** Past ten minutes, elapsed shows the same number of
@@ -70,7 +97,7 @@ the others and pushes them down.
   flush with the text above it and still be as far from the bar as the length is. Songs under ten
   minutes look the same as before
 - **Start from a layout is readable on hover.** The layout under the mouse turned solid green,
-  which hid its grey description. It gets a light tint and a green border now
+  which hid its gray description. It gets a light tint and a green border now
 
 ## 43.1.0
 
@@ -88,15 +115,15 @@ the others and pushes them down.
   the panel's own background and artwork, leaving the text on top sharp - and never your gameplay,
   which OBS keeps behind the page where the widget cannot see it
 - **A drop shadow on any text.** A slider under **Outline**, on the title, artist and both song
-  times. Angle, blur and colour appear once it is on: 0 throws it up, 180 down, blur 0 gives a hard
+  times. Angle, blur and color appear once it is on: 0 throws it up, 180 down, blur 0 gives a hard
   offset copy
 - **Icons.** Over 2,000 of them, from [Lucide](https://lucide.dev), searchable by what they are -
   "heart", "play", "mic". Add one from the parts list and it behaves like everything else: drag it,
-  resize it, snap it, hide it. Colour, line weight, rotation and opacity are yours, and it takes the
-  album colours too, so an icon re-tints with the artwork
+  resize it, snap it, hide it. Color, line weight, rotation and opacity are yours, and it takes the
+  album colors too, so an icon re-tints with the artwork
 - **A waveform progress bar.** Under **Progress bar → Shape**: a row of lines of differing heights
   instead of a solid bar, filling from the left as the song plays. The number of lines, the gap and
-  the colours are yours, and **Shuffle** gives you a different shape
+  the colors are yours, and **Shuffle** gives you a different shape
 - **Place the widget without typing in chat.** **Place in OBS** in the theme editor does what
   `!tr`, `!bc`, `!tr set` and `!bc set` do - move the widget to a theme's saved spot, or remember
   where it is sitting now. Same code as the commands, so the two cannot drift apart. It says so
@@ -114,11 +141,11 @@ the others and pushes them down.
   whenever any layout existed, so there was no way to an empty canvas. It starts a blank theme;
   the picker is still under **⋯**
 - **Dropdowns are readable.** They were darker than the page behind them, and the zoom on the canvas
-  drew grey numbers on a grey strip. Every field is a step lighter than its panel now, taller to
+  drew gray numbers on a gray strip. Every field is a step lighter than its panel now, taller to
   hit, and carries the same chevron whatever the platform
 - **A text outline is no longer clipped by its own box.** Half a stroke is painted outside the
   letters, and the box cut it off - flat along the top and bottom, which on the artist line read as
-  a coloured bar rather than an edge. Nothing moves: the rectangle you drag is where it was
+  a colored bar rather than an edge. Nothing moves: the rectangle you drag is where it was
 
 ## 42.0.0
 
@@ -193,9 +220,9 @@ record is left out of the packaged build.
   runs for on the other - `0:04 ———— 3:07`. They are ordinary parts of a theme, so they can be
   dragged, restyled or hidden like anything else. Themes made before this arrive with them off, so
   nothing you have already designed changes.
-- **An outline on any text.** A hard edge around every letter, in any colour, on the title, the
+- **An outline on any text.** A hard edge around every letter, in any color, on the title, the
   artist and both times. It is what keeps white text readable over gameplay that keeps changing
-  colour, where a glow alone is not enough.
+  color, where a glow alone is not enough.
 - **A theme per OBS scene.** Give a scene a theme in **Widget themes** on the dashboard and
   Queueify switches to it the moment OBS cuts to that scene. Scenes you leave alone change nothing.
 - **Revert to last save.** One button in the theme editor to throw away everything since the last
@@ -257,7 +284,7 @@ record is left out of the packaged build.
 - **The scale sent to OBS is one number, not two.** Dividing each axis by its own ideal size
   rounds differently on each, which sent a very slightly uneven scale - enough to show after a few
   theme switches.
-- **The licence is stated once.** `package.json` said ISC while the README and `LICENSE` said MIT.
+- **The license is stated once.** `package.json` said ISC while the README and `LICENSE` said MIT.
   It is MIT.
 
 ## 40.0.0

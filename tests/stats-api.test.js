@@ -103,7 +103,7 @@ test('leaderboards name the people and the tracks', async () => {
     });
 });
 
-test('sessions come back newest first, with the stream summarised', async () => {
+test('sessions come back newest first, with the stream summarized', async () => {
     await withServer(sample(), async origin => {
         const body = await (await fetch(`${origin}/api/stats/sessions`)).json();
 

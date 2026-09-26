@@ -7,7 +7,7 @@ const path = require('path');
  *
  * Deliberately not `core/state.js`. That debounces a full rewrite of a whole
  * file (`scheduleWrite`), which is right for a settings blob and wrong for a
- * history: it would hold every event ever in memory and re-serialise all of
+ * history: it would hold every event ever in memory and re-serialize all of
  * them on every request. Appending a line is O(1) and never touches what is
  * already on disk, so nothing already written can be damaged by a later write.
  *
@@ -33,7 +33,7 @@ const SCHEMA_VERSION = 1;
 // store somebody's whole message.
 const MAX_INPUT_LENGTH = 200;
 
-// Tail of the append chain. Appends are serialised through it so two requests
+// Tail of the append chain. Appends are serialized through it so two requests
 // landing together can never interleave half a line, and so the order on disk
 // matches the order they were recorded in.
 let writeChain = Promise.resolve();
@@ -88,7 +88,7 @@ function truncateInput(input) {
  * almost all of it `available_markets`. No cover URL either: Spotify's image
  * URLs rotate, so a stored one is a fact that stops being true.
  */
-function summariseTrack(track) {
+function summarizeTrack(track) {
     if (!track?.id) return undefined;
 
     return {
@@ -124,7 +124,7 @@ function summariseTrack(track) {
  * Working out which lines are the same person happens when the log is read.
  * Nothing here is ever rewritten to back-fill an id.
  */
-function summariseRequester(requester = {}, fallbackUsername) {
+function summarizeRequester(requester = {}, fallbackUsername) {
     const login = requester.userLogin ?? fallbackUsername;
 
     return {
@@ -151,8 +151,8 @@ function recordRequest({
         type: 'request',
         outcome,
         source,
-        user: summariseRequester(requester, username),
-        track: summariseTrack(track),
+        user: summarizeRequester(requester, username),
+        track: summarizeTrack(track),
         input: truncateInput(input),
         queuePosition,
         refunded,
@@ -233,7 +233,7 @@ module.exports = {
     recordSkip,
     readEvents,
     flush,
-    summariseTrack,
+    summarizeTrack,
     HISTORY_FILE,
     SCHEMA_VERSION
 };

@@ -20,7 +20,7 @@ const MIN_POLL_INTERVAL_MS = 1000;
 const SLOW_DOWN_STEP_MS = 5000;
 const MAX_CONSECUTIVE_POLL_FAILURES = 5;
 
-// code: config | network | request_failed | denied | expired | cancelled
+// code: config | network | request_failed | denied | expired | canceled
 class TwitchDeviceAuthError extends Error {
     constructor(code, message) {
         super(message);
@@ -29,14 +29,14 @@ class TwitchDeviceAuthError extends Error {
     }
 }
 
-function cancelled() {
-    return new TwitchDeviceAuthError('cancelled', 'Twitch authorization was cancelled.');
+function canceled() {
+    return new TwitchDeviceAuthError('canceled', 'Twitch authorization was canceled.');
 }
 
 function sleep(ms, signal) {
     return new Promise((resolve, reject) => {
         if (signal?.aborted) {
-            reject(cancelled());
+            reject(canceled());
             return;
         }
 
@@ -47,7 +47,7 @@ function sleep(ms, signal) {
 
         function onAbort() {
             clearTimeout(timer);
-            reject(cancelled());
+            reject(canceled());
         }
 
         signal?.addEventListener('abort', onAbort, { once: true });
@@ -103,7 +103,7 @@ async function requestDeviceCode({ clientId, scopes = REQUIRED_SCOPES, signal } 
             signal
         });
     } catch (err) {
-        if (signal?.aborted || err?.name === 'AbortError') throw cancelled();
+        if (signal?.aborted || err?.name === 'AbortError') throw canceled();
         throw new TwitchDeviceAuthError('network', `Could not reach Twitch: ${err.message}`);
     }
 
@@ -145,7 +145,7 @@ async function pollForDeviceToken(prompt, { signal, onPending, slowDownStepMs = 
     let consecutiveFailures = 0;
 
     while (true) {
-        if (signal?.aborted) throw cancelled();
+        if (signal?.aborted) throw canceled();
 
         // Always wait before the first poll - the user needs time to approve.
         await sleep(intervalMs, signal);
@@ -171,7 +171,7 @@ async function pollForDeviceToken(prompt, { signal, onPending, slowDownStepMs = 
             data = await response.json().catch(() => ({}));
             consecutiveFailures = 0;
         } catch (err) {
-            if (signal?.aborted || err?.name === 'AbortError') throw cancelled();
+            if (signal?.aborted || err?.name === 'AbortError') throw canceled();
 
             // A blip shouldn't kill a flow the user is midway through.
             consecutiveFailures += 1;

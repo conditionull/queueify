@@ -19,7 +19,7 @@ const UPDATE_BOX_LINE = '──────────────────�
  * notice unchanged that is a wall of text spilling out of a 60-column box, so
  * take the first line only and trim it to what fits beside the label.
  */
-function summarise(commitMessage) {
+function summarize(commitMessage) {
     const subject = String(commitMessage).split(/\r?\n/)[0].trim();
     const room = UPDATE_BOX_LINE.length - '  Latest change: '.length;
 
@@ -35,7 +35,7 @@ function printUpdateNotice(url = DEFAULT_UPDATE_URL, commitMessage = null) {
     ];
 
     if (commitMessage) {
-        lines.push(`${COLOR_PINK}  Latest change: ${summarise(commitMessage)}${COLOR_RESET}`);
+        lines.push(`${COLOR_PINK}  Latest change: ${summarize(commitMessage)}${COLOR_RESET}`);
     }
 
     // The commit line is one change; the changelog is the whole story.

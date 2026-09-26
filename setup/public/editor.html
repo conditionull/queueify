@@ -14,7 +14,7 @@
   /* The page's own names for things, pointed at the docs site's palette in
      docus.css - light and dark both come from there. The preview backdrops
      and the pink alignment marks further down are tools, not chrome, so they
-     keep colours of their own. */
+     keep colors of their own. */
   :root {
     --bg: var(--ui-bg);
     --card: var(--ui-bg);
@@ -168,8 +168,8 @@
 
   /*
    * The theme's name is the title of what you are editing, so it is typed in
-   * place rather than sitting in a labelled field. The list of other themes
-   * hides behind the chevron beside it - both used to be unlabelled dropdowns
+   * place rather than sitting in a labeled field. The list of other themes
+   * hides behind the chevron beside it - both used to be unlabeled dropdowns
    * showing the same word, which read as one control drawn twice.
    */
   .identity { display: flex; align-items: center; gap: 2px; min-width: 0; }
@@ -188,7 +188,7 @@
   .opener svg { width: 15px; height: 15px; color: var(--muted); pointer-events: none; }
   .opener:hover svg { color: var(--text); }
   /* The real select sits invisibly over the chevron, so it keeps its native
-     keyboard behaviour and its own popup on every platform. */
+     keyboard behavior and its own popup on every platform. */
   .opener select {
     position: absolute; inset: 0; width: 100%; min-width: 0; min-height: 0;
     padding: 0; opacity: 0; cursor: pointer;
@@ -293,7 +293,7 @@
   .tool-rule { width: 1px; height: 18px; margin: 0 6px; background: var(--border); flex: none; }
   .tool-note { font-size: 12px; color: var(--faint); margin-right: 2px; }
   /* Compact, but still a field you can read and hit: it was transparent with
-     muted text, which put grey numbers on a grey strip. */
+     muted text, which put gray numbers on a gray strip. */
   .tool-select {
     width: auto; min-width: 0; min-height: 30px;
     padding: 4px 26px 4px 9px; font-size: 12.5px;
@@ -615,7 +615,7 @@
   .toast-host .note { position: relative; padding-right: 26px; }
   /*
    * Scoped to .toast-host so it outranks `button:hover:not(:disabled)`, which
-   * is (0,2,1) to a bare `.note-close:hover`'s (0,2,0) - so the accent colour
+   * is (0,2,1) to a bare `.note-close:hover`'s (0,2,0) - so the accent color
    * was winning and the dismiss cross turned into a purple blob on hover. The
    * rule always meant to say "no background"; it just never got to.
    */
@@ -629,7 +629,7 @@
   }
   .toast-host .note-close:hover {
     opacity: 1;
-    /* A tint of the text colour, so it works on both the green and the red. */
+    /* A tint of the text color, so it works on both the green and the red. */
     background: color-mix(in srgb, currentColor 14%, transparent);
   }
   .toast-host .note-close:focus-visible {
@@ -657,7 +657,7 @@
     font-weight: 600; font-size: 13px; cursor: pointer;
   }
   /* :not(:disabled) so it outranks `button:hover:not(:disabled)`, whose solid
-     accent otherwise wins and swallows the grey description. */
+     accent otherwise wins and swallows the gray description. */
   .preset:hover:not(:disabled) { border-color: var(--accent); background: color-mix(in srgb, var(--ui-primary) 8%, transparent); }
   .preset small { display: block; margin-top: 3px; font-weight: 400; color: var(--muted); font-size: 12px; }
 
@@ -935,6 +935,8 @@
         <button type="button" class="ghost" id="btn-duplicate">Duplicate</button>
         <button type="button" class="ghost" id="btn-export">Export</button>
         <button type="button" class="ghost" id="btn-import">Import</button>
+        <button type="button" class="ghost" id="btn-scenes"
+                title="Pick which OBS scenes switch to this theme on their own - on the dashboard">Assign to OBS scenes&hellip;</button>
         <div class="theme-actions-rule"></div>
         <button type="button" class="danger" id="btn-delete">Delete</button>
       </div>
@@ -1043,7 +1045,7 @@
       <div>
         <h2>Add an icon</h2>
         <p>Drawn by <a href="https://lucide.dev" target="_blank" rel="noreferrer noopener">Lucide</a>.
-          It takes the colour you give it, so it can follow the album art like everything else.</p>
+          It takes the color you give it, so it can follow the album art like everything else.</p>
       </div>
       <button class="icon-btn sm" id="btn-icon-close" title="Close" aria-label="Close">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
@@ -1197,7 +1199,7 @@ function note(text, kind) {
  * lets the whole selection, drag, resize, snap and nudge machinery treat it
  * as just another part - it already has the same x/y/w/h box. The field is
  * put on the real model object on purpose, so a drag writes through to it;
- * the server's normaliser rebuilds the list without it, so nothing reaches
+ * the server's normalizer rebuilds the list without it, so nothing reaches
  * theme.json.
  */
 function parts() {
@@ -1392,7 +1394,7 @@ async function revertToSaved() {
  * Revert is only there when it would do something.
  *
  * It needs a save to go back to and changes to throw away, and outside those
- * it is a button that cannot act - so it is hidden rather than greyed, and
+ * it is a button that cannot act - so it is hidden rather than grayed, and
  * sits by the canvas it would change rather than inside a menu.
  */
 function updateRevertButton() {
@@ -1994,12 +1996,12 @@ window.addEventListener('pointerup', () => {
 });
 
 /**
- * Snaps a box being moved so its gap to a neighbour matches a gap that already
+ * Snaps a box being moved so its gap to a neighbor matches a gap that already
  * exists between two other parts.
  *
  * If the artist sits 10px under the title, dragging the progress bar down
  * should catch at 10px below the artist - that is what makes a stack look
- * deliberate rather than nearly-right. It also catches the box centred between
+ * deliberate rather than nearly-right. It also catches the box centered between
  * the two parts either side of it, like an icon between the artist and the
  * progress bar. Returns the pairs to draw, so the two equal gaps can be shown
  * while it holds.
@@ -2009,7 +2011,7 @@ function snapToMatchingGaps(box, type) {
     .filter(module => module.type !== type && !module.hidden)
     .map(module => ({ type: module.type, x: module.x, y: module.y, w: module.w, h: module.h }));
 
-  // One part is enough: the box can centre between it and the canvas edge.
+  // One part is enough: the box can center between it and the canvas edge.
   if (!others.length) return [];
 
   const spacings = [];
@@ -2024,7 +2026,7 @@ function snapToMatchingGaps(box, type) {
     // Where the dragged box could sit to repeat one of those gaps.
     const candidates = [];
 
-    // Centred between any two things it fits between - parts, or a part and
+    // Centered between any two things it fits between - parts, or a part and
     // the edge of the canvas - whatever row they are in. Only the ones within
     // SNAP of where the box already is can catch, so the extra pairs cost
     // nothing until the box is actually near their middle. The canvas's own
@@ -2043,7 +2045,7 @@ function snapToMatchingGaps(box, type) {
         if (room < box[size]) continue;
 
         const gap = (room - box[size]) / 2;
-        candidates.push({ value: from + gap, gap, centred: { before, after } });
+        candidates.push({ value: from + gap, gap, centered: { before, after } });
       }
     }
 
@@ -2061,14 +2063,14 @@ function snapToMatchingGaps(box, type) {
         candidates.push({
           value: part[start] + part[size] + gap,
           gap,
-          neighbour: part,
+          neighbor: part,
           side: 'after',
           pair: { before, after }
         });
         candidates.push({
           value: part[start] - gap - box[size],
           gap,
-          neighbour: part,
+          neighbor: part,
           side: 'before',
           pair: { before, after }
         });
@@ -2080,7 +2082,7 @@ function snapToMatchingGaps(box, type) {
       // On a tie - several pairs often share a middle - the closest pair wins,
       // since that is the one the eye reads the box as sitting between.
       .sort((a, b) => Math.abs(a.value - box[start]) - Math.abs(b.value - box[start]) ||
-        Boolean(b.centred) - Boolean(a.centred) || a.gap - b.gap)[0];
+        Boolean(b.centered) - Boolean(a.centered) || a.gap - b.gap)[0];
 
     if (!nearest) return null;
 
@@ -2205,7 +2207,7 @@ function snap(box, type, dir, sizeMatches = [], spacings = []) {
 
   if (!dir) {
     // An equal-spacing match and an edge line compete on distance from where
-    // the box really was. With a centre between every pair of parts on offer,
+    // the box really was. With a center between every pair of parts on offer,
     // letting the spacing always win would drag a box off an edge it sits 1px
     // from towards the middle of two things across the widget. On a tie the
     // spacing keeps it: it is the rarer, more deliberate catch.
@@ -2273,7 +2275,7 @@ function snap(box, type, dir, sizeMatches = [], spacings = []) {
   return { ...box, guides };
 }
 
-/** A pink block over a gap, labelled with how big it is. */
+/** A pink block over a gap, labeled with how big it is. */
 function drawGap(axis, gap, from, to, across) {
   const mark = document.createElement('div');
   mark.className = 'gap-mark';
@@ -2368,11 +2370,11 @@ function drawGuides(guides, sizeMatches = [], spacing = null, dragged = null) {
     const otherSize = axis === 'y' ? 'w' : 'h';
     const dragged = spacing.box;
 
-    // Centred between two parts: the two gaps either side of it. Measured from
+    // Centered between two parts: the two gaps either side of it. Measured from
     // the rounded box, so an odd leftover pixel shows as 11 and 12 rather than
     // two labels claiming 11.5 that the widget can never draw.
-    if (match.centred) {
-      const { before, after } = match.centred;
+    if (match.centered) {
+      const { before, after } = match.centered;
       const across = dragged[other] + dragged[otherSize] / 2;
       const leading = before[start] + before[size];
       const trailing = dragged[start] + dragged[size];
@@ -2390,10 +2392,10 @@ function drawGuides(guides, sizeMatches = [], spacing = null, dragged = null) {
       existing.before[other] + existing.before[otherSize] / 2
     );
 
-    // ...and the new one, between the dragged part and its neighbour.
-    const neighbour = match.neighbour;
-    const first = match.side === 'after' ? neighbour : dragged;
-    const second = match.side === 'after' ? dragged : neighbour;
+    // ...and the new one, between the dragged part and its neighbor.
+    const neighbor = match.neighbor;
+    const first = match.side === 'after' ? neighbor : dragged;
+    const second = match.side === 'after' ? dragged : neighbor;
 
     drawGap(
       axis,
@@ -2813,8 +2815,8 @@ function toggleHidden(module) {
 }
 
 // Which sections are folded away. Remembered across re-renders, so opening
-// "Behaviour" once does not close itself again the next time something moves.
-const foldedGroups = new Set(['Behaviour']);
+// "Behavior" once does not close itself again the next time something moves.
+const foldedGroups = new Set(['Behavior']);
 
 /**
  * A foldable section of settings. The panel used to be one long list, which
@@ -3517,11 +3519,11 @@ function renderProps() {
         'A halo around the letters. Reads well on busy gameplay; 0 turns it off.'),
       field('Outline', sliderInput(module, 'outline', { min: 0, max: 12, step: 0.5 }),
         'A hard edge drawn around every letter - the one thing that keeps text readable ' +
-        'over gameplay that keeps changing colour. 0 turns it off.'),
+        'over gameplay that keeps changing color. 0 turns it off.'),
       field('Drop shadow', sliderInput(module, 'shadow', { min: 0, max: 40 }),
         'How far a shadow is thrown behind the letters. The glow sits evenly around them; ' +
         'this comes from one side, which is what lifts text off what is behind it. 0 turns ' +
-        'it off - for a soft shadow with no direction, use the glow with a dark colour.')
+        'it off - for a soft shadow with no direction, use the glow with a dark color.')
     );
 
     if (module.glow) section.body.append(field('Glow color', colorInput(module, 'glowColor')));
@@ -3594,7 +3596,7 @@ function placementProps() {
     return section;
   }
 
-  for (const [kind, label] of [['topright', 'Top right'], ['bottomcenter', 'Bottom centre']]) {
+  for (const [kind, label] of [['topright', 'Top right'], ['bottomcenter', 'Bottom center']]) {
     // presetsFor() returns a list, not a lookup.
     const preset = (fit.presets || []).find(entry => entry.kind === kind);
     const saved = Boolean(preset);
@@ -3687,7 +3689,7 @@ async function runPlacement(kind, action, label) {
 
 function themeProps() {
   const props = state.model.properties;
-  const section = group('Behaviour', { note: 'applies to the whole theme' });
+  const section = group('Behavior', { note: 'applies to the whole theme' });
 
   section.body.append(
     field('Album art', mediaInput(props), 'Spotify ships a short looping video for some tracks. ' +
@@ -3748,7 +3750,7 @@ async function loadThemes(selectName) {
 
   const picker = $('theme-open');
   // Only the themes that can actually be opened. The built-in ones are
-  // read-only, so listing them greyed out was clutter with nothing behind it.
+  // read-only, so listing them grayed out was clutter with nothing behind it.
   picker.innerHTML = '<option value="">- new theme -</option>' +
     data.themes.filter(theme => theme.editable).map(theme =>
       '<option value="' + escapeHtml(theme.name) + '">' + escapeHtml(theme.label) +
@@ -3879,7 +3881,7 @@ $('import-file').addEventListener('change', async event => {
   try {
     const parsed = JSON.parse(await file.text());
 
-    // Run it through the server's own normaliser: an imported file is
+    // Run it through the server's own normalizer: an imported file is
     // untrusted, and this is the same clamping a save would apply.
     const { model } = await api('/api/themes-preview/css', {
       method: 'POST',
@@ -4129,7 +4131,7 @@ function renderProgress() {
 /**
  * The one icon setting the stylesheet cannot carry.
  *
- * Colour, size, rotation and opacity are all CSS, so they arrive with the
+ * Color, size, rotation and opacity are all CSS, so they arrive with the
  * regenerated stylesheet like everything else. Stroke width is an attribute on
  * the SVG itself - it is measured in the 24-unit space of the viewBox, which
  * is what makes it scale with the icon - so moving that slider changed the
@@ -4317,6 +4319,15 @@ $('btn-back').addEventListener('click', async event => {
     state.dirty = false;   // stops the browser asking the same thing again
     location.href = $('btn-back').href;
   }
+});
+
+// Which scene gets which theme is set on the dashboard, beside the rest of the
+// OBS setup. This is the way there from where themes are actually made, so
+// the feature is not something you only find by wandering the dashboard.
+$('btn-scenes').addEventListener('click', async () => {
+  if (state.dirty && !(await askDiscard('Leave the editor'))) return;
+  state.dirty = false;   // stops the browser asking the same thing again
+  location.href = '/#scene-themes';
 });
 
 window.addEventListener('beforeunload', event => {

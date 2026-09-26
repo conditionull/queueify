@@ -25,7 +25,7 @@ test('every OBS failure names the setting to fix, in chat', () => {
         assert.ok(described, `${err.code} should map to a chat message`);
 
         const text = message(described.key, { username: 'viewer', ...described.values });
-        assert.ok(text, `${described.key} is missing from the message catalogue`);
+        assert.ok(text, `${described.key} is missing from the message catalog`);
         assert.match(text, expected);
         assert.ok(!text.includes('{{'), `${described.key} left a placeholder unfilled: ${text}`);
     }

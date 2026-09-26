@@ -72,7 +72,7 @@ test('an outline is drawn behind the letters, not through them', () => {
     const css = store.generateCss(model);
 
     assert.match(css, /-webkit-text-stroke: 6px #101010;/);
-    // Without this the stroke is centred on the glyph edge and eats the text.
+    // Without this the stroke is centered on the glyph edge and eats the text.
     assert.match(css, /paint-order: stroke fill;/);
 });
 
@@ -81,7 +81,7 @@ test('no outline means no stroke rules at all', () => {
     assert.ok(!css.includes('-webkit-text-stroke'));
 });
 
-test('an outline colour that is not a colour falls back rather than reaching the CSS', () => {
+test('an outline color that is not a color falls back rather than reaching the CSS', () => {
     const model = store.normalizeModel({
         modules: [{ type: 'title', outline: 2, outlineColor: 'red; } body { display:none } .x {' }]
     });

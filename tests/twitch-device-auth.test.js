@@ -247,7 +247,7 @@ test('gives up after repeated network failures', async () => {
   }
 });
 
-test('can be cancelled mid-flight', async () => {
+test('can be canceled mid-flight', async () => {
   const { auth } = loadFreshDeviceAuth();
   const originalFetch = global.fetch;
   const controller = new AbortController();
@@ -264,7 +264,7 @@ test('can be cancelled mid-flight', async () => {
     const pending = auth.pollForDeviceToken(prompt, { signal: controller.signal });
     setTimeout(() => controller.abort(), 10);
 
-    await assert.rejects(() => pending, err => err.code === 'cancelled');
+    await assert.rejects(() => pending, err => err.code === 'canceled');
   } finally {
     cleanup(originalFetch);
   }
