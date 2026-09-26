@@ -617,6 +617,7 @@ function createApp() {
                 fields: adminConfig.QUEUE_FIELDS,
                 queue: adminConfig.readQueueSettings(),
                 whitelist: userSettings.allowedUsers,
+                blocklist: userSettings.deniedUsers,
                 whitelistFile: userSettings.SETTINGS_FILE,
                 widget: widgetStatus(),
                 themes: [],
@@ -632,14 +633,19 @@ function createApp() {
         try {
             // The whitelist first: the queue settings can be refused by Twitch,
             // and there is no reason for that to lose an unrelated edit.
+            // One write for both lists: they share a file.
             let whitelist = userSettings.allowedUsers;
-            if (Array.isArray(req.body?.whitelist)) {
-                whitelist = adminConfig.writeWhitelist(req.body.whitelist);
+            let blocklist = userSettings.deniedUsers;
+            if (Array.isArray(req.body?.whitelist) || Array.isArray(req.body?.blocklist)) {
+                ({ allowed: whitelist, denied: blocklist } = adminConfig.writeWidgetAccess({
+                    allowed: req.body.whitelist,
+                    denied: req.body.blocklist
+                }));
             }
 
             const result = await adminConfig.writeQueueSettings(req.body?.queue || {});
 
-            res.json({ ok: true, changed: result.changed, whitelist, queue: adminConfig.readQueueSettings() });
+            res.json({ ok: true, changed: result.changed, whitelist, blocklist, queue: adminConfig.readQueueSettings() });
         } catch (err) {
             adminError(res, err);
         }

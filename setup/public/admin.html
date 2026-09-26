@@ -353,6 +353,31 @@ function toast(text, bad) {
   toastTimer = setTimeout(() => element.remove(), bad ? 9000 : 5000);
 }
 
+/**
+ * Whether there is anything to save is a question about the page, not about
+ * what has been touched.
+ *
+ * Changing a setting and changing it back leaves nothing to save, so every
+ * edit compares the whole draft with the copy taken when the page loaded.
+ * Both sides go through the view's `snapshot`, which puts a draft in the form
+ * the server would store it - lists sorted, text trimmed, numbers rounded - so
+ * two drafts that would save the same thing compare the same.
+ */
+function snapshot() {
+  const view = views[state.view];
+  return view && view.snapshot ? JSON.stringify(view.snapshot()) : '';
+}
+
+/** Takes the draft as it is now as the saved one. Each render calls this. */
+function markLoaded() {
+  state.baseline = snapshot();
+  setDirty(false);
+}
+
+function markChanged() {
+  setDirty(snapshot() !== state.baseline);
+}
+
 function setDirty(dirty, message) {
   state.dirty = dirty;
   $('savebar').classList.toggle('show', dirty);
@@ -419,12 +444,16 @@ function pageHead(title, description) {
 async function renderSettings() {
   const data = await api('/api/admin/settings');
   state.loaded.settings = data;
-  state.draft.settings = { queue: { ...data.queue }, whitelist: [...data.whitelist] };
+  state.draft.settings = {
+    queue: { ...data.queue },
+    whitelist: [...data.whitelist],
+    blocklist: [...(data.blocklist || [])]
+  };
 
   const view = $('view');
   view.innerHTML = '';
   view.appendChild(pageHead('Settings',
-    'How the queue behaves, and who may move the widget. Everything here takes effect immediately - the same values the chat commands change.'));
+    'How the queue behaves, who may move the widget, and who is ignored. Everything here takes effect immediately - the same values the chat commands change.'));
 
   const queue = card('Queue', 'Also settable with !delay, !repeatdelay, !duration');
 
@@ -434,7 +463,7 @@ async function renderSettings() {
     if (field.type === 'boolean') {
       queue.body.appendChild(row(field.label, '', toggle(draft[key], value => {
         draft[key] = value;
-        setDirty(true);
+        markChanged();
       })));
       continue;
     }
@@ -454,12 +483,12 @@ async function renderSettings() {
 
       input.value = next;
       draft[key] = next;
-      setDirty(true);
+      markChanged();
     };
 
     input.addEventListener('input', () => {
       draft[key] = Number(input.value);
-      setDirty(true);
+      markChanged();
     });
     // Whatever was typed is pulled back inside the limits once they leave it.
     input.addEventListener('change', () => set(Number(input.value)));
@@ -486,67 +515,23 @@ async function renderSettings() {
 
   view.appendChild(queue);
 
-  // --- whitelist -------------------------------------------------------
+  // --- whitelist and blocklist -----------------------------------------
   const whitelist = card('Widget whitelist', 'Viewers who may use !tr and !bc without being a mod');
-  const chips = document.createElement('div');
-  chips.className = 'chips';
-
-  const drawChips = () => {
-    chips.innerHTML = '';
-
-    if (!state.draft.settings.whitelist.length) {
-      const empty = document.createElement('span');
-      empty.className = 'muted';
-      empty.textContent = 'Mods only.';
-      chips.appendChild(empty);
-    }
-
-    for (const user of state.draft.settings.whitelist) {
-      const chip = document.createElement('span');
-      chip.className = 'chip';
-      chip.textContent = user;
-
-      const remove = document.createElement('button');
-      remove.textContent = '×';
-      remove.title = 'Remove ' + user;
-      remove.addEventListener('click', () => {
-        state.draft.settings.whitelist = state.draft.settings.whitelist.filter(name => name !== user);
-        drawChips();
-        setDirty(true);
-      });
-
-      chip.appendChild(remove);
-      chips.appendChild(chip);
-    }
-  };
-
-  drawChips();
-
-  const add = document.createElement('input');
-  add.type = 'text';
-  add.placeholder = 'twitch username';
-  add.addEventListener('keydown', event => {
-    if (event.key !== 'Enter') return;
-    const name = add.value.trim().toLowerCase();
-    if (!name) return;
-
-    if (!state.draft.settings.whitelist.includes(name)) {
-      state.draft.settings.whitelist.push(name);
-      drawChips();
-      setDirty(true);
-    }
-
-    add.value = '';
-  });
-
-  whitelist.body.appendChild(row('Allowed viewers', 'Press Enter to add', add));
-  const chipRow = document.createElement('div');
-  chipRow.className = 'row';
-  chipRow.style.gridTemplateColumns = '1fr';
-  chipRow.appendChild(chips);
-  whitelist.body.appendChild(chipRow);
-
+  nameList(whitelist, 'whitelist', 'Allowed viewers', 'Mods only.');
   view.appendChild(whitelist);
+
+  const blocklist = card('Command blocklist', 'Accounts whose commands are all ignored, mods included');
+  nameList(blocklist, 'blocklist', 'Blocked accounts', 'Nobody is blocked.');
+  const why = document.createElement('p');
+  why.className = 'muted';
+  why.style.margin = '0';
+  why.textContent = "For bots that repeat chat, like a translation bot: it copies a command from somebody else's message and runs it with its own mod permissions. Every command from these accounts is ignored without a reply, song requests included, and this wins over the widget whitelist.";
+  const whyRow = document.createElement('div');
+  whyRow.className = 'row';
+  whyRow.style.gridTemplateColumns = '1fr';
+  whyRow.appendChild(why);
+  blocklist.body.appendChild(whyRow);
+  view.appendChild(blocklist);
 
   // --- read-only summary ------------------------------------------------
   const status = card('Connections', 'Changed on the setup dashboard');
@@ -567,6 +552,71 @@ async function renderSettings() {
   line('Widget', `${data.widget.width} × ${data.widget.height}`, true);
 
   view.appendChild(status);
+  markLoaded();
+}
+
+/**
+ * A list of Twitch names edited as chips: type one, Enter adds it, × removes
+ * it. Both widget lists are this, over their own key in the settings draft.
+ */
+function nameList(target, key, label, emptyText) {
+  const chips = document.createElement('div');
+  chips.className = 'chips';
+
+  const drawChips = () => {
+    chips.innerHTML = '';
+
+    if (!state.draft.settings[key].length) {
+      const empty = document.createElement('span');
+      empty.className = 'muted';
+      empty.textContent = emptyText;
+      chips.appendChild(empty);
+    }
+
+    for (const user of state.draft.settings[key]) {
+      const chip = document.createElement('span');
+      chip.className = 'chip';
+      chip.textContent = user;
+
+      const remove = document.createElement('button');
+      remove.textContent = '×';
+      remove.title = 'Remove ' + user;
+      remove.addEventListener('click', () => {
+        state.draft.settings[key] = state.draft.settings[key].filter(name => name !== user);
+        drawChips();
+        markChanged();
+      });
+
+      chip.appendChild(remove);
+      chips.appendChild(chip);
+    }
+  };
+
+  drawChips();
+
+  const add = document.createElement('input');
+  add.type = 'text';
+  add.placeholder = 'twitch username';
+  add.addEventListener('keydown', event => {
+    if (event.key !== 'Enter') return;
+    const name = add.value.trim().toLowerCase().replace(/^@/, '');
+    if (!name) return;
+
+    if (!state.draft.settings[key].includes(name)) {
+      state.draft.settings[key].push(name);
+      drawChips();
+      markChanged();
+    }
+
+    add.value = '';
+  });
+
+  target.body.appendChild(row(label, 'Press Enter to add', add));
+  const chipRow = document.createElement('div');
+  chipRow.className = 'row';
+  chipRow.style.gridTemplateColumns = '1fr';
+  chipRow.appendChild(chips);
+  target.body.appendChild(chipRow);
 }
 
 async function saveSettings() {
@@ -750,7 +800,7 @@ async function renderAliases() {
       input.spellcheck = false;
       input.addEventListener('input', () => {
         draft[command.name] = input.value.split(',').map(alias => alias.trim()).filter(Boolean);
-        setDirty(true);
+        markChanged();
       });
 
       const reset = document.createElement('button');
@@ -760,7 +810,7 @@ async function renderAliases() {
       reset.addEventListener('click', () => {
         draft[command.name] = [...command.defaults];
         input.value = command.defaults.join(', ');
-        setDirty(true);
+        markChanged();
       });
 
       const wait = document.createElement('button');
@@ -773,7 +823,7 @@ async function renderAliases() {
 
         state.draft.cooldowns[command.name] = picked;
         wait.textContent = cooldownLabel(picked);
-        setDirty(true);
+        markChanged();
       });
 
       const element = row('!' + command.name, command.summary, [input, wait, reset]);
@@ -800,6 +850,8 @@ async function renderAliases() {
       section.classList.toggle('hidden', shown === 0);
     }
   });
+
+  markLoaded();
 }
 
 async function saveAliases() {
@@ -844,7 +896,7 @@ async function renderMessages() {
       input.spellcheck = false;
       input.addEventListener('input', () => {
         state.draft.messages[group.category][entry.key] = input.value;
-        setDirty(true);
+        markChanged();
       });
 
       const reset = document.createElement('button');
@@ -854,7 +906,7 @@ async function renderMessages() {
       reset.addEventListener('click', () => {
         input.value = entry.fallback;
         state.draft.messages[group.category][entry.key] = entry.fallback;
-        setDirty(true);
+        markChanged();
       });
 
       const label = document.createElement('div');
@@ -906,6 +958,8 @@ async function renderMessages() {
       section.classList.toggle('hidden', shown === 0);
     }
   });
+
+  markLoaded();
 }
 
 async function saveMessages() {
@@ -919,10 +973,39 @@ async function saveMessages() {
 
 /* --------------------------------------------------------------- shell */
 
+const sortedNames = list => [...new Set(list.map(name => String(name).trim().toLowerCase().replace(/^@/, '')))]
+  .filter(Boolean).sort();
+
 const views = {
-  settings: { render: renderSettings, save: saveSettings },
-  aliases: { render: renderAliases, save: saveAliases },
-  messages: { render: renderMessages, save: saveMessages }
+  settings: {
+    render: renderSettings,
+    save: saveSettings,
+    snapshot: () => {
+      const { queue, whitelist, blocklist } = state.draft.settings;
+      return {
+        queue: Object.fromEntries(Object.entries(queue).map(([key, value]) =>
+          [key, typeof value === 'number' ? Math.round(value) : value])),
+        whitelist: sortedNames(whitelist),
+        blocklist: sortedNames(blocklist)
+      };
+    }
+  },
+  aliases: {
+    render: renderAliases,
+    save: saveAliases,
+    snapshot: () => ({
+      aliases: Object.fromEntries(Object.entries(state.draft.aliases).map(([name, list]) =>
+        [name, [...new Set(list.map(alias => alias.trim().toLowerCase().replace(/^!/, '')))].filter(Boolean).sort()])),
+      cooldowns: Object.fromEntries(Object.entries(state.draft.cooldowns).map(([name, pair]) =>
+        [name, { global: Math.round(Number(pair?.global) || 0), user: Math.round(Number(pair?.user) || 0) }]))
+    })
+  },
+  messages: {
+    render: renderMessages,
+    save: saveMessages,
+    snapshot: () => Object.fromEntries(Object.entries(state.draft.messages).map(([category, entries]) =>
+      [category, Object.fromEntries(Object.entries(entries).map(([key, text]) => [key, String(text).trim()]))]))
+  }
 };
 
 async function show(name) {

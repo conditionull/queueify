@@ -28,7 +28,7 @@
     .qask p { margin: 0; color: var(--ui-text-muted, #a8a8b8); font-size: 14px; line-height: 1.55; }
 
     .qask-buttons {
-        display: flex; justify-content: flex-end; gap: 8px;
+        display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px;
         padding: 18px 22px 20px;
     }
     .qask button {
@@ -116,6 +116,81 @@
 
             dialog.showModal();
             // The cautious button is the one under your finger.
+            no.focus();
+        });
+    };
+
+    /**
+     * The same question with more than one way to say yes. Resolves to the
+     * chosen `value`, or null for cancel, Escape and clicking outside.
+     *
+     * `choices` run left to right after Cancel, each `{ value, label, danger }`.
+     */
+    window.askChoice = function askChoice(message, options = {}) {
+        const { title = '', choices = [], cancel = 'Cancel' } = options;
+
+        if (!supported) {
+            // One confirm() per choice, in order - clumsy, but every choice
+            // stays reachable and cancelling all of them still means no.
+            for (const choice of choices) {
+                if (window.confirm(`${title ? title + '\n\n' : ''}${message}\n\nOK: ${choice.label}`)) {
+                    return Promise.resolve(choice.value);
+                }
+            }
+            return Promise.resolve(null);
+        }
+
+        return new Promise(resolve => {
+            const dialog = document.createElement('dialog');
+            dialog.className = 'qask';
+
+            const body = document.createElement('div');
+            body.className = 'qask-body';
+
+            if (title) {
+                const heading = document.createElement('h2');
+                heading.textContent = title;
+                body.appendChild(heading);
+            }
+
+            const text = document.createElement('p');
+            text.textContent = message;
+            body.appendChild(text);
+
+            const buttons = document.createElement('div');
+            buttons.className = 'qask-buttons';
+
+            let answer = null;
+
+            const no = document.createElement('button');
+            no.type = 'button';
+            no.className = 'quiet';
+            no.textContent = cancel;
+            no.addEventListener('click', () => dialog.close());
+            buttons.appendChild(no);
+
+            for (const choice of choices) {
+                const button = document.createElement('button');
+                button.type = 'button';
+                if (choice.danger) button.className = 'danger';
+                button.textContent = choice.label;
+                button.addEventListener('click', () => { answer = choice.value; dialog.close(); });
+                buttons.appendChild(button);
+            }
+
+            dialog.append(body, buttons);
+            document.body.appendChild(dialog);
+
+            dialog.addEventListener('click', event => {
+                if (event.target === dialog) dialog.close();
+            });
+
+            dialog.addEventListener('close', () => {
+                dialog.remove();
+                resolve(answer);
+            });
+
+            dialog.showModal();
             no.focus();
         });
     };

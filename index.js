@@ -13,6 +13,7 @@ const { sayMessage } = require('./services/messages');
 const aliases = require('./services/aliases');
 const history = require('./services/history');
 const commandCooldowns = require('./services/commandCooldowns');
+const userSettings = require('./config/userSettings');
 const { getVerifiedAccessToken } = require('./services/twitchAuth');
 const openBrowser = require('./helpers/openBrowser');
 
@@ -314,6 +315,14 @@ async function handleMessage(client, channel, tags, message, self) {
 
   const handler = commands.get(command);
   if (!handler) return;
+
+  // Before the mod check and without a reply. The blocklist is for bots that
+  // repeat chat - a translation bot echoing somebody's "!skip" runs it with
+  // the bot's own mod rights - and answering one is only more to repeat.
+  if (userSettings.isDeniedUser(username)) {
+    console.log(`Ignored !${command} from ${username} - they are on the command blocklist.`);
+    return;
+  }
 
   if (handler.modOnly && !isMod) {
     sayMessage(client, channel, 'general.permissionDenied', { username });

@@ -7,6 +7,38 @@ the dashboard shows this same list under **What's new**, at
 Newest version at the top. Nothing is ever removed: a new release goes above
 the others and pushes them down.
 
+## 43.3.0
+
+### New
+
+- **Block an account from using any command.** The Admin panel's Settings page has a new
+  **Command blocklist**. Every command from an account on it is ignored, song requests included,
+  even if it is a mod, and it gets no reply. This is for bot accounts that repeat chat: a
+  translation bot copying somebody's `!skip` or `!tr` would otherwise run it with its own mod
+  permissions. The blocklist beats the widget whitelist, and changes apply without a restart.
+  Suggested by [olticul](https://github.com/Olticul)
+
+### Fixed
+
+- **Renaming a theme and changing its design no longer quietly replaces the original.** Saving
+  now asks whether to overwrite it or save the new design as a new theme. Changing only the name
+  still just renames it. Suggested by [olticul](https://github.com/Olticul)
+- **Border color None removes the border.** It used to make the border see-through without
+  removing it, so a gradient showed a seam along one edge. None now works like width 0, and
+  picking a color afterwards brings back the width the border had.
+  Suggested by [olticul](https://github.com/Olticul)
+- **Icon color is easier to find.** Selecting an icon shows its color, line weight, rotation, and
+  opacity first, above position and size, and scrolls them into view.
+  Suggested by [olticul](https://github.com/Olticul)
+- **Saving with an icon selected no longer shows an error.** The theme was saved, but the editor
+  reported "Cannot read properties of undefined"
+- **A theme with icons no longer shows Unsaved changes as soon as you click an icon**
+- **Changing something and changing it back no longer leaves Unsaved changes.** This covers the
+  theme editor and all three Admin panel pages. Switching to a gradient and back to solid puts the
+  thin border back, and switching to a font without the current weight and back restores the
+  weight. On the Admin panel, typing an alias or message back the way it was clears the save bar,
+  even with different capitals or a stray space
+
 ## 43.2.0
 
 ### New

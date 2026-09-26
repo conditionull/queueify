@@ -2,7 +2,8 @@ const fs = require('fs');
 const path = require('path');
 
 // config/settings.js is user-owned and git-ignored: it names the viewers who
-// are allowed to move the widget alongside mods. Rather than making people
+// are allowed to move the widget alongside mods, and the accounts whose
+// commands are ignored altogether, mods included. Rather than making people
 // copy an example file into place (and remember to), it is created empty on
 // first use and re-read whenever it changes - editing it never needs a
 // restart, and a broken edit degrades to "no whitelist" instead of taking the
@@ -18,11 +19,18 @@ const TEMPLATE = `// Viewers who may move the widget with !topright / !bottomcen
 module.exports = {
     allowedUsers: [
         // "viewer_name",
+    ],
+
+    // Accounts whose commands are all ignored, even if they are a mod. For
+    // bots that repeat other people's messages - a translation bot echoing
+    // "!skip" would otherwise run it with its own mod permissions.
+    deniedUsers: [
+        // "some_bot",
     ]
 };
 `;
 
-const EMPTY = { allowedUsers: [] };
+const EMPTY = { allowedUsers: [], deniedUsers: [] };
 
 let cached = EMPTY;
 // mtime + size of the file behind `cached`, so an unchanged file is not
@@ -70,10 +78,10 @@ function load() {
         delete require.cache[require.resolve(SETTINGS_FILE)];
         const settings = require(SETTINGS_FILE);
 
+        // A file written before deniedUsers existed simply has none.
         cached = {
-            allowedUsers: Array.isArray(settings.allowedUsers)
-                ? settings.allowedUsers.filter(user => typeof user === 'string')
-                : []
+            allowedUsers: names(settings.allowedUsers),
+            deniedUsers: names(settings.deniedUsers)
         };
     } catch (err) {
         console.warn(`Ignoring ${path.basename(SETTINGS_FILE)} - it could not be loaded: ${err.message}`);
@@ -83,11 +91,23 @@ function load() {
     return cached;
 }
 
-function isAllowedUser(username) {
+function names(list) {
+    return Array.isArray(list) ? list.filter(user => typeof user === 'string') : [];
+}
+
+function listed(list, username) {
     if (!username) return false;
 
     const name = String(username).toLowerCase();
-    return load().allowedUsers.some(allowed => allowed.toLowerCase() === name);
+    return list.some(entry => entry.toLowerCase() === name);
+}
+
+function isAllowedUser(username) {
+    return listed(load().allowedUsers, username);
+}
+
+function isDeniedUser(username) {
+    return listed(load().deniedUsers, username);
 }
 
 // Eagerly, at startup: the file has to exist on disk for the user to find and
@@ -97,8 +117,12 @@ load();
 module.exports = {
     SETTINGS_FILE,
     isAllowedUser,
-    // Getter, not a snapshot: readers see the file as it is now.
+    isDeniedUser,
+    // Getters, not snapshots: readers see the file as it is now.
     get allowedUsers() {
         return load().allowedUsers;
+    },
+    get deniedUsers() {
+        return load().deniedUsers;
     }
 };

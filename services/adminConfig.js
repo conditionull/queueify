@@ -135,11 +135,11 @@ async function setRedeemsEnabled(enabled) {
 
 /* ------------------------------------------------------------ whitelist */
 
-function writeWhitelist(users) {
-    if (!Array.isArray(users)) throw new ConfigError('The whitelist has to be a list of names.');
+function cleanNames(users, what) {
+    if (!Array.isArray(users)) throw new ConfigError(`The ${what} has to be a list of names.`);
 
     const cleaned = [...new Set(users
-        .map(user => String(user || '').trim().toLowerCase())
+        .map(user => String(user || '').trim().toLowerCase().replace(/^@/, ''))
         .filter(Boolean))];
 
     for (const user of cleaned) {
@@ -147,6 +147,24 @@ function writeWhitelist(users) {
             throw new ConfigError(`"${user}" is not a Twitch username.`);
         }
     }
+
+    return cleaned;
+}
+
+function listBody(users) {
+    return users.map(user => `        ${JSON.stringify(user)}`).join(',\n') + (users.length ? '\n' : '');
+}
+
+/**
+ * Who may move the widget, and who may never move it.
+ *
+ * Both lists live in the one file, which is rewritten whole - so whichever
+ * list is not being changed is read back and written out again, rather than
+ * saving one list and quietly emptying the other.
+ */
+function writeWidgetAccess({ allowed, denied } = {}) {
+    const allowedUsers = allowed === undefined ? userSettings.allowedUsers : cleanNames(allowed, 'whitelist');
+    const deniedUsers = denied === undefined ? userSettings.deniedUsers : cleanNames(denied, 'blocklist');
 
     const body = `// Viewers who may move the widget with !topright / !bottomcenter even though
 // they are not mods. Usernames are case-insensitive.
@@ -156,12 +174,22 @@ function writeWhitelist(users) {
 
 module.exports = {
     allowedUsers: [
-${cleaned.map(user => `        ${JSON.stringify(user)}`).join(',\n')}${cleaned.length ? '\n' : ''}    ]
+${listBody(allowedUsers)}    ],
+
+    // Accounts whose commands are all ignored, even if they are a mod. For
+    // bots that repeat other people's messages - a translation bot echoing
+    // "!skip" would otherwise run it with its own mod permissions.
+    deniedUsers: [
+${listBody(deniedUsers)}    ]
 };
 `;
 
     fs.writeFileSync(userSettings.SETTINGS_FILE, body);
-    return cleaned;
+    return { allowed: allowedUsers, denied: deniedUsers };
+}
+
+function writeWhitelist(users) {
+    return writeWidgetAccess({ allowed: users }).allowed;
 }
 
 /* -------------------------------------------------------------- aliases */
@@ -341,6 +369,7 @@ module.exports = {
     writeQueueSettings,
     setRedeemsEnabled,
     writeWhitelist,
+    writeWidgetAccess,
     readAliases,
     writeAliases,
     writeCommandCooldowns,

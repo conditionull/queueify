@@ -1101,6 +1101,10 @@ const state = {
   fonts: {},
   selection: 'canvas',
   dirty: false,
+  // Side effects to undo when their cause is undone: the border width None
+  // took away, whether a gradient took the border off, and the weight each
+  // part had before a font without it forced another. See forgetEdits().
+  memory: { borderWidth: null, borderAutoOff: false, weights: {} },
   history: [],
   future: [],
   song: null,
@@ -1202,7 +1206,12 @@ function parts() {
 }
 
 function iconOf(type) {
-  return (state.model.icons || []).find(icon => 'icon:' + icon.id === type);
+  const icon = (state.model.icons || []).find(icon => 'icon:' + icon.id === type);
+  // Stamped here as well as in parts(): a model straight from the server - a
+  // save, a revert - has not been past parts() yet, and an icon without its
+  // type was drawn with the text settings, which threw looking up its font.
+  if (icon) icon.type = type;
+  return icon;
 }
 
 function isIcon(type) {
@@ -1248,13 +1257,50 @@ function slugify(label) {
  * save. So the answer is always the saved copy compared with this one.
  */
 function markChanged() {
-  setDirty(state.baseline === null || JSON.stringify(state.model) !== state.baseline);
+  setDirty(state.baseline === null || snapshot(state.model) !== state.baseline);
 }
 
 /** Remembers this model as the saved one, so nothing counts as unsaved. */
 function markSaved() {
-  state.baseline = JSON.stringify(state.model);
+  state.baseline = snapshot(state.model);
+  forgetEdits();
   setDirty(false);
+}
+
+function isColorKey(key) {
+  return /color$/i.test(key) || key === 'background' || key === 'backgroundTo';
+}
+
+/**
+ * What a control changed on the side, kept so that changing it back puts
+ * that back too - see `state.memory`. Dropped whenever the model is swapped
+ * or saved, so one theme's history never leaks into another.
+ */
+function forgetEdits() {
+  state.memory = { borderWidth: null, borderAutoOff: false, weights: {} };
+}
+
+/**
+ * The model as it would be saved, for comparing with the saved copy.
+ *
+ * Without the `type` that parts() puts on each icon: it is the editor's own
+ * bookkeeping, the server drops it, and it arrives after a theme has opened -
+ * so any theme with icons counted as changed from the first click on it.
+ */
+function snapshot(model) {
+  return JSON.stringify(model, function (key, value) {
+    if (key === 'type' && isIcon(value)) return undefined;
+    // A border 0px wide has no color to see: picking one and then None
+    // leaves a different color behind that nothing draws.
+    if (key === 'borderColor' && this.borderWidth === 0) return undefined;
+    // One color, however it is spelled - an imported #FFF against the
+    // picker's #ffffff. Color fields only: a theme named #FFF is not #fff.
+    if (isColorKey(key) && typeof value === 'string' && /^#[0-9a-f]{3,8}$/i.test(value)) {
+      const hex = value.toLowerCase();
+      return hex.length === 4 ? '#' + [...hex.slice(1)].map(digit => digit + digit).join('') : hex;
+    }
+    return value;
+  });
 }
 
 function setDirty(dirty) {
@@ -2389,10 +2435,18 @@ window.addEventListener('keydown', event => {
 /* -------------------------------------------------------------- panels */
 
 function select(type) {
+  const changed = state.selection !== type;
   state.selection = type;
   renderModules();
   renderProps();
   positionOverlay();
+
+  // An icon's settings start below both part lists, off the bottom of a
+  // laptop screen, so choosing one brings them up. Only on a new selection,
+  // and only as far as needed: a panel that jumps while you edit is worse.
+  if (changed && isIcon(type)) {
+    $('props').querySelector('.group')?.scrollIntoView({ block: 'nearest' });
+  }
 }
 
 function renderModules() {
@@ -2648,11 +2702,20 @@ function fontInput(module) {
   select.addEventListener('change', () => {
     commit(() => {
       module.font = select.value;
-      // The new family may not ship the weight that was set.
+      // The new family may not ship the weight that was set, so it gets the
+      // nearest it has. The weight asked for is remembered, not overwritten:
+      // going back to a font that has it brings it back, instead of leaving
+      // the stand-in behind as a change nobody made.
+      const wanted = state.memory.weights[module.type] ?? module.fontWeight;
       const weights = state.fonts[select.value].weights;
-      if (!weights.includes(module.fontWeight)) {
+
+      if (weights.includes(wanted)) {
+        module.fontWeight = wanted;
+        delete state.memory.weights[module.type];
+      } else {
+        state.memory.weights[module.type] = wanted;
         module.fontWeight = weights.reduce((best, weight) =>
-          Math.abs(weight - module.fontWeight) < Math.abs(best - module.fontWeight) ? weight : best, weights[0]);
+          Math.abs(weight - wanted) < Math.abs(best - wanted) ? weight : best, weights[0]);
       }
     });
     loadUsedFonts();
@@ -2666,7 +2729,11 @@ function weightInput(module) {
   const weights = state.fonts[module.font].weights;
   const select = selectInput(module, 'fontWeight', weights.map(weight => [String(weight), String(weight)]));
 
-  select.addEventListener('change', loadUsedFonts);
+  select.addEventListener('change', () => {
+    // Chosen by hand, so this is now the weight wanted.
+    delete state.memory.weights[module.type];
+    loadUsedFonts();
+  });
 
   if (weights.length === 1) {
     select.disabled = true;
@@ -3036,19 +3103,34 @@ function selectInput(target, key, options) {
 
   select.value = target[key];
   select.addEventListener('change', () => {
+    let borderNote = false;
+
     commit(() => {
       // Numeric settings (font weight) must not become strings in the model.
       const value = select.value;
       target[key] = /^-?\d+(\.\d+)?$/.test(value) ? Number(value) : value;
-    });
-    if (key === 'backgroundMode') {
+
+      if (key !== 'backgroundMode') return;
+
       // The default 1px pale border reads as a bright hairline against the
-      // dark end of a gradient, so take it off when it has not been changed.
+      // dark end of a gradient, so take it off when it has not been changed -
+      // and put it back on the way back to solid, so trying a gradient and
+      // changing your mind leaves the theme as it was. Inside the commit, so
+      // it is one undo step and counted when deciding what is unsaved.
       const canvas = state.model.canvas;
-      if (select.value === 'gradient' && canvas.borderWidth === 1 && canvas.borderColor === 'rgba(255,255,255,0.08)') {
+      if (value === 'gradient' && canvas.borderWidth === 1 && canvas.borderColor === DEFAULT_BORDER) {
         canvas.borderWidth = 0;
+        state.memory.borderAutoOff = true;
+        borderNote = true;
+      } else if (value === 'solid' && state.memory.borderAutoOff && canvas.borderWidth === 0) {
+        canvas.borderWidth = 1;
+        state.memory.borderAutoOff = false;
+      }
+    });
+
+    if (key === 'backgroundMode') {
+      if (borderNote) {
         note('Turned the thin border off - on a gradient it shows as a bright line down one edge. Border width is under Canvas.', '');
-        refreshCss();
       }
       // Some choices reveal other fields (a gradient needs a second color).
       renderProps();
@@ -3119,7 +3201,12 @@ function checkboxInput(label, target, key) {
  * be marked up once when the panel was built, so clicking one changed the
  * color but left the outline sitting on whatever had been chosen before.
  */
-function colorInput(target, key) {
+/**
+ * `none`, when given, replaces what the None swatch does, and `isNone` says
+ * when it should read as chosen. `some` runs whenever a real color is picked.
+ * The border uses these: see borderFields.
+ */
+function colorInput(target, key, { none, isNone, some } = {}) {
   const wrap = document.createElement('div');
   wrap.className = 'color';
 
@@ -3148,29 +3235,100 @@ function colorInput(target, key) {
     const current = target[key];
     const custom = /^#[0-9a-f]{3,8}$/i.test(current) || /^rgba?\(/.test(current);
 
+    const off = isNone ? isNone() : current === 'transparent';
+
     for (const button of buttons) {
-      button.classList.toggle('active', button.dataset.value === current);
+      button.classList.toggle('active', button.dataset.value === 'transparent'
+        ? off
+        : !off && button.dataset.value === current);
     }
 
-    picker.classList.toggle('active', custom);
+    picker.classList.toggle('active', !off && custom);
     if (/^#[0-9a-f]{6}$/i.test(current)) picker.value = current;
   };
 
   picker.addEventListener('input', () => {
-    commit(() => { target[key] = picker.value; });
+    commit(() => {
+      target[key] = picker.value;
+      if (some) some();
+    });
     showSelection();
   });
 
   for (const button of buttons) {
     button.addEventListener('click', () => {
-      commit(() => { target[key] = button.dataset.value; });
+      commit(() => {
+        if (none && button.dataset.value === 'transparent') {
+          none();
+          return;
+        }
+        target[key] = button.dataset.value;
+        if (some) some();
+      });
       showSelection();
     });
   }
 
   showSelection();
   wrap.append(picker, albums);
+  wrap.refresh = showSelection;
   return wrap;
+}
+
+/**
+ * Border width and color, which have to agree about whether there is one.
+ *
+ * None used to set the color to transparent and leave the width alone. The
+ * border was still there, just see-through, so the background showed through
+ * it - and a gradient, which tiles, painted its far edge into that strip as a
+ * seam. On a solid panel it changed next to nothing. Either way None did not
+ * do what width 0 does, which is the thing people meant by it.
+ *
+ * So None is width 0, and the color is kept: raising the width again brings
+ * back the border that was there. Picking a color while there is no border
+ * turns one on, or choosing it would look like it did nothing.
+ */
+// The border every new theme starts with, in services/themeStore.js.
+const DEFAULT_BORDER = 'rgba(255,255,255,0.08)';
+
+function borderFields(canvas) {
+  const width = sliderInput(canvas, 'borderWidth', { min: 0, max: 12 });
+  const memory = state.memory;
+
+  const showWidth = () => {
+    for (const input of width.querySelectorAll('input')) input.value = canvas.borderWidth;
+  };
+
+  const colors = colorInput(canvas, 'borderColor', {
+    none: () => {
+      // Kept, so a color picked next brings back the border that was there
+      // rather than a 1px one - None and back is then no change at all.
+      if (canvas.borderWidth > 0) memory.borderWidth = canvas.borderWidth;
+      canvas.borderWidth = 0;
+    },
+    isNone: () => canvas.borderWidth === 0 || canvas.borderColor === 'transparent',
+    some: () => {
+      memory.borderAutoOff = false;
+      if (canvas.borderWidth === 0) canvas.borderWidth = memory.borderWidth || 1;
+    }
+  });
+
+  // Either control changing is the other one's business too.
+  colors.addEventListener('click', showWidth);
+  colors.addEventListener('input', showWidth);
+  width.addEventListener('input', () => {
+    // Set by hand, so it is no longer the width None took away, nor one a
+    // gradient turned off.
+    memory.borderWidth = null;
+    memory.borderAutoOff = false;
+    colors.refresh();
+  });
+
+  return [
+    field('Border width', width,
+      'A pale border shows up as a bright hairline against dark backgrounds. Set it to 0 to remove it.'),
+    field('Border color', colors, 'None removes the border, the same as width 0.')
+  ];
 }
 
 /** Centring by eye is fiddly; these do it exactly. */
@@ -3274,9 +3432,7 @@ function renderProps() {
 
     section.body.append(
       radiusInput(canvas, { max: 120 }),
-      field('Border width', sliderInput(canvas, 'borderWidth', { min: 0, max: 12 }),
-        'A pale border shows up as a bright hairline against dark backgrounds. Set it to 0 to remove it.'),
-      field('Border color', colorInput(canvas, 'borderColor')),
+      ...borderFields(canvas),
       field('Blur', sliderInput(canvas, 'blur', { min: 0, max: 40 }),
         'Softens what the panel is showing - its background, and the album art or Canvas ' +
         'video - so text can sit on top of it. It cannot touch your gameplay: OBS puts the ' +
@@ -3292,7 +3448,7 @@ function renderProps() {
   }
 
   const module = selected();
-  host.appendChild(boxFields(module));
+  const box = boxFields(module);
 
   const section = group(labelOf(module), { note: module.hidden ? 'hidden' : '' });
 
@@ -3307,9 +3463,14 @@ function renderProps() {
     );
 
     section.body.insertBefore(visibilityButton(module), section.body.firstChild);
-    host.append(section, placementProps(), themeProps());
+    // Color first, then the box. An icon is placed by dragging it on the
+    // canvas; what people open the panel for is its color, and below the
+    // position fields it was off the bottom of the screen.
+    host.append(section, box, placementProps(), themeProps());
     return;
   }
+
+  host.appendChild(box);
 
   if (module.type === 'art') {
     section.body.append(
@@ -3659,6 +3820,7 @@ function showPresets() {
       state.history.length = state.future.length = 0;
       $('theme-label').value = state.model.label;
       state.baseline = null;
+      forgetEdits();
       markChanged();
       $('preset-sheet').classList.add('hidden');
       select('canvas');
@@ -3729,6 +3891,7 @@ $('import-file').addEventListener('change', async event => {
     state.history.length = state.future.length = 0;
     $('theme-label').value = model.label;
     state.baseline = null;
+    forgetEdits();
     markChanged();
     select('canvas');
     renderAll();
@@ -3757,10 +3920,45 @@ $('btn-save').addEventListener('click', async () => {
   const label = $('theme-label').value.trim() || state.model.label;
   state.model.label = label;
 
-  const name = state.name || slugify(label);
+  let name = state.name || slugify(label);
+
+  // An open theme saves over itself, whatever it is now called. Renaming it
+  // on its own is fine - that is a rename. Renaming it and changing the
+  // design reads like making a new theme, and without asking, the original
+  // design was silently replaced.
+  if (state.name && state.baseline !== null) {
+    const saved = JSON.parse(state.baseline);
+    const renamed = label !== saved.label;
+    const restyled = snapshot({ ...state.model, label: saved.label }) !== state.baseline;
+
+    if (renamed && restyled) {
+      const newName = slugify(label);
+      // A copy needs a folder of its own; if the new name's is taken (by
+      // this theme too, when only the case or punctuation changed) the only
+      // honest options are overwrite or go back and rename.
+      const free = newName && !state.themes.some(theme => theme.name === newName);
+
+      const choice = await askChoice(
+        'You renamed "' + saved.label + '" to "' + label + '" and changed its design. Saving replaces "' +
+          saved.label + '" with the new design - the old one is not kept.' +
+          (free ? '' : ' To keep both, pick a name no other theme is using.'),
+        {
+          title: 'Overwrite "' + saved.label + '"?',
+          choices: [
+            ...(free ? [{ value: 'new', label: 'Save as new theme' }] : []),
+            { value: 'overwrite', label: 'Overwrite', danger: true }
+          ]
+        }
+      );
+
+      if (!choice) return;
+      if (choice === 'new') name = newName;
+    }
+  }
+
   const existing = state.themes.find(theme => theme.name === name);
 
-  if (!state.name && existing) {
+  if (name !== state.name && existing) {
     note('A theme called "' + name + '" already exists. Pick another name.', 'bad');
     return;
   }
