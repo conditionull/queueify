@@ -209,3 +209,97 @@ test('the catalog the picker searches has names and keywords', () => {
     const names = catalog.map(icon => icon.name);
     assert.deepStrictEqual(names, [...names].sort());
 });
+
+/* ---------------------------------------------------------- drop shadow */
+
+/** The one `filter:` line an icon gets, or null if it was given none. */
+const iconFilter = (model, id = 'i0') => {
+    const found = /\n {4}filter: (.+);/.exec(iconRule(store.generateCss(model), id));
+    return found ? found[1] : null;
+};
+
+test('a new icon has no shadow, and no filter is emitted for one', () => {
+    const model = withIcons([{ name: 'play' }]);
+
+    assert.strictEqual(model.icons[0].shadow, 0);
+    assert.strictEqual(iconFilter(model), null);
+});
+
+test('an icon saved before shadows existed draws the stylesheet it always did', () => {
+    // Version 7 is every theme written between independent corners and this.
+    const icon = { name: 'star', x: 40, y: 20, w: 28, h: 28, color: '#ff8800', rotate: 30, opacity: 0.8 };
+    const model = store.normalizeModel({ ...store.defaultModel(), version: 7, icons: [icon] });
+
+    assert.strictEqual(iconRule(store.generateCss(model), 'i0'), `.icon-i0 {
+    position: absolute;
+    left: 40px;
+    top: 20px;
+    width: 28px;
+    height: 28px;
+    z-index: 2;
+    color: #ff8800;
+    opacity: 0.8;
+    transform: rotate(30deg);
+    
+`);
+});
+
+test('an icon takes the same shadow a text module does', () => {
+    const model = withIcons([{ name: 'play', shadow: 6, shadowColor: '#000000' }]);
+
+    // The same default angle, and the same numbers, as a shadowed title.
+    assert.strictEqual(iconFilter(model), 'drop-shadow(4.24px 4.24px 0px #000000)');
+});
+
+/**
+ * A filter is drawn before the transform on the same element, so on a rotated
+ * icon the shadow would turn with it. The rotation is taken back off the angle,
+ * so the shadow falls where it says whatever the icon is doing.
+ */
+test('rotating an icon does not swing its shadow round', () => {
+    const thrown = (rotate) => iconFilter(withIcons([
+        { name: 'play', rotate, shadow: 5, shadowAngle: 180, shadowColor: '#000000' }
+    ]));
+
+    assert.strictEqual(thrown(0), 'drop-shadow(0px 5px 0px #000000)', 'straight down');
+    // Rotated 90 clockwise, the icon's own "down" is screen left, so the
+    // shadow has to be thrown along the icon's +x to land below it.
+    assert.strictEqual(thrown(90), 'drop-shadow(5px 0px 0px #000000)');
+    assert.strictEqual(thrown(180), 'drop-shadow(0px -5px 0px #000000)');
+});
+
+test('distance 0 emits nothing, and the rest of the shadow survives', () => {
+    const model = withIcons([{ name: 'play', shadow: 0, shadowBlur: 12, shadowAngle: 90 }]);
+
+    assert.strictEqual(iconFilter(model), null);
+    assert.strictEqual(model.icons[0].shadowBlur, 12);
+    assert.strictEqual(model.icons[0].shadowAngle, 90);
+});
+
+test('an icon shadow is clamped and checked like a text one', () => {
+    const [wild] = withIcons([{ name: 'play', shadow: 9000, shadowAngle: -5, shadowBlur: 9000 }]).icons;
+
+    assert.strictEqual(wild.shadow, 40);
+    assert.strictEqual(wild.shadowAngle, 0);
+    assert.strictEqual(wild.shadowBlur, 40);
+
+    const hostile = withIcons([{
+        name: 'play', shadow: 4, shadowColor: 'red; } body { display: none } .x { color: red'
+    }]);
+
+    assert.strictEqual(hostile.icons[0].shadowColor, 'rgba(0,0,0,0.55)');
+    assert.ok(!store.generateCss(hostile).includes('display: none }'));
+});
+
+test('an icon shadow survives a round trip through the model', () => {
+    const saved = JSON.parse(JSON.stringify(withIcons([
+        { name: 'heart', shadow: 9, shadowAngle: 45, shadowBlur: 6, shadowColor: '#112233' }
+    ])));
+
+    const [icon] = store.normalizeModel(saved).icons;
+
+    assert.strictEqual(icon.shadow, 9);
+    assert.strictEqual(icon.shadowAngle, 45);
+    assert.strictEqual(icon.shadowBlur, 6);
+    assert.strictEqual(icon.shadowColor, '#112233');
+});

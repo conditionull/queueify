@@ -43,7 +43,11 @@ const THEMES_DIR = process.env.QUEUEIFY_THEMES_DIR || path.join(__dirname, '..',
 // own, the way Figma's independent corners do. `corners` falls back to null -
 // one radius for all four, the only thing a version 6 theme could say - so the
 // stylesheet it generates is the same byte for byte.
-const MODEL_VERSION = 7;
+//
+// 8 gave icons the drop shadow text already had. As with text, distance is the
+// switch and falls back to 0, so an icon saved before it gets no filter and a
+// version 7 theme generates the same stylesheet it always did.
+const MODEL_VERSION = 8;
 const NAME_PATTERN = /^[a-z0-9][a-z0-9-]{0,30}$/;
 
 // The modules the widget runtime knows how to fill. They are always present in
@@ -449,7 +453,8 @@ function defaultModel(label = 'New theme') {
 function defaultIcon(name) {
     return {
         id: '', name, x: 24, y: 24, w: 32, h: 32,
-        color: 'var(--album-light)', strokeWidth: 2, rotate: 0, opacity: 1, hidden: false
+        color: 'var(--album-light)', strokeWidth: 2, rotate: 0, opacity: 1, hidden: false,
+        shadow: 0, shadowAngle: 135, shadowBlur: 0, shadowColor: 'rgba(0,0,0,0.55)'
     };
 }
 
@@ -494,7 +499,12 @@ function normalizeIcons(raw, canvas) {
             // at 3.
             strokeWidth: Math.round(number(item.strokeWidth, fallback.strokeWidth, 0.5, 4) * 10) / 10,
             rotate: Math.round(number(item.rotate, fallback.rotate, 0, 360)),
-            opacity: number(item.opacity, fallback.opacity, 0, 1)
+            opacity: number(item.opacity, fallback.opacity, 0, 1),
+            // The same four as a text module's shadow, read the same way.
+            shadow: Math.round(number(item.shadow, fallback.shadow, 0, 40)),
+            shadowAngle: Math.round(number(item.shadowAngle, fallback.shadowAngle, 0, 360)),
+            shadowBlur: Math.round(number(item.shadowBlur, fallback.shadowBlur, 0, 40)),
+            shadowColor: color(item.shadowColor, fallback.shadowColor)
         });
     }
 
@@ -684,7 +694,7 @@ function bleedOf(module) {
 }
 
 /**
- * The drop shadow step for a text module, or nothing if it has none.
+ * The drop shadow step for a text module or an icon, or nothing if it has none.
  *
  * A `drop-shadow` filter rather than a `text-shadow`, for the reason the glow
  * gives below: the box clips its overflow so a long title can scroll, and a
@@ -914,19 +924,30 @@ function veilRules(canvas) {
  * Stroke width stays an attribute on the SVG instead: it is in the 24-unit
  * space of the viewBox, so the browser scales it with the icon. That is why a
  * large icon at width 1 still looks finer than a small one at 3.
+ *
+ * The shadow is a filter on the same wrapper the rotation is on, and a filter
+ * is drawn before the transform - so the rotation would swing the shadow round
+ * with the icon, and a row of tilted icons would each throw theirs a different
+ * way. Taking the rotation back off the angle keeps every shadow falling where
+ * its angle says, the way the light in a scene does.
  */
 function iconRules(icons) {
     if (!icons.length) return '';
 
-    const rules = icons.map(icon => `.icon-${icon.id} {
+    const rules = icons.map(icon => {
+        const shadow = shadowStep({ ...icon, shadowAngle: icon.shadowAngle - icon.rotate });
+
+        return `.icon-${icon.id} {
     position: absolute;
 ${box(icon)}
     z-index: 2;
     color: ${icon.color};
     opacity: ${icon.opacity};${icon.rotate ? `
-    transform: rotate(${icon.rotate}deg);` : ''}
+    transform: rotate(${icon.rotate}deg);` : ''}${shadow ? `
+    filter: ${shadow};` : ''}
     ${icon.hidden ? 'display: none;' : ''}
-}`).join('\n\n');
+}`;
+    }).join('\n\n');
 
     return `
 

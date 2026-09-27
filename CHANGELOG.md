@@ -1,340 +1,235 @@
 # Changelog
 
-What has changed in Queueify. Only things you would notice are listed here -
-the dashboard shows this same list under **What's new**, at
+What has changed in Queueify. The dashboard shows the same list under **What's new**, at
 <http://127.0.0.1:3002/#changelog>.
 
-Newest version at the top. Nothing is ever removed: a new release goes above
-the others and pushes them down.
+Newest version at the top.
+
+## 43.5.0
+
+### New
+
+- **Icons can have a drop shadow.** Select an icon in the theme editor and turn up **Drop shadow**.
+  You can set its angle, blur, and color. Suggested by [olticul](https://github.com/Olticul)
+- **The font list shows which font you are using.** Your current font has a green outline, and the
+  list opens scrolled to it. Suggested by [olticul](https://github.com/Olticul)
 
 ## 43.4.0
 
 ### New
 
-- **Queueify connects to OBS as soon as you open it.** Starting Queueify before OBS, or
-  restarting OBS mid-stream, used to leave scene themes and widget sizing switched off until
-  somebody typed `!tr` or `!bc`. While OBS is closed, Queueify now checks every 10 seconds and
-  connects the moment it opens. Once connected, it stops checking
-- **A tidier theme-per-scene list.** On the Widget themes page, each OBS scene is one row with its
-  theme on the right, and the scene OBS is showing right now is marked **On screen**. Save stays
-  off until you change something, **Unsaved changes** shows when you have, and a theme deleted
-  since you picked it is flagged instead of quietly reading Leave as-is. **Reload scenes** keeps
-  picks you have not saved yet
-- **Assign to OBS scenes from the theme editor.** A new button takes you straight to the scene list
-  on the dashboard, and asks first if the theme has unsaved changes
+- **Queueify connects to OBS as soon as OBS opens.** If you started OBS after Queueify, or
+  restarted it mid-stream, scene themes and widget sizing used to stay off until someone typed
+  `!tr` or `!bc`
+- **A tidier theme-per-scene list.** The Widget themes page shows one row per OBS scene, with its
+  theme on the right
+  - The scene OBS is showing is marked **On screen**
+  - **Unsaved changes** shows until you save
+  - A row tells you if its theme has been deleted
+  - **Reload scenes** keeps picks you have not saved
+- **Assign to OBS scenes from the theme editor.** A new **Assign to OBS scenes** button takes you to
+  the scene list on the dashboard
 
 ### Fixed
 
-- **The OBS step on the dashboard no longer flickers.** It kept switching between Configured and
-  Not configured. It now shows what OBS actually answered, and **Saved - OBS is not open** while
-  OBS is closed. Coming back to the dashboard tab after opening OBS checks again
-- **The dashboard sees an OBS that has a password.** The OBS step said OBS was not open even while
-  `!tr` and `!bc` worked, because the page tried to connect without the saved password. It uses
-  the saved one now, and the password box shows that one is saved
-- **No more confetti every time you open the dashboard.** It went off on every visit once setup
-  was done
+- **The OBS step on the dashboard no longer flickers between Configured and Not configured.** While
+  OBS is closed, it shows **Saved - OBS is not open**
+- **The dashboard connects to OBS when OBS has a password.** It used to say OBS was not open, even
+  while `!tr` and `!bc` worked
+- **No more confetti every time you open the dashboard**
 
 ## 43.3.0
 
 ### New
 
-- **Block an account from using any command.** The Admin panel's Settings page has a new
-  **Command blocklist**. Every command from an account on it is ignored, song requests included,
-  even if it is a mod, and it gets no reply. This is for bot accounts that repeat chat: a
-  translation bot copying somebody's `!skip` or `!tr` would otherwise run it with its own mod
-  permissions. The blocklist beats the widget whitelist, and changes apply without a restart.
+- **Block an account from using any command.** Add it to the **Command blocklist** on the Admin
+  panel's Settings page. Queueify ignores all of its commands, including song requests, even if it
+  is a mod. Use this for bots that repeat chat, such as a translation bot copying `!skip`.
   Suggested by [olticul](https://github.com/Olticul)
 
 ### Fixed
 
-- **Renaming a theme and changing its design no longer quietly replaces the original.** Saving
-  now asks whether to overwrite it or save the new design as a new theme. Changing only the name
-  still just renames it. Suggested by [olticul](https://github.com/Olticul)
-- **Border color None removes the border.** It used to make the border see-through without
-  removing it, so a gradient showed a seam along one edge. None now works like width 0, and
-  picking a color afterwards brings back the width the border had.
+- **Renaming a theme and changing its design no longer replaces the original.** Saving now asks
+  whether to overwrite it or save it as a new theme. Suggested by [olticul](https://github.com/Olticul)
+- **Border color None removes the border.** It used to leave a seam along one edge of a gradient.
   Suggested by [olticul](https://github.com/Olticul)
-- **Icon color is easier to find.** Selecting an icon shows its color, line weight, rotation, and
-  opacity first, above position and size, and scrolls them into view.
+- **Icon color is easier to find.** Selecting an icon shows its color and style settings first.
   Suggested by [olticul](https://github.com/Olticul)
-- **Saving with an icon selected no longer shows an error.** The theme was saved, but the editor
-  reported "Cannot read properties of undefined"
+- **Saving with an icon selected no longer shows an error**
 - **A theme with icons no longer shows Unsaved changes as soon as you click an icon**
-- **Changing something and changing it back no longer leaves Unsaved changes.** This covers the
-  theme editor and all three Admin panel pages. Switching to a gradient and back to solid puts the
-  thin border back, and switching to a font without the current weight and back restores the
-  weight. On the Admin panel, typing an alias or message back the way it was clears the save bar,
-  even with different capitals or a stray space
+- **Changing something and changing it back no longer leaves Unsaved changes.** This works in the
+  theme editor and on all three Admin panel pages
 
 ## 43.2.0
 
 ### New
 
 - **A fresh look for the dashboard.** It matches the
-  [documentation site](https://queueify-docs.vercel.app/getting-started/introduction) now, with
-  the same sidebar on every page and a link straight to the docs. Light or dark follows your
-  system until you pick one with the button in the header, and then it remembers
-- **Spiffy, a new layout to start from.** One slim row - title, a waveform icon, artist, and a pill
-  progress bar - on a gradient taken from the album art. It replaces Ticker and Spotlight under
-  **Start from a layout**, which now offers Default, Spiffy, and Stacked. Themes you already made
-  from either are not touched
-- **A new default theme.** `!theme default` is redesigned: the album art runs flush to the left
-  edge, the title is in Righteous font, the song times sit on both sides of progress bar, and the
-  background is a gradient taken from the album art. It is 680 x 160 instead of 680 x 192, and
-  OBS is resized to match the next time it connects. Nothing to do on your end
-- **Classic is now Default.** Under **Start from a layout** it gives you the same design as the
-  default theme, ready to change. Themes you already made from the old Classic are not touched
+  [documentation site](https://queueify-docs.vercel.app/getting-started/introduction), with a
+  sidebar on every page and a link to the docs. Switch between light and dark with the button in
+  the header
+- **Spiffy, a new layout to start from.** One slim row with the title, a waveform icon, the artist,
+  and a progress bar, on a gradient from the album art. It replaces Ticker and Spotlight under
+  **Start from a layout**. Themes you already made from those are not changed
+- **A new default theme.** `!theme default` has a new design: album art on the left edge, the
+  title in Righteous, song times on both sides of the progress bar, and a gradient from the album
+  art. OBS resizes to fit it automatically
+- **Classic is now called Default** under **Start from a layout**. It starts you from the new
+  default theme. Themes you made from Classic are not changed
 
 ### Fixed
 
-- **Title alignment works.** Setting the title to centered or right-aligned did nothing - it always
-  sat on the left. Every text part lines up the way you set it now
-- **Long centered or right-aligned lines no longer start cut off.** A title or artist too long to
-  fit spilled off both edges, so it began scrolling with its first word already missing. A line
-  that does not fit starts at its beginning; one that fits stays where you aligned it
-- **The song times line up on long songs.** Past ten minutes, elapsed shows the same number of
-  digits as the length - `07:19` against `17:05` - so both are the same width. Elapsed can sit
-  flush with the text above it and still be as far from the bar as the length is. Songs under ten
-  minutes look the same as before
-- **Start from a layout is readable on hover.** The layout under the mouse turned solid green,
-  which hid its gray description. It gets a light tint and a green border now
+- **Title alignment works.** Centered and right-aligned titles used to stay on the left
+- **Long centered or right-aligned lines no longer start cut off.** They start scrolling from their
+  first word
+- **The song times line up on songs over ten minutes**
+- **Layout descriptions stay readable when you hover them** under **Start from a layout**
 
 ## 43.1.0
 
 ### New
 
-- **Round each corner on its own.** The button beside **Corner radius** on the canvas, the album
-  art and the progress bar splits it into four fields, one per corner. Click it
-  again to go back to one radius
+- **Round each corner on its own.** Click the button beside **Corner radius** to set each corner
+  separately, on the canvas, the album art, or the progress bar. Click it again to go back to one
+  radius
 
 ## 43.0.0
 
 ### New
 
-- **Blur and dim the canvas.** Two sliders under the border in **Canvas**. They soften and darken
-  the panel's own background and artwork, leaving the text on top sharp - and never your gameplay,
-  which OBS keeps behind the page where the widget cannot see it
-- **A drop shadow on any text.** A slider under **Outline**, on the title, artist and both song
-  times. Angle, blur and color appear once it is on: 0 throws it up, 180 down, blur 0 gives a hard
-  offset copy
-- **Icons.** Over 2,000 of them, from [Lucide](https://lucide.dev), searchable by what they are -
-  "heart", "play", "mic". Add one from the parts list and it behaves like everything else: drag it,
-  resize it, snap it, hide it. Color, line weight, rotation and opacity are yours, and it takes the
-  album colors too, so an icon re-tints with the artwork
-- **A waveform progress bar.** Under **Progress bar → Shape**: a row of lines of differing heights
-  instead of a solid bar, filling from the left as the song plays. The number of lines, the gap and
-  the colors are yours, and **Shuffle** gives you a different shape
+- **Blur and dim the canvas.** Two new sliders in **Canvas** soften and darken the widget's
+  background and artwork, so the text stands out. Your gameplay is not affected
+- **A drop shadow on any text.** Turn up **Drop shadow** on the title, artist, or song times. Once
+  it is on, you can set its angle, blur, and color
+- **Icons.** Over 2,000 icons from [Lucide](https://lucide.dev). Add one from the parts list and
+  search by name, such as "heart" or "mic". You can move, resize, color, and rotate it, and it can
+  take its color from the album art
+- **A waveform progress bar.** Under **Progress bar → Shape**, draw the bar as a row of lines of
+  different heights. **Shuffle** gives you a new pattern
 - **Place the widget without typing in chat.** **Place in OBS** in the theme editor does what
-  `!tr`, `!bc`, `!tr set` and `!bc set` do - move the widget to a theme's saved spot, or remember
-  where it is sitting now. Same code as the commands, so the two cannot drift apart. It says so
-  when OBS is showing a different theme than the one you have open, rather than moving the wrong
-  thing
-- **A tidier editor.** One toolbar instead of two rows of loose buttons: the theme you are editing
-  on the left, **New**, Save and **Use on stream** on the right. Backdrop, zoom, undo and **Revert
-  to last save** sit on the canvas they act on - revert only when there is something to revert -
-  **Start from a layout**, Duplicate, Export, Import and Delete sit under it, and the help that used
-  to fill the page below the widget is behind **?**
+  `!tr`, `!bc`, `!tr set`, and `!bc set` do
+- **A tidier editor.** One toolbar replaces two rows of buttons, and the help is behind the **?**
+  button
 
 ### Fixed
 
-- **New theme and Start from a layout are no longer the same button.** New opened the layout picker
-  whenever any layout existed, so there was no way to an empty canvas. It starts a blank theme;
-  the picker is still under **⋯**
-- **Dropdowns are readable.** They were darker than the page behind them, and the zoom on the canvas
-  drew gray numbers on a gray strip. Every field is a step lighter than its panel now, taller to
-  hit, and carries the same chevron whatever the platform
-- **A text outline is no longer clipped by its own box.** Half a stroke is painted outside the
-  letters, and the box cut it off - flat along the top and bottom, which on the artist line read as
-  a colored bar rather than an edge. Nothing moves: the rectangle you drag is where it was
+- **New theme starts a blank theme.** It used to open the layout picker. **Start from a layout** is
+  under **⋯**
+- **Dropdowns and fields are easier to read**
+- **Text outlines are no longer clipped at the top and bottom**
 
 ## 42.0.0
 
 ### New
 
-- **A Stats page**, at <http://127.0.0.1:3002/stats.html>. Nothing to set up, but it only counts
-  from this version on - nothing was being kept before it. It shows:
-  - Songs queued, hours of music, unique artists, unique requesters
-  - Top requesters, most requested songs, most requested artists
-  - Why requests were turned away, by reason
+- **A Stats page**, at <http://127.0.0.1:3002/stats.html>. It counts from this version on, and
+  your stats never leave your computer. It shows:
+  - Songs queued, hours of music, unique artists, and unique requesters
+  - Top requesters, most requested songs, and most requested artists
+  - Why requests were turned away
   - Chat requests vs channel point redeems
   - Busiest hour of the day, and the decade mix
-  - Signature song per person - the one they request most that others do not
-  - Listening twins, and longest streak of streams in a row
-  - Longest, shortest, oldest, newest, most obscure and best known song
-  - Artists asked for exactly once, ever
-  - One row per stream, split on gaps of three hours or more
-
-  The four groups sit behind pills across the top, so each one is a screenful rather than a single
-  long scroll. **Queueify** in the corner of any page is the way back to the dashboard.
-- **The Admin Panel is laid out the same way.** Settings, Commands and Chat messages are pills above
-  the page rather than a list down the side, and the side is just the way to everywhere else.
-- **`!np` says which user queued the song.** Only when Queueify is certain it is the track it queued for
-  that person - if the song came from your own playlist, or came round again later, it names the
-  song and leaves it there rather than crediting the wrong viewer. The wording is yours to change in
-  **Admin Panel → Chat messages**. Scrubbing around inside the song is fine - it stays the same play
-  and the same person. Restarting the bot mid-song drops the credit until the next request or
-  `!queue`.
-- **Every command can have a cooldown**, set in **Admin Panel → Commands**. Each one shows its
-  current wait beside its aliases; click it for a global wait (the whole chat) and a per-user wait
-  (each person), so a room cannot take turns holding a command down. Mods are never held up, and a
-  `0` turns either off. Being turned down is silent - saying "wait 12 seconds" to everyone asking
-  would turn one person spamming into the bot spamming. Only `!np` starts with a wait, because it
-  is the one that reaches Spotify; everything else is off until you set it.
+  - Each person's signature song
+  - Listening twins, and the longest streak of streams in a row
+  - Longest, shortest, oldest, newest, most obscure, and best known song
+  - Artists requested exactly once
+  - One row per stream
+- **The Admin Panel's pages are tabs across the top**
+- **`!np` says who queued the song.** It only names someone when Queueify queued that song for
+  them. Change the wording in **Admin Panel → Chat messages**
+- **Every command can have a cooldown.** Set it in **Admin Panel → Commands**, for the whole chat,
+  for each person, or both. Mods skip cooldowns. Only `!np` has one by default
 
 ### Fixed
 
-- **Every number in the panel steps when you hold the button down.** The `-` and `+` beside a
-  number moved it one at a time and no faster, which is a lot of clicking on a field that runs to
-  3600. Holding one now repeats and speeds up the longer it is held, so a field can be crossed in a
-  couple of seconds and still landed on exactly by letting go early. The waits in the theme editor
-  do the same.
-- **Dragging the playhead backwards no longer loses who queued the song, or counts it as played
-  twice.** Any jump backwards was read as the track starting over, which credited nobody for the
-  rest of the song and recorded a second play in the stats. Only a jump back to the very start
-  counts as a replay now - which is still how the same song queued by two people gets credited to
-  each of them in turn.
-
-Your stats stay on your machine: the dashboard is loopback-only, nothing is uploaded, and the
-record is left out of the packaged build.
+- **Hold the - and + buttons to change a number quickly.** It speeds up the longer you hold
+- **Dragging the playhead backwards no longer loses who queued the song,** or counts it as played
+  twice
 
 ## 41.0.2
 
 ### Fixed
 
-- **Spamming `!q` no longer queues the same song several times.** Requests sent inside the same
-  second all passed the cooldown check, because the cooldown was only written a second after the
-  song was added. One request per person is in flight at a time now, and the cooldown is recorded
-  the moment Spotify accepts the track. Redeems blocked this way are still refunded. A chat request
-  and a redeem also share one cooldown, instead of the same person being tracked under two names.
-  By [meislucas](https://github.com/meislucas)
-- **A channel without channel points no longer reconnects in a loop.** Startup asked Twitch for the
-  reward list whatever the channel was, and Twitch refuses that for anyone who is not an Affiliate
-  or Partner - so setup failed, reconnected and failed again. It checks the channel type first now
-  and says once that requests are chat-only. By [meislucas](https://github.com/meislucas)
+- **Spamming `!q` no longer queues the same song several times.** Chat requests and redeems now
+  share one cooldown per person. By [meislucas](https://github.com/meislucas)
+- **A channel without channel points no longer reconnects in a loop.** Queueify takes chat
+  requests only on those channels. By [meislucas](https://github.com/meislucas)
 
 ## 41.0.0
 
 ### New
 
-- **The song's time on the progress bar.** How far into the track you are on one side, how long it
-  runs for on the other - `0:04 ———— 3:07`. They are ordinary parts of a theme, so they can be
-  dragged, restyled or hidden like anything else. Themes made before this arrive with them off, so
-  nothing you have already designed changes.
-- **An outline on any text.** A hard edge around every letter, in any color, on the title, the
-  artist and both times. It is what keeps white text readable over gameplay that keeps changing
-  color, where a glow alone is not enough.
-- **A theme per OBS scene.** Give a scene a theme in **Widget themes** on the dashboard and
-  Queueify switches to it the moment OBS cuts to that scene. Scenes you leave alone change nothing.
-- **Revert to last save.** One button in the theme editor to throw away everything since the last
-  save, instead of counting undos. It goes on the undo stack, so pressing it by mistake is one
-  <kbd>Ctrl</kbd>+<kbd>Z</kbd> away from being put back.
-- **A warning when `!tr` / `!bc` no longer fit.** Changing a design's *shape* means its saved
-  widget position can no longer frame it exactly. The editor says which one to set again, and
-  names only the positions actually saved for that theme.
+- **Song times on the progress bar.** How far into the song you are on one side, and its length on
+  the other. You can move, restyle, or hide them. Themes made before this have them turned off
+- **An outline on any text.** Add an edge in any color around the title, artist, and song times. It
+  keeps text readable over busy gameplay
+- **A theme per OBS scene.** Give a scene a theme in **Widget themes** on the dashboard. Queueify
+  switches to it when OBS switches to that scene
+- **Revert to last save.** One button in the theme editor throws away everything since you last
+  saved. <kbd>Ctrl</kbd>+<kbd>Z</kbd> undoes it
+- **A warning when `!tr` or `!bc` need setting again.** After you change a theme's shape, the
+  editor tells you which saved position to set again
 
 ### Fixed
 
-- **Switching theme no longer flashes a half-drawn widget.** Changing scene reloads the page, and
-  the first frame of that reload was the design at 1x inside a browser source sized for 2x - the
-  widget in one corner with empty bars beside it - followed by an empty panel until Spotify
-  answered. The page now arrives already at the right zoom and stays hidden until there is a song
-  to draw, so it fades in correct instead of settling into place. A zoom change no longer forces a
-  reload at all, and the OBS source is only reloaded by hand when no widget is listening to reload
-  itself: three reloads per scene switch became one.
-- **The theme editor shows the Canvas video.** The preview drew the album cover whatever the theme
-  said, so "Canvas video when available" - the one setting whose entire job is what fills that box -
-  could not be seen at all. It now plays the clip for the track you are listening to, and swaps
-  back the moment you choose "Album cover only".
-
-- **Themes of a different shape are no longer squashed or cut off in OBS.** A tall theme dropped
-  into the space a wide one had was given a wide, short browser source and crushed to fit it. The
-  design's own proportions now decide both the size the page renders at and the space it takes on
-  the canvas, so a theme is fitted into the room it had rather than stretched into it.
-- **Saving a theme reaches OBS straight away.** Editing the theme already on screen used to leave
-  the widget showing the old design until the source was nudged in OBS. The widget now reloads on
-  every save, not only when the theme's name changes.
-- **The editor's size warning tells the truth.** It compared the design against a *different*
-  theme's size, so it warned about designs that were fine, stayed quiet about ones that were not,
-  and never changed its mind after switching theme. It now asks OBS what the browser source
-  actually is, and says nothing when there is nothing wrong.
-- **"Make the OBS window this size" sticks.** It sized the source for the theme on stream rather
-  than the one being edited, which undid the change the instant it was made.
-- **Saved `!tr` / `!bc` positions survive a theme switch.** A position was stored as a *scale*,
-  which only means anything against the browser source size it was measured at - and Queueify
-  resizes that source every time the theme changes. Switching to another scene's theme and back
-  therefore left the widget visibly out of place, needing the command typed again. A position now
-  stores the rectangle it framed on the OBS canvas, and the scale to land in it is worked out
-  fresh each time, so it comes back exactly where it was.
-- **Saved positions are no longer quietly rewritten.** Every resize used to multiply every saved
-  scale by the factor it had just changed by. Across two themes' worth of switches that compounded
-  unevenly: real saved positions ended up with their horizontal and vertical scale 30% apart,
-  stretching the widget. Nothing touches a saved position now, and the damaged ones repair
-  themselves, because the scale in them is no longer read.
-- **A widget you positioned by hand stays where you put it.** With no `!tr` / `!bc` position
-  saved, a theme switch fitted the design into whatever rectangle the other theme had left - and
-  fitting only ever shrinks, so the widget got a little smaller on every single switch, all
-  stream. Queueify now remembers where each theme's widget actually was, however it got there, and
-  puts it back. `!tr` and `!bc` still mean their own saved positions when you type them.
-- **Switching theme puts the widget back where that theme was framed.** OBS holds a scene item by
-  its top-left corner, so a widget that changes size creeps away from the bottom or the right.
-  `!theme`, a scene switch and **Use on stream** all restore the theme's own saved position - and
-  do it in the same pass that sizes the browser source, because OBS applies a source resize
-  asynchronously: sizing first and repositioning afterwards read the old pixel count back and
-  landed the widget slightly off, every time.
-- **The scale sent to OBS is one number, not two.** Dividing each axis by its own ideal size
-  rounds differently on each, which sent a very slightly uneven scale - enough to show after a few
-  theme switches.
-- **The license is stated once.** `package.json` said ISC while the README and `LICENSE` said MIT.
-  It is MIT.
+- **Switching theme no longer flashes a half-drawn widget**
+- **The theme editor plays the Canvas video.** The preview used to always show the album cover
+- **Themes of a different shape are no longer squashed or cut off in OBS**
+- **Saving a theme updates OBS straight away.** You no longer have to refresh the source
+- **The editor's size warning is accurate.** It used to warn about designs that were fine
+- **Make the OBS window this size now sticks.** It used to undo itself
+- **Saved `!tr` and `!bc` positions survive a theme switch.** You no longer have to type the
+  command again
+- **Saved positions no longer stretch the widget.** Positions that were already stretched fix
+  themselves
+- **A widget you placed by hand stays where you put it.** It used to shrink a little on every theme
+  switch
+- **Switching theme puts the widget back where that theme was placed.** It used to creep away from
+  the bottom or right edge
+- **The widget is no longer slightly stretched after several theme switches**
+- **The license is listed as MIT everywhere**
 
 ## 40.0.0
 
 ### New
 
-- **Setup dashboard.** Connect Twitch and Spotify, create the channel point reward and point
-  Queueify at OBS from one page, with a status for each. It stays open at
-  <http://127.0.0.1:3002> while the bot runs, so you can come back to it whenever.
-- **Admin Panel.** Change the queue's settings, rename any command, and edit every line Queueify
-  says in chat - without opening a file. Everything applies straight away.
-- **Visual theme editor.** Drag the album art, title, artist and progress bar around a canvas and
-  save it as a real theme you can switch to with `!theme`. 50 fonts, gradients, glow, colors that
-  follow the album art, and snapping that lines things up as you drag.
-- **Themes can be shared.** Export a theme to a file, send it to anyone else running Queueify, and
-  they can import it. It arrives as a new theme, so nothing of theirs is overwritten.
-- **Twitch login without a developer app.** Approve Queueify on Twitch and you are done - no client
-  ID, no secret, and logins renew themselves. Your own app keeps working if you already set one up.
-- **Spotify Canvas videos.** Paste the `sp_dc` cookie on the dashboard and the widget plays
-  Spotify's looping clips instead of the album cover, with a guide for finding the cookie.
-- **Chat commands, listed.** The dashboard shows every command, what it does, who may use it and
-  any aliases you have given it.
+- **Setup dashboard.** Connect Twitch, Spotify, and OBS, and create the channel point reward, all
+  from one page at <http://127.0.0.1:3002>. It stays open while the bot runs
+- **Admin Panel.** Change queue settings, rename commands, and edit every chat message without
+  opening a file. Changes apply straight away
+- **Visual theme editor.** Drag the album art, title, artist, and progress bar around a canvas,
+  then save it as a theme you can switch to with `!theme`. It has 50 fonts, gradients, glow, and
+  colors from the album art
+- **Share themes.** Export a theme to a file, and anyone running Queueify can import it as a new
+  theme
+- **Twitch login without a developer app.** Approve Queueify on Twitch and you are done. Logins
+  renew themselves
+- **Spotify Canvas videos.** Paste your `sp_dc` cookie on the dashboard, and the widget plays
+  Spotify's looping clips instead of the album cover. The dashboard shows how to find the cookie
+- **Chat commands, listed.** The dashboard lists every command, what it does, who can use it, and
+  its aliases
 
 ### Changed
 
-- **Nothing needs a restart.** Credentials, settings, aliases, chat messages and themes are all
-  re-read while the bot runs. Editing `.env` while Queueify is open now works.
-- **The widget stays sharp on its own.** The old 1x / 2x / 3x setting is gone. Queueify renders the
-  design at full size and lets OBS place it, and follows along when you resize it in OBS.
-- **The widget reloads itself** when the bot starts and whenever a theme changes, so OBS no longer
-  needs a manual refresh.
-- **OBS scene and source are picked from a list** that comes from OBS itself, instead of being
-  typed in - a typo used to break `!tr` and `!bc` with no explanation.
-- **Missing setup is explained.** A command that cannot reach OBS says what is wrong and what to
-  do about it, rather than failing silently.
+- **Nothing needs a restart.** Changes to credentials, settings, aliases, chat messages, themes, and
+  `.env` apply while the bot runs
+- **The widget stays sharp on its own.** The 1x / 2x / 3x setting is gone, and the widget adjusts
+  when you resize it in OBS
+- **The widget reloads itself** when the bot starts and when the theme changes
+- **Pick your OBS scene and source from a list** instead of typing their names
+- **Setup problems are explained.** A command that cannot reach OBS says what is wrong and how to
+  fix it
 
 ### Fixed
 
-- Turning channel point requests on or off from the Admin Panel now enables and disables the reward
-  on Twitch, the way `!redeemon` and `!redeemoff` always have. It used to leave the reward live and
-  viewers' points were still being taken.
-- Long titles and artists scroll only when they are genuinely too long to fit, and each scrolls at
-  its own speed.
-- The queue no longer drifts out of step with what Spotify is actually playing.
-- A song that was refused no longer costs the viewer their channel points - the redemption is
-  refunded.
-- The channel point reward is no longer required to start. A channel without Affiliate or
-  Partner cannot make one, and setup used to wait for it forever; Queueify now runs on chat
-  requests alone and says so instead of retrying in the background.
+- Turning channel point requests off in the Admin Panel turns off the reward on Twitch. Viewers
+  used to keep spending points
+- Long titles and artists only scroll when they do not fit
+- The queue no longer drifts out of step with what Spotify is playing
+- Viewers get their channel points back when their song is refused
+- Queueify starts without a channel point reward, so channels that are not Affiliate or Partner can
+  use chat requests
 
 ## Earlier
 
-- Queueify did not keep a changelog before 40.0.0. Everything above is what changed once it started.
+- Queueify did not keep a changelog before 40.0.0

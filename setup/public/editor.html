@@ -110,6 +110,56 @@
     background: var(--panel);
     color: var(--text);
   }
+
+
+  /* The font picker is a list of our own - see fontInput() - opened from a
+     button dressed as the <select> it replaced. Being a <button>, it has the
+     button rules at the top of the sheet to undo. */
+  .font-picker { position: relative; }
+  .font-trigger {
+    width: 100%; min-height: 36px; padding: 8px 30px 8px 10px;
+    font-size: 13.5px; font-weight: 400; line-height: 1.5; text-align: left;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    color: var(--ui-text-highlighted);
+    border: 1px solid var(--ui-border-accented); border-radius: 6px;
+    background: var(--card) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2371717a' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") no-repeat right 9px center / 15px;
+  }
+  /* The whole shorthand again, not just the image: `button:hover` sets
+     `background` too, which resets the repeat, and the chevron tiled across
+     the button. */
+  .font-trigger:hover:not(:disabled) {
+    border-color: var(--ui-text-dimmed);
+    background: var(--card) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23a1a1aa' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") no-repeat right 9px center / 15px;
+  }
+  .font-trigger:focus, .font-trigger[aria-expanded="true"] {
+    outline: none; border-color: var(--ui-primary);
+    box-shadow: 0 0 0 1px var(--ui-primary);
+  }
+  .font-list {
+    position: absolute; z-index: 30; top: calc(100% + 4px); left: 0; right: 0;
+    max-height: 340px; overflow-y: auto; padding: 4px;
+    background: var(--card); border: 1px solid var(--ui-border-accented); border-radius: 8px;
+    box-shadow: var(--ui-shadow);
+  }
+  .font-list[hidden] { display: none; }
+  .font-group {
+    padding: 9px 10px 3px; font-size: 11px; font-weight: 600;
+    letter-spacing: .04em; text-transform: uppercase; color: var(--faint);
+  }
+  .font-option {
+    padding: 5px 10px; border: 1px solid transparent; border-radius: 6px;
+    font-size: 15px; line-height: 1.5; color: var(--text); cursor: pointer;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .font-option:focus { outline: none; }
+  .font-option:hover, .font-option:focus-visible { background: var(--ui-bg-elevated); }
+  /* The font in use, marked the way "Start from a layout" marks the layout
+     under the pointer. It stays marked wherever the pointer goes, which is
+     what the browser's own list could not do. */
+  .font-option.current {
+    border-color: var(--accent); color: var(--ui-text-highlighted);
+    background: color-mix(in srgb, var(--ui-primary) 8%, transparent);
+  }
   input[type="range"] { padding: 0; border: 0; background: none; accent-color: var(--accent); }
   input[type="color"] { padding: 2px; height: 30px; cursor: pointer; }
   input[type="checkbox"] { width: auto; accent-color: var(--accent); }
@@ -2408,7 +2458,9 @@ function drawGuides(guides, sizeMatches = [], spacing = null, dragged = null) {
 }
 
 window.addEventListener('keydown', event => {
-  if (event.target.matches('input, select, textarea')) return;
+  // The font picker takes its own arrow keys, the way the <select> it
+  // replaced did - they are not for nudging the part it belongs to.
+  if (event.target.matches('input, select, textarea') || event.target.closest('.font-picker')) return;
 
   if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'z') {
     event.preventDefault();
@@ -2671,9 +2723,30 @@ function loadUsedFonts() {
 /**
  * Grouped by category, and every option is drawn in its own typeface - picking
  * a font by name alone is guesswork.
+ *
+ * A list of our own rather than a <select>. The open list of a <select> is
+ * drawn by the browser, and none of them will mark the font in use: Chrome
+ * paints an option's background and nothing more, Firefox not even that, and
+ * both move their own highlight with the pointer. So once you moved off the
+ * current font there was nothing left to say where in fifty families it was.
  */
 function fontInput(module) {
-  const select = document.createElement('select');
+  const picker = document.createElement('div');
+  picker.className = 'font-picker';
+
+  const trigger = document.createElement('button');
+  trigger.type = 'button';
+  trigger.className = 'font-trigger';
+  trigger.textContent = state.fonts[module.font].label;
+  trigger.style.fontFamily = state.fonts[module.font].stack;
+  trigger.setAttribute('aria-haspopup', 'listbox');
+  trigger.setAttribute('aria-expanded', 'false');
+
+  const list = document.createElement('div');
+  list.className = 'font-list';
+  list.setAttribute('role', 'listbox');
+  list.hidden = true;
+
   const groups = new Map();
 
   for (const [key, font] of Object.entries(state.fonts)) {
@@ -2682,34 +2755,60 @@ function fontInput(module) {
   }
 
   for (const [category, fonts] of groups) {
-    // Named for what it is: `group` is now the panel-section helper.
-    const optgroup = document.createElement('optgroup');
-    optgroup.label = state.fontCategories[category] || category;
+    // Named for what it is: `group` is the panel-section helper.
+    const heading = document.createElement('div');
+    heading.className = 'font-group';
+    heading.textContent = state.fontCategories[category] || category;
+    list.appendChild(heading);
 
     for (const [key, font] of fonts) {
-      const option = document.createElement('option');
-      option.value = key;
+      const option = document.createElement('div');
+      option.className = 'font-option' + (key === module.font ? ' current' : '');
+      option.setAttribute('role', 'option');
+      option.setAttribute('aria-selected', String(key === module.font));
+      option.tabIndex = -1;
+      option.dataset.font = key;
       option.textContent = font.label;
       option.style.fontFamily = font.stack;
-      option.style.fontSize = '14px';
-      optgroup.appendChild(option);
+      list.appendChild(option);
     }
-
-    select.appendChild(optgroup);
   }
 
-  select.value = module.font;
-  select.style.fontFamily = state.fonts[module.font].stack;
+  const options = [...list.querySelectorAll('.font-option')];
+  const current = options.find(option => option.dataset.font === module.font);
 
-  select.addEventListener('change', () => {
+  const open = () => {
+    list.hidden = false;
+    picker.classList.add('open');
+    trigger.setAttribute('aria-expanded', 'true');
+
+    // Opened on the font in use, in the middle of the list where there is
+    // room either side of it, the way a <select> opens on its value.
+    list.scrollTop = current.offsetTop - (list.clientHeight - current.offsetHeight) / 2;
+    current.focus({ preventScroll: true });
+    list.scrollIntoView({ block: 'nearest' });
+  };
+
+  const close = () => {
+    closeFontLists();
+    trigger.focus();
+  };
+
+  const choose = (option, { keyboard = false } = {}) => {
+    const key = option.dataset.font;
+    if (key === module.font) {
+      close();
+      return;
+    }
+
     commit(() => {
-      module.font = select.value;
+      module.font = key;
       // The new family may not ship the weight that was set, so it gets the
       // nearest it has. The weight asked for is remembered, not overwritten:
       // going back to a font that has it brings it back, instead of leaving
       // the stand-in behind as a change nobody made.
       const wanted = state.memory.weights[module.type] ?? module.fontWeight;
-      const weights = state.fonts[select.value].weights;
+      const weights = state.fonts[key].weights;
 
       if (weights.includes(wanted)) {
         module.fontWeight = wanted;
@@ -2722,10 +2821,89 @@ function fontInput(module) {
     });
     loadUsedFonts();
     renderProps();
+
+    // The panel was rebuilt under the list. From the keyboard, carry on from
+    // the new button; after a click, focusing it would only pop its tooltip.
+    if (keyboard) $('props').querySelector('.font-trigger')?.focus();
+  };
+
+  trigger.addEventListener('click', () => {
+    if (list.hidden) open();
+    else close();
   });
 
-  return select;
+  trigger.addEventListener('keydown', event => {
+    if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;
+    event.preventDefault();
+    open();
+  });
+
+  list.addEventListener('click', event => {
+    const option = event.target.closest('.font-option');
+    if (option) choose(option);
+  });
+
+  // Typing a name jumps to it, as it does in a <select>.
+  let typed = '';
+  let typedTimer = null;
+
+  list.addEventListener('keydown', event => {
+    const at = options.indexOf(document.activeElement);
+    const move = to => {
+      const option = options[Math.max(0, Math.min(options.length - 1, to))];
+      option.focus({ preventScroll: true });
+      option.scrollIntoView({ block: 'nearest' });
+    };
+
+    switch (event.key) {
+      case 'ArrowDown': move(at + 1); break;
+      case 'ArrowUp': move(at - 1); break;
+      case 'PageDown': move(at + 8); break;
+      case 'PageUp': move(at - 8); break;
+      case 'Home': move(0); break;
+      case 'End': move(options.length - 1); break;
+      case 'Enter':
+      case ' ':
+        if (at !== -1) choose(options[at], { keyboard: true });
+        break;
+      case 'Escape': close(); break;
+      case 'Tab': closeFontLists(); return;
+      default: {
+        if (event.key.length !== 1 || event.ctrlKey || event.metaKey || event.altKey) return;
+
+        clearTimeout(typedTimer);
+        typed += event.key.toLowerCase();
+        typedTimer = setTimeout(() => { typed = ''; }, 700);
+
+        // One letter steps through the fonts starting with it; more than one
+        // is a name being spelled, so it may match the font already reached.
+        const from = typed.length === 1 ? at + 1 : Math.max(at, 0);
+        const found = [...options.slice(from), ...options.slice(0, from)]
+          .find(option => option.textContent.toLowerCase().startsWith(typed));
+        if (found) move(options.indexOf(found));
+      }
+    }
+
+    event.preventDefault();
+  });
+
+  picker.append(trigger, list);
+  return picker;
 }
+
+function closeFontLists() {
+  for (const picker of document.querySelectorAll('.font-picker.open')) {
+    picker.classList.remove('open');
+    picker.querySelector('.font-list').hidden = true;
+    picker.querySelector('.font-trigger').setAttribute('aria-expanded', 'false');
+  }
+}
+
+// One listener for whichever list is open, rather than one added on every
+// rebuild of the panel.
+document.addEventListener('pointerdown', event => {
+  if (!event.target.closest('.font-picker')) closeFontLists();
+});
 
 function weightInput(module) {
   const weights = state.fonts[module.font].weights;
@@ -2761,9 +2939,9 @@ const FIELD_TIPS = {
   'Glow color': 'The color of that halo.',
   'Outline': 'A hard edge around every letter. Reads over anything; 0 turns it off.',
   'Outline color': 'The color of that edge. Black or the album dark tone are the safe choices.',
-  'Drop shadow': 'A shadow thrown behind the letters, with a direction. 0 turns it off.',
+  'Drop shadow': 'A shadow thrown behind this part, with a direction. 0 turns it off.',
   'Shadow angle': 'Which way it is thrown, in degrees. 0 is up, 90 is right, 180 is down.',
-  'Shadow blur': 'How soft its edge is. 0 is a hard offset copy of the text.',
+  'Shadow blur': 'How soft its edge is. 0 is a hard offset copy of the part.',
   'Shadow color': 'The color of that shadow. Black at part opacity is the usual choice.',
   'Corner radius': 'How rounded the corners are. 0 is square.',
   'Independent corners': 'Round each corner by its own amount, like Figma. Turn it off to go back to one radius.',
@@ -3461,8 +3639,22 @@ function renderProps() {
         'How heavy the drawing is. It is measured before the icon is scaled, so a big icon at 1 ' +
         'still looks finer than a small one at 3.'),
       field('Rotation', sliderInput(module, 'rotate', { min: 0, max: 360, step: 5 })),
-      field('Opacity', sliderInput(module, 'opacity', { min: 0, max: 1, step: 0.05 }))
+      field('Opacity', sliderInput(module, 'opacity', { min: 0, max: 1, step: 0.05 })),
+      field('Drop shadow', sliderInput(module, 'shadow', { min: 0, max: 40 }),
+        'How far a shadow is thrown behind the icon, to lift it off what is behind it. ' +
+        '0 turns it off.')
     );
+
+    // As with text, only once there is a shadow to aim.
+    if (module.shadow) {
+      section.body.append(
+        field('Shadow angle', sliderInput(module, 'shadowAngle', { min: 0, max: 360, step: 5 }),
+          'Read like the gradient angle: 0 throws it upwards, 90 to the right, 180 down. ' +
+          'Rotating the icon does not swing it round.'),
+        field('Shadow blur', sliderInput(module, 'shadowBlur', { min: 0, max: 40 })),
+        field('Shadow color', colorInput(module, 'shadowColor'))
+      );
+    }
 
     section.body.insertBefore(visibilityButton(module), section.body.firstChild);
     // Color first, then the box. An icon is placed by dragging it on the
@@ -4262,7 +4454,8 @@ function addIcon(name) {
       y: Math.round(canvas.height / 2 - 16),
       w: 32, h: 32,
       color: 'var(--album-light)',
-      strokeWidth: 2, rotate: 0, opacity: 1, hidden: false
+      strokeWidth: 2, rotate: 0, opacity: 1, hidden: false,
+      shadow: 0, shadowAngle: 135, shadowBlur: 0, shadowColor: 'rgba(0,0,0,0.55)'
     });
   });
 
