@@ -153,9 +153,8 @@
   }
   .font-option:focus { outline: none; }
   .font-option:hover, .font-option:focus-visible { background: var(--ui-bg-elevated); }
-  /* The font in use, marked the way "Start from a layout" marks the layout
-     under the pointer. It stays marked wherever the pointer goes, which is
-     what the browser's own list could not do. */
+  /* The font in use, outlined in the accent color. It stays marked wherever
+     the pointer goes, which is what the browser's own list could not do. */
   .font-option.current {
     border-color: var(--accent); color: var(--ui-text-highlighted);
     background: color-mix(in srgb, var(--ui-primary) 8%, transparent);
@@ -215,6 +214,13 @@
   .where-link:hover { color: var(--ui-text-highlighted); background: var(--ui-bg-elevated); text-decoration: none; }
 
   .top-rule { width: 1px; height: 20px; background: var(--border); flex: none; }
+  /* One line each, however narrow the window: the theme name gives way instead. */
+  .top button, .top .state { white-space: nowrap; }
+  /* On a narrow window the page's own labels go first, so the theme name keeps
+     room to be read. The wordmark still leads back to the dashboard. */
+  @media (max-width: 1080px) {
+    .top .where, .top .where-link, .top .top-rule { display: none; }
+  }
 
   /*
    * The theme's name is the title of what you are editing, so it is typed in
@@ -342,6 +348,42 @@
   .tool-group { display: inline-flex; align-items: center; gap: 4px; }
   .tool-rule { width: 1px; height: 18px; margin: 0 6px; background: var(--border); flex: none; }
   .tool-note { font-size: 12px; color: var(--faint); margin-right: 2px; }
+  /* Always on show: picking several at once is easy to miss otherwise. */
+  .tool-hint { margin-left: 4px; font-size: 12px; color: var(--muted); white-space: nowrap; }
+  .tool-hint.snap-hint { padding-left: 10px; border-left: 1px solid var(--border-soft); }
+  .tool-hint.snap-hint kbd { color: var(--green); border-color: color-mix(in srgb, var(--green) 45%, transparent); }
+  @media (max-width: 1480px) { .tool-hint.snap-hint { display: none; } }
+  .tool-hint kbd { font-size: 11px; }
+  @media (max-width: 1180px) { .tool-hint { display: none; } }
+
+  /* The way in to the premades from the top bar. It glows because a premade
+     is the quickest way to a good-looking widget, and a plain button in a row
+     of plain buttons gets walked past. The ring is the gradient with its
+     middle masked away; the glow is the same gradient, blurred, behind it. */
+  .premade-nav {
+    position: relative; padding: 6px 14px; font-size: 13.5px; font-weight: 600;
+    background: var(--ui-bg); color: var(--ui-text-highlighted);
+  }
+  .premade-nav:hover:not(:disabled) { background: var(--ui-bg-elevated); }
+  .premade-nav::before,
+  .premade-nav::after {
+    content: ''; position: absolute; border-radius: inherit; pointer-events: none;
+    background: linear-gradient(90deg, var(--ui-primary), #8b5cf6, var(--ui-primary), #8b5cf6, var(--ui-primary));
+    background-size: 200% 100%;
+    animation: premade-glow 5s linear infinite;
+  }
+  .premade-nav::before {
+    inset: 0; padding: 1.5px;
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
+  }
+  /* Behind the button, in the top bar's own stack, so the face stays solid. */
+  .premade-nav::after { inset: -2px; z-index: -1; filter: blur(9px); opacity: .6; }
+  @keyframes premade-glow { to { background-position: 200% 0; } }
+  @media (prefers-reduced-motion: reduce) {
+    .premade-nav::before, .premade-nav::after { animation: none; }
+  }
   /* Compact, but still a field you can read and hit: it was transparent with
      muted text, which put gray numbers on a gray strip. */
   .tool-select {
@@ -390,7 +432,55 @@
   }
   .hit:hover { border-color: color-mix(in srgb, var(--ui-primary) 55%, transparent); }
   .hit.selected { border-color: var(--accent); }
-  .hit.hidden-module { opacity: .35; border-style: dashed; }
+  /* A locked part lets the pointer straight through, to whatever is under it -
+     usually the reason it was locked, like a card behind everything. */
+  .hit.locked { pointer-events: none; }
+  .hit.locked.selected { border-style: dashed; }
+
+  /* The canvas, once it is selected. Only its handles take the pointer: a
+     press anywhere else on it is still a press on the parts or the space
+     between them. */
+  .canvas-frame {
+    position: absolute; inset: 0; box-sizing: border-box; pointer-events: none;
+    border: 1px solid var(--accent);
+  }
+  .canvas-frame.locked { border-style: dashed; }
+  /* With the panel inset, the canvas edge is no longer drawn by anything - but
+     it is still where the widget stops, so it is outlined faintly. */
+  .canvas-frame.edge { border: 1px dashed color-mix(in srgb, var(--accent) 40%, transparent); }
+  .canvas-frame .handle { pointer-events: auto; }
+
+  .callout {
+    margin: 4px 0 2px; padding: 10px 12px 10px 12px; border-radius: 9px;
+    font-size: 12.5px; line-height: 1.5; color: var(--ui-text-highlighted);
+    background: color-mix(in srgb, var(--ui-warning) 12%, transparent);
+    border: 1px solid color-mix(in srgb, var(--ui-warning) 45%, transparent);
+  }
+  .callout strong { display: block; margin-bottom: 2px; }
+  .callout code {
+    padding: 0 4px; border-radius: 4px; font-size: 11.5px;
+    background: color-mix(in srgb, var(--ui-warning) 18%, transparent);
+  }
+
+  /* The box drawn by dragging across empty space. In the artboard rather
+     than the overlay, which is rebuilt every time the selection changes. */
+  .marquee {
+    position: absolute; z-index: 6; pointer-events: none;
+    border: 1px solid var(--accent);
+    background: color-mix(in srgb, var(--accent) 12%, transparent);
+  }
+  .group-parts { margin: 0 0 8px; padding-left: 18px; font-size: 13px; color: var(--text); }
+
+  /* A setting the selected parts do not agree about. The control still works:
+     changing it sets every one of them. */
+  .slider.mixed input[type="range"] { opacity: .4; }
+  /* Small enough that "Mixed" fits the 52px box beside a slider. */
+  input[type="number"]::placeholder { font-size: 11px; }
+  .color.mixed .albums::after {
+    content: 'Mixed'; align-self: center; margin-left: 4px;
+    font-size: 12px; color: var(--muted);
+  }
+  .group-parts li { margin: 2px 0; }
 
   .handle {
     position: absolute;
@@ -446,7 +536,9 @@
   .readout {
     margin-top: 14px; font-size: 12px; color: var(--faint);
     font-family: ui-monospace, Menlo, Consolas, monospace;
+    white-space: pre-wrap;
   }
+  .readout .coord { color: var(--green); font-weight: 700; }
 
   /* Dragging with snapping held off says so, so it is never a mystery why
      things stopped lining up. */
@@ -514,6 +606,26 @@
   .panel-hint {
     margin: 0 0 9px; font-size: 12px; color: var(--faint);
   }
+
+  /* Pinned to the top of the panel while it scrolls, so a setting can be
+     looked for from anywhere in a long list. */
+  .panel-search {
+    position: sticky; top: -16px; z-index: 6;
+    display: flex; align-items: center; gap: 8px;
+    margin: -16px -16px 14px; padding: 12px 16px;
+    background: var(--panel); border-bottom: 1px solid var(--border-soft);
+  }
+  .panel-search svg { width: 15px; height: 15px; flex: none; color: var(--faint); }
+  .panel-search input {
+    flex: 1; min-width: 0; padding: 7px 10px; font-size: 13px;
+    border: 1px solid var(--border); border-radius: 7px; background: var(--card); color: var(--ui-text-highlighted);
+  }
+  .panel-search input:focus { outline: none; border-color: var(--green); box-shadow: 0 0 0 3px var(--accent-soft); }
+  .panel-search kbd { font-size: 11px; color: var(--faint); }
+  .panel-search:focus-within kbd { display: none; }
+  .panel.searching .search-miss { display: none !important; }
+  .panel.searching label.search-hit { color: var(--green); }
+  .panel-nomatch { margin-top: 12px; }
 
   .modules { display: grid; gap: 6px; margin-bottom: 18px; }
   .module-row {
@@ -583,6 +695,7 @@
   }
   .visibility.is-hidden:hover:not(:disabled) { background: color-mix(in srgb, var(--ui-warning) 16%, transparent); }
   .visibility .why-hidden { margin-left: auto; font-size: 11px; opacity: .8; }
+  .locked-fields { opacity: .5; }
 
   .module-row.is-hidden { opacity: .62; }
   .module-row.is-hidden .name { text-decoration: line-through; text-decoration-color: var(--faint); }
@@ -591,6 +704,11 @@
     padding: 2px 6px; border-radius: 6px; letter-spacing: .04em;
   }
   .module-row .eye { display: grid; place-items: center; border-radius: 6px; }
+  /* Faint until it matters, so a list of unlocked parts is not a column of
+     padlocks. A locked part's shows at full strength. */
+  .module-row .lock:not(.on) { opacity: .45; }
+  .module-row:hover .lock, .module-row .lock:focus-visible { opacity: 1; }
+  .module-row .lock.on { color: var(--ui-text-highlighted); }
   .module-row .eye:hover { background: var(--ui-bg-accented); color: var(--ui-text-highlighted); }
   .module-row .eye svg { width: 15px; height: 15px; }
 
@@ -606,6 +724,9 @@
   .prop.inline { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
   .prop.inline > label { margin: 0; }
   .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  /* Where a part is and how big: the fields people reach for most, picked
+     out so they are found at a glance. */
+  .pair.coords > .prop > label { color: var(--green); font-weight: 600; }
   .slider { display: grid; grid-template-columns: 1fr 52px; gap: 8px; align-items: center; }
 
   /* Corner radius, with Figma's switch to round each corner on its own. The
@@ -699,17 +820,119 @@
   .mini:hover:not(:disabled) { background: var(--ui-bg-accented); }
 
   .align-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-bottom: 9px; }
+  .align-row.four { grid-template-columns: repeat(4, 1fr); }
+  .transition-input .align-row { grid-template-columns: repeat(2, 1fr); margin: 6px 0 0; }
+  /* A box of its own, so a preview never passes for one of the settings around it. */
+  .preview-box { margin-top: 12px; padding: 10px 12px 12px; border: 1px dashed var(--ui-border-accented); border-radius: 8px; }
+  .preview-box .preview-head { margin: 0; font-size: 12px; font-weight: 600; color: var(--ui-text-highlighted); }
+  .preview-box .place-hint { margin: 2px 0 8px; }
+  .align-row.four .mini { padding-left: 4px; padding-right: 4px; }
 
-  .presets { display: grid; gap: 8px; margin-bottom: 4px; }
-  .preset {
-    text-align: left; background: var(--card); color: var(--text);
-    border: 1px solid var(--border); padding: 10px 12px; border-radius: 6px;
-    font-weight: 600; font-size: 13px; cursor: pointer;
+  /* ------------------------------------------------ premade picker */
+
+  /* The premades down the left, the one picked large on the right. Made of the
+     same tokens as the rest of the editor, so it follows light and dark. Only
+     the stage behind the preview has colors of its own: it stands in for the
+     stream, so it is a backdrop you pick, not part of the page. */
+  .picker {
+    display: grid; grid-template-columns: 272px minmax(0, 1fr);
+    width: min(1200px, 100%); height: min(780px, calc(100vh - 48px));
+    /* clip, not hidden: a hidden box is still a scroll container, and moving
+       focus down the list could slide the whole dialog. */
+    overflow: hidden; overflow: clip;
+    background: var(--ui-bg); color: var(--ui-text);
+    border: 1px solid var(--ui-border); border-radius: 12px;
+    box-shadow: var(--ui-shadow);
   }
-  /* :not(:disabled) so it outranks `button:hover:not(:disabled)`, whose solid
-     accent otherwise wins and swallows the gray description. */
-  .preset:hover:not(:disabled) { border-color: var(--accent); background: color-mix(in srgb, var(--ui-primary) 8%, transparent); }
-  .preset small { display: block; margin-top: 3px; font-weight: 400; color: var(--muted); font-size: 12px; }
+
+  .picker-side { display: flex; flex-direction: column; min-height: 0; border-right: 1px solid var(--ui-border); }
+  .picker-side h2 { margin: 0; padding: 18px 20px 12px; font-size: 15px; font-weight: 600; color: var(--ui-text-highlighted); }
+  .picker-search { margin: 0 12px 4px; }
+  .picker-list { flex: 1; min-height: 0; overflow-y: auto; padding: 0 8px 12px; }
+  .picker-group { padding: 14px 12px 6px; font-size: 12px; font-weight: 500; color: var(--muted); }
+  .picker-row {
+    display: flex; align-items: center; gap: 8px; height: 32px; padding: 0 12px;
+    border-radius: 6px; cursor: pointer; font-size: 14px; color: var(--ui-text); outline: none;
+  }
+  .picker-row:hover { background: color-mix(in srgb, var(--ui-bg-elevated) 55%, transparent); }
+  .picker-row[aria-selected="true"] { background: var(--ui-bg-elevated); color: var(--ui-text-highlighted); font-weight: 500; }
+  .picker-row:focus-visible { box-shadow: inset 0 0 0 2px var(--ui-primary); }
+  .picker-row-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .picker-row-size { font: 400 11.5px var(--font-mono); color: var(--muted); }
+  .picker-empty { margin: 14px 12px; font-size: 13px; color: var(--muted); }
+
+  .picker-main { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+  .picker-head {
+    display: flex; align-items: center; gap: 12px;
+    padding: 12px 12px 12px 24px; border-bottom: 1px solid var(--ui-border);
+  }
+  .picker-head h3 {
+    flex: 1; min-width: 0; margin: 0; font-size: 17px; font-weight: 600; color: var(--ui-text-highlighted);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+
+  .segmented { display: inline-flex; gap: 2px; padding: 2px; border: 1px solid var(--ui-border-accented); border-radius: 7px; }
+  .segmented button { padding: 3px 10px; font-size: 12.5px; border-radius: 5px; background: transparent; color: var(--muted); }
+  .segmented button:hover:not(:disabled) { background: var(--ui-bg-elevated); color: var(--ui-text-highlighted); }
+  .segmented button[aria-pressed="true"],
+  .segmented button[aria-pressed="true"]:hover:not(:disabled) { background: var(--ui-bg-accented); color: var(--ui-text-highlighted); }
+
+  .picker-body { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 16px; padding: 20px 24px; overflow-y: auto; }
+  .picker-stage {
+    position: relative; flex: 1; min-height: 240px;
+    border: 1px solid var(--ui-border); border-radius: 8px; overflow: hidden; overflow: clip;
+  }
+  .picker-stage[data-scene="dark"] { background: #0f0f12; }
+  .picker-stage[data-scene="light"] { background: #e4e4e7; }
+  .picker-stage[data-scene="clear"] {
+    background-color: #1c1c20;
+    background-image: repeating-conic-gradient(#26262b 0 25%, transparent 0 50%);
+    background-size: 16px 16px;
+  }
+  /* The theme's page is light-schemed whatever the editor is, or a dark editor
+     paints its own canvas color behind a transparent widget. */
+  #showroom-frame {
+    position: absolute; left: 0; top: 0; border: 0; background: transparent;
+    transform-origin: top left; color-scheme: light;
+    opacity: 0; transition: opacity .15s ease;
+  }
+  #showroom-frame.is-shown { opacity: 1; }
+  .picker-scale { position: absolute; left: 12px; bottom: 8px; font-size: 12px; color: #a1a1aa; pointer-events: none; }
+  .picker-stage[data-scene="light"] .picker-scale { color: #52525b; }
+
+  .picker-desc { margin: 0; max-width: 640px; font-size: 14px; line-height: 1.55; color: var(--ui-text); }
+  .picker-note { margin: -8px 0 0; max-width: 640px; font-size: 13px; line-height: 1.5; color: var(--muted); }
+  .picker-note code { font: 12px var(--font-mono); }
+  .picker-facts { display: flex; gap: 32px; margin: 0; }
+  .picker-facts > div { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+  .picker-facts > div:last-child { flex: 1; }
+  .picker-facts dt { font-size: 12px; color: var(--muted); }
+  .picker-facts dd { margin: 0; font-size: 13.5px; color: var(--ui-text-highlighted); }
+
+  .picker-foot { display: flex; align-items: center; gap: 10px; padding: 12px 12px 12px 24px; border-top: 1px solid var(--ui-border); }
+  .picker-foot p { flex: 1; min-width: 0; margin: 0; font-size: 13px; color: var(--muted); }
+  .picker-foot button { padding: 8px 16px; }
+  /* Right-aligned even when the line beside them is dropped on a narrow screen. */
+  .picker-foot .ghost { margin-left: auto; }
+
+  @media (max-width: 760px) {
+    .picker { grid-template-columns: minmax(0, 1fr); grid-template-rows: 220px minmax(0, 1fr); }
+    .picker-side { border-right: 0; border-bottom: 1px solid var(--ui-border); }
+    .picker-side h2 { display: none; }
+    .picker-search { margin-top: 12px; }
+    .picker-foot p { display: none; }
+  }
+
+  /* TEMPORARY - see #dev-preset. */
+  .dev-preset {
+    display: inline-flex; align-items: center; gap: 6px; padding: 3px 4px 3px 8px;
+    border: 1px dashed color-mix(in srgb, var(--ui-warning) 70%, transparent); border-radius: 8px;
+  }
+  .dev-tag { font-size: 10.5px; font-weight: 800; letter-spacing: .08em; color: var(--ui-warning); }
+  .dev-preset select { width: auto; min-height: 30px; padding: 4px 26px 4px 8px; font-size: 12.5px; }
+  .dev-queue input { min-height: 30px; padding: 4px 8px; font-size: 12.5px; }
+  #dev-queue-links { width: 260px; }
+  #dev-queue-as { width: 110px; }
 
   /* --------------------------------------------------------- drawer */
 
@@ -749,8 +972,13 @@
 
   .list-heading {
     display: flex; align-items: center; gap: 8px;
-    margin: 18px 0 8px; padding: 0 2px;
-    font-size: 12px; font-weight: 600; color: var(--muted);
+    margin: 22px 0 9px; padding: 0 2px;
+    font-size: 13.5px; font-weight: 700; letter-spacing: .01em; color: var(--ui-text-highlighted);
+  }
+  .list-count {
+    margin-left: 6px; padding: 1px 7px; border-radius: 999px;
+    font-size: 11px; font-weight: 600; vertical-align: 1px;
+    background: var(--ui-bg-elevated); color: var(--ui-text);
   }
   .list-heading span { flex: 1; }
   .list-empty {
@@ -781,6 +1009,13 @@
 
   .shuffle { display: flex; align-items: center; gap: 8px; }
   .shuffle-note { flex: 1; font-size: 12.5px; color: var(--muted); }
+  .shuffle-btn, .green-btn { background: var(--green); color: #fff; border-color: transparent; }
+  .shuffle-btn:hover, .green-btn:hover { background: var(--accent-hover); filter: brightness(1.08); }
+  .green-btn { flex: none; white-space: nowrap; }
+  .green-btn[aria-pressed="true"] { box-shadow: 0 0 0 3px var(--accent-soft); }
+  #icon-sheet .search { gap: 8px; }
+  #icon-sheet .search input { flex: 1; min-width: 0; }
+  .icon-count { margin: 8px 0 10px; font-size: 12px; color: var(--faint); min-height: 1em; }
 
   .icon-row { border-left-color: var(--accent); }
   .row-glyph {
@@ -849,6 +1084,8 @@
 <!-- Loaded before the page script: number fields are built during the
      first render, and they ask for holdRepeat as they are made. -->
 <script src="stepper.js"></script>
+<!-- The widget's own effects, for the Viewer rewards and Ambience previews. -->
+<script src="effects.js"></script>
 </head>
 <body>
 
@@ -874,6 +1111,7 @@
 
   <div class="spacer"></div>
 
+  <button type="button" class="premade-nav" id="btn-presets-top" title="Start from a finished design">Premade themes</button>
   <button class="ghost sm" id="btn-new" title="Start a blank theme">New</button>
 
   <button type="button" class="icon-btn d-mode" data-color-mode-toggle title="Switch between light and dark" aria-label="Switch between light and dark">
@@ -926,6 +1164,9 @@
 
       <button class="ghost sm hidden" id="btn-revert"
               title="Throw away every change since the last save">Revert to last save</button>
+
+      <span class="tool-hint"><kbd>Ctrl</kbd>+click or drag a box to select several</span>
+      <span class="tool-hint snap-hint">Hold <kbd>Ctrl</kbd> while dragging to turn snapping off</span>
 
       <div class="spacer"></div>
 
@@ -981,21 +1222,40 @@
     <section class="theme-actions" aria-label="This theme">
       <h2>This theme</h2>
       <div class="theme-actions-row">
-        <button type="button" class="ghost" id="btn-presets">Start from a layout&hellip;</button>
+        <button type="button" class="ghost" id="btn-presets">Premade themes&hellip;</button>
         <button type="button" class="ghost" id="btn-duplicate">Duplicate</button>
         <button type="button" class="ghost" id="btn-export">Export</button>
         <button type="button" class="ghost" id="btn-import">Import</button>
         <button type="button" class="ghost" id="btn-scenes"
                 title="Pick which OBS scenes switch to this theme on their own - on the dashboard">Assign to OBS scenes&hellip;</button>
         <div class="theme-actions-rule"></div>
+        <!-- TEMPORARY: writes this design over a premade, for polishing them. -->
+        <div class="dev-preset" id="dev-preset" title="Development only - remove once the premades are done">
+          <span class="dev-tag">DEV</span>
+          <select id="dev-preset-target" aria-label="Premade to overwrite"></select>
+          <button type="button" class="ghost" id="btn-dev-preset">Save over premade</button>
+        </div>
+        <!-- TEMPORARY: queues songs as a viewer would, for testing without chat. -->
+        <form class="dev-preset dev-queue" id="dev-queue" title="Development only - queues straight into Spotify as a chat request">
+          <span class="dev-tag">DEV</span>
+          <input id="dev-queue-links" type="text" placeholder="Spotify track link(s)" aria-label="Spotify track links to queue" autocomplete="off" />
+          <input id="dev-queue-as" type="text" value="test_viewer" aria-label="Viewer the request is from" autocomplete="off" />
+          <button type="submit" class="ghost" id="btn-dev-queue">Queue as viewer</button>
+        </form>
         <button type="button" class="danger" id="btn-delete">Delete</button>
       </div>
     </section>
   </div>
 
-  <div class="panel">
+  <div class="panel" id="panel">
+    <div class="panel-search">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+      <input id="panel-search" type="search" placeholder="Search settings and parts" aria-label="Search settings and parts" autocomplete="off" spellcheck="false" />
+      <kbd title="Press / to search">/</kbd>
+    </div>
     <div class="modules" id="modules"></div>
     <div id="props"></div>
+    <p class="panel-hint panel-nomatch hidden" id="panel-nomatch"></p>
   </div>
 </div>
 
@@ -1015,6 +1275,16 @@
         <strong>Drag a part to move it, drag its handles to resize.</strong>
         Pink marks show what you have lined up with. Hold <kbd>Ctrl</kbd> or <kbd>Shift</kbd>
         while dragging to ignore snapping altogether.
+        To move several parts at once, drag a box across them from an empty spot, or
+        <kbd>Ctrl</kbd>+click each one. Then drag any of them. The settings they have in common are
+        under <strong>Change all of them</strong>, and change every one at once.
+        Click an empty spot on the canvas to select it, and drag its right or bottom edge to
+        resize it.
+        <span class="keys">
+          <kbd>Ctrl</kbd>+<kbd>]</kbd> bring forward &nbsp;·&nbsp;
+          <kbd>Ctrl</kbd>+<kbd>[</kbd> send backward &nbsp;·&nbsp;
+          add <kbd>Shift</kbd> to go all the way
+        </span>
         <span class="keys">
           <kbd>←</kbd><kbd>↑</kbd><kbd>↓</kbd><kbd>→</kbd> nudge by 1px &nbsp;·&nbsp;
           <kbd>Shift</kbd> + arrows by 10px &nbsp;·&nbsp;
@@ -1042,14 +1312,30 @@
         </details>
 
         <details class="help-card">
-          <summary>Hiding parts, including the background</summary>
+          <summary>Hiding and locking parts</summary>
           <div class="help-body">
             <p>Every part has an eye in the list on the right, and a switch in its own settings.
               Hiding is not deleting - the part keeps all its settings and comes back exactly as it
-              was.</p>
+              was. A hidden part is not on the canvas at all. Click it in the list to change it.</p>
+            <p>The padlock beside the eye locks a part in place. It cannot be dragged, resized or
+              nudged, and clicks go straight through it to whatever is underneath. That makes a
+              card behind everything easy to work over. Lock the canvas to keep its size.</p>
             <p>The <strong>Canvas</strong> row has an eye too. Hiding it drops the background panel
               and its border, so the art and text sit straight over your gameplay. Your colors are
               kept for when you turn it back on.</p>
+          </div>
+        </details>
+
+        <details class="help-card">
+          <summary>Putting one part over another</summary>
+          <div class="help-body">
+            <p>Every part has a <strong>Layer</strong> row in its settings. <strong>Forward</strong>
+              and <strong>Backward</strong> step it past the next part it overlaps, and
+              <strong>To front</strong> and <strong>To back</strong> go all the way. Under the
+              buttons it says what the part is over and under.</p>
+            <p>To make a part stick out past the edge of the panel, select the canvas and set
+              <strong>Panel inset</strong>. The panel is drawn that far in from the edge, and
+              anything in the space around it hangs over its edge.</p>
           </div>
         </details>
 
@@ -1107,18 +1393,57 @@
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg>
       <input id="icon-search" type="search" placeholder="Search 2,000 icons - try heart, play, mic" aria-label="Search icons" />
+      <button type="button" class="sm green-btn" id="btn-icon-all" aria-pressed="false"
+              title="Every icon at once, instead of a few suggestions or the first 120 matches">Show all icons</button>
     </div>
+    <p class="icon-count" id="icon-count"></p>
 
     <div id="icon-results" class="icon-results"></div>
   </div>
 </div>
 
 <div class="sheet hidden" id="preset-sheet">
-  <div class="sheet-card">
-    <h2>Start from</h2>
-    <p>Pick a layout to begin with. Everything stays editable.</p>
-    <div class="presets" id="preset-list"></div>
-    <div class="row" style="margin-top:12px"><button class="ghost" id="btn-preset-cancel">Cancel</button></div>
+  <div class="picker" role="dialog" aria-modal="true" aria-labelledby="picker-title">
+    <aside class="picker-side">
+      <h2 id="picker-title">Premade themes</h2>
+      <div class="search picker-search">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg>
+        <input id="picker-search" type="search" placeholder="Search" aria-label="Search premade themes" autocomplete="off" />
+      </div>
+      <div class="picker-list" id="preset-list" role="listbox" aria-label="Premade themes"></div>
+    </aside>
+
+    <section class="picker-main" aria-labelledby="showroom-name">
+      <header class="picker-head">
+        <h3 id="showroom-name"></h3>
+        <div class="segmented" id="showroom-scenes" role="group" aria-label="Preview it against">
+          <button type="button" data-scene="dark">Dark</button>
+          <button type="button" data-scene="light">Light</button>
+          <button type="button" data-scene="clear" title="A checkerboard, where nothing is drawn">Clear</button>
+        </div>
+        <button type="button" class="icon-btn" id="btn-preset-cancel" title="Close (Esc)" aria-label="Close">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+               stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+        </button>
+      </header>
+
+      <div class="picker-body">
+        <div class="picker-stage" id="showroom-scene" data-scene="dark">
+          <iframe id="showroom-frame" title="Theme preview" tabindex="-1" aria-hidden="true"></iframe>
+          <span class="picker-scale" id="showroom-scale"></span>
+        </div>
+        <p class="picker-desc" id="showroom-desc"></p>
+        <p class="picker-note" id="showroom-note" hidden></p>
+        <dl class="picker-facts" id="showroom-facts"></dl>
+      </div>
+
+      <footer class="picker-foot">
+        <p>It opens as a new theme. Nothing you already have changes.</p>
+        <button type="button" class="ghost" id="btn-preset-close">Cancel</button>
+        <button type="button" id="btn-use-preset">Use this theme</button>
+      </footer>
+    </section>
   </div>
 </div>
 
@@ -1131,7 +1456,8 @@ const MODULE_LABELS = {
   artist: 'Artist',
   progress: 'Progress bar',
   elapsed: 'Time elapsed',
-  duration: 'Song length'
+  duration: 'Song length',
+  next: 'Up next'
 };
 
 const ALBUM_COLORS = [
@@ -1152,11 +1478,15 @@ const state = {
   baseline: null,
   fonts: {},
   selection: 'canvas',
+  // Two or more parts selected at once, by Ctrl+click or a selection box.
+  // Empty the rest of the time, when `selection` is the whole story. The
+  // last one picked is also `selection`. See selectedTypes().
+  group: [],
   dirty: false,
   // Side effects to undo when their cause is undone: the border width None
   // took away, whether a gradient took the border off, and the weight each
   // part had before a font without it forced another. See forgetEdits().
-  memory: { borderWidth: null, borderAutoOff: false, weights: {} },
+  memory: { borderWidths: {}, borderAutoOff: false, weights: {} },
   history: [],
   future: [],
   song: null,
@@ -1243,7 +1573,12 @@ function note(text, kind) {
 }
 
 /**
- * Every draggable thing on the canvas: the six fixed parts, then the icons.
+ * Every draggable thing on the canvas: the cards, the six fixed parts, then
+ * the icons.
+ *
+ * Cards come first so their outlines are drawn under everyone else's - a card
+ * is usually the box the text is sitting in, and clicking the text should get
+ * the text. A card covered edge to edge is still one click away in the list.
  *
  * An icon is given a `type` of `icon:<id>` as it goes past, which is what
  * lets the whole selection, drag, resize, snap and nudge machinery treat it
@@ -1254,7 +1589,10 @@ function note(text, kind) {
  */
 function parts() {
   for (const icon of state.model.icons || []) icon.type = 'icon:' + icon.id;
-  return [...state.model.modules, ...(state.model.icons || [])];
+  for (const card of state.model.cards || []) card.type = 'card:' + card.id;
+  for (const label of state.model.labels || []) label.type = 'label:' + label.id;
+  return [...(state.model.cards || []), ...state.model.modules, ...(state.model.icons || []),
+    ...(state.model.labels || [])];
 }
 
 function iconOf(type) {
@@ -1270,16 +1608,49 @@ function isIcon(type) {
   return typeof type === 'string' && type.startsWith('icon:');
 }
 
+/** Stamped with its type for the same reason as iconOf(). */
+function cardOf(type) {
+  const card = (state.model.cards || []).find(card => 'card:' + card.id === type);
+  if (card) card.type = type;
+  return card;
+}
+
+function isCard(type) {
+  return typeof type === 'string' && type.startsWith('card:');
+}
+
+/** Stamped with its type for the same reason as iconOf(). */
+function labelPartOf(type) {
+  const label = (state.model.labels || []).find(label => 'label:' + label.id === type);
+  if (label) label.type = type;
+  return label;
+}
+
+function isLabel(type) {
+  return typeof type === 'string' && type.startsWith('label:');
+}
+
+/** The editor's own `type` stamp on icons, cards and labels. See snapshot(). */
+function isStamp(type) {
+  return isIcon(type) || isCard(type) || isLabel(type);
+}
+
 function moduleOf(type) {
-  return isIcon(type)
-    ? iconOf(type)
-    : state.model.modules.find(module => module.type === type);
+  if (isIcon(type)) return iconOf(type);
+  if (isCard(type)) return cardOf(type);
+  if (isLabel(type)) return labelPartOf(type);
+  return state.model.modules.find(module => module.type === type);
 }
 
 /** What a part is called, in the list, the readout and every tooltip. */
 function labelOf(part) {
   if (!part) return '';
-  return isIcon(part.type) ? iconTitle(part.name) : MODULE_LABELS[part.type];
+  if (isIcon(part.type)) return iconTitle(part.name);
+  // Numbered from 1 by position, the way the list shows them.
+  if (isCard(part.type)) return 'Card ' + (Number(part.type.slice(6)) + 1);
+  // A label is called what it says, as far as that fits in a list row.
+  if (isLabel(part.type)) return part.text.length > 28 ? part.text.slice(0, 27) + '\u2026' : part.text || 'Label';
+  return MODULE_LABELS[part.type];
 }
 
 /** "circle-play" reads as "Circle play" everywhere a person sees it. */
@@ -1329,7 +1700,7 @@ function isColorKey(key) {
  * or saved, so one theme's history never leaks into another.
  */
 function forgetEdits() {
-  state.memory = { borderWidth: null, borderAutoOff: false, weights: {} };
+  state.memory = { borderWidths: {}, borderAutoOff: false, weights: {} };
 }
 
 /**
@@ -1341,7 +1712,7 @@ function forgetEdits() {
  */
 function snapshot(model) {
   return JSON.stringify(model, function (key, value) {
-    if (key === 'type' && isIcon(value)) return undefined;
+    if (key === 'type' && isStamp(value)) return undefined;
     // A border 0px wide has no color to see: picking one and then None
     // leaves a different color behind that nothing draws.
     if (key === 'borderColor' && this.borderWidth === 0) return undefined;
@@ -1364,7 +1735,7 @@ function setDirty(dirty) {
   if (!dirty && live) {
     el.innerHTML = '<span class="live-dot"></span>Saved · live';
   } else {
-    el.textContent = dirty ? 'Unsaved changes' : state.name ? 'Saved' : 'New theme';
+    el.textContent = dirty ? 'Unsaved changes' : state.name ? 'Saved' : state.builtIn ? 'Built in · read-only' : 'New theme';
   }
 
   // Nothing to press if this theme is already the one on stream.
@@ -1469,12 +1840,14 @@ function refreshCss() {
   clearTimeout(cssTimer);
   cssTimer = setTimeout(async () => {
     try {
-      const { css } = await api('/api/themes-preview/css', {
+      const { css, markup } = await api('/api/themes-preview/css', {
         method: 'POST',
         body: JSON.stringify({ model: state.model })
       });
       $('theme-style').textContent = css;
+      renderExtras(markup);
       clearInlineBoxes();
+      syncPixelArt();
       syncIcons();
       renderProgress();
       positionOverlay();
@@ -1486,26 +1859,31 @@ function refreshCss() {
 }
 
 function clearInlineBoxes() {
-  for (const el of [$('cover'), $('canvas'), document.querySelector('.title-wrapper'),
+  for (const el of [$('widget'), $('cover'), $('canvas'), document.querySelector('.title-wrapper'),
                     document.querySelector('.artist-wrapper'), document.querySelector('.progress-container'),
                     document.querySelector('.elapsed-wrapper'), document.querySelector('.duration-wrapper'),
-                    ...document.querySelectorAll('.icon')]) {
+                    ...document.querySelectorAll('#widget .icon, #widget .card, #widget .qlabel, #widget .next-wrapper, #widget canvas.pixel-art, #widget .art-blur')]) {
     if (!el) continue;
     el.style.left = el.style.top = el.style.width = el.style.height = '';
   }
 }
 
 const ELEMENTS = {
-  art: () => [$('cover'), $('canvas')],
+  // The blur layer too, or it stays behind while the art is dragged. It is
+  // set in by the border normally; for the length of a drag that is not worth it.
+  art: () => [$('cover'), $('canvas'), document.querySelector('#widget canvas.pixel-art'), document.querySelector('#widget .art-blur')],
   title: () => [document.querySelector('.title-wrapper')],
   artist: () => [document.querySelector('.artist-wrapper')],
   progress: () => [document.querySelector('.progress-container')],
   elapsed: () => [document.querySelector('.elapsed-wrapper')],
-  duration: () => [document.querySelector('.duration-wrapper')]
+  duration: () => [document.querySelector('.duration-wrapper')],
+  next: () => [document.querySelector('#widget .next-wrapper')]
 };
 
 function elementsOf(type) {
   if (isIcon(type)) return [document.querySelector('.icon-' + type.slice(5))];
+  if (isCard(type)) return [document.querySelector('.card-' + type.slice(5))];
+  if (isLabel(type)) return [document.querySelector('#widget .qlabel-' + type.slice(6))];
   return ELEMENTS[type] ? ELEMENTS[type]() : [];
 }
 
@@ -1535,56 +1913,171 @@ function applySong(song) {
   root.style.setProperty('--album-muted', palette.muted || 'rgba(255,255,255,.7)');
 
   renderMedia();
+  drawProgress();
+  fillExtras();
+  showScrolling();
+  if (editorAmbience) editorAmbience.colors(previewColors());
+}
 
+/**
+ * The bar and the two clocks. Spotify is only asked every few seconds, so
+ * while a song plays the clock runs on from the last answer - what app.js
+ * does, and why OBS looks live while the preview used to sit still between
+ * answers.
+ */
+function drawProgress() {
+  const song = state.song || {};
   const durationMs = song.durationMs || 0;
-  const progressMs = Math.min(song.progressMs || 0, durationMs);
+  let progressMs = song.progressMs || 0;
+  if (song.isPlaying && !song.sample && song.fetchedAt) progressMs += Date.now() - song.fetchedAt;
+  progressMs = Math.min(Math.max(progressMs, 0), durationMs);
 
   const pct = durationMs ? Math.min(100, (progressMs / durationMs) * 100) : 38;
   $('progress').style.width = pct + '%';
+  // What app.js sets for the knob and the plain line after a squiggle.
+  $('widget').style.setProperty('--progress', String(pct / 100));
 
   // The same clock the widget draws, so a box that fits "3:07" here fits it
   // on stream. With nothing playing these fall back to a plausible length
   // rather than 0:00, which would size the boxes too small.
   $('elapsed').textContent = clock(durationMs ? progressMs : 99000, durationMs || 254000);
   $('duration').textContent = clock(durationMs || 254000);
-
-  showScrolling();
 }
 
 /**
- * Mirrors what the widget runtime does with long text, so the preview scrolls
- * and fades exactly where the real thing would. Without this the editor was
- * quietly nicer than OBS, and the fades looked broken because they never
- * appeared here at all.
+ * Asks for the song as often as the widget does, so a new song turns up here
+ * when it turns up on stream. Not while the tab is in the background: that
+ * would only be more calls to Spotify for a page nobody is looking at.
  */
-function showScrolling() {
-  const measure = (textId, wrapperClass, variable) => {
-    const text = $(textId);
-    const wrapper = document.querySelector(wrapperClass);
-    if (!text || !wrapper) return;
+function pollSong() {
+  const every = (state.model && state.model.properties.updateInterval) || 5000;
+  setTimeout(async () => {
+    if (!document.hidden) await loadSong();
+    pollSong();
+  }, every);
+}
 
-    // An outlined box is padded by the width of its stroke so the clip falls
-    // outside the letters rather than through them, and that padding is not
-    // room for text. Same sum widget/public/app.js does, for the same reason.
-    const style = getComputedStyle(wrapper);
-    const padding = (parseFloat(style.paddingLeft) || 0) + (parseFloat(style.paddingRight) || 0);
-    const visible = Math.max(0, wrapper.clientWidth - padding);
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden) {
+    loadSong();
+    adoptRewardSwitches();
+  }
+});
+window.addEventListener('focus', () => adoptRewardSwitches());
 
-    const overflow = Math.max(text.scrollWidth - visible, 0);
-    const scrolls = overflow > 0;
+/**
+ * "Turn on in every theme", in the admin panel, switches rewards on in saved
+ * themes behind this page's back. Saving the copy open here would switch them
+ * off again, so coming back to the page takes those two switches from the
+ * saved theme - unless they were flipped here since. Nothing else is taken.
+ */
+let adopting = false;
+async function adoptRewardSwitches() {
+  if (adopting || !state.name || state.baseline === null) return;
+  adopting = true;
+  try {
+    const name = state.name;
+    const saved = (await api('/api/themes/' + encodeURIComponent(name))).model.properties;
+    if (state.name !== name || state.baseline === null) return;
 
-    document.documentElement.style.setProperty(variable, overflow + 'px');
-    text.classList.toggle('scroll', scrolls);
-    wrapper.classList.toggle('scrolling', scrolls);
-    // What app.js sets for the same reason: an aligned title that overflows
-    // starts at its beginning even where `safe` alignment is not supported.
-    wrapper.querySelector('.title-container')?.classList.toggle('overflowing', scrolls);
-  };
+    const base = JSON.parse(state.baseline);
+    const was = { perks: base.properties.perks, milestones: base.properties.milestone.enabled };
+    if (was.perks === saved.perks && was.milestones === saved.milestone.enabled) return;
+
+    const props = state.model.properties;
+    if (props.perks === was.perks) props.perks = saved.perks;
+    if (props.milestone.enabled === was.milestones) props.milestone.enabled = saved.milestone.enabled;
+    base.properties.perks = saved.perks;
+    base.properties.milestone.enabled = saved.milestone.enabled;
+    state.baseline = snapshot(base);
+    markChanged();
+    renderAll();
+  } catch {
+    // Offline or gone: the next save says so.
+  } finally {
+    adopting = false;
+  }
+}
+
+/**
+ * Mirrors what the widget runtime does with long text - which lines scroll,
+ * how far, and how long one pass takes - so the preview scrolls and fades
+ * exactly where and as fast as the real thing would.
+ *
+ * The speed is the one that got away. The stylesheet runs the scroll over
+ * --scroll-duration, which app.js works out from the distance and the theme's
+ * scroll speed; the editor never set it, so every title scrolled in the 8s
+ * fallback - a long one many times faster here than on stream.
+ *
+ * `root` is the .widget to measure, so the premade showroom can run the same
+ * sums inside its own preview page.
+ */
+function showScrolling(root = $('widget'), props = state.model && state.model.properties) {
+  const doc = root.ownerDocument;
+  const scroll = (props && props.scroll) || {};
 
   // Measured after layout, or the widths are the ones from before this change.
-  requestAnimationFrame(() => {
-    measure('title', '.title-wrapper', '--scroll-distance');
-    measure('artist', '.artist-wrapper', '--artist-distance');
+  (doc.defaultView || window).requestAnimationFrame(() => {
+    const title = root.querySelector('.title');
+    const titleContainer = root.querySelector('.title-container');
+    const titleWrapper = root.querySelector('.title-wrapper');
+    const artist = root.querySelector('.artist');
+    const artistWrapper = root.querySelector('.artist-wrapper');
+    if (!title || !titleContainer || !titleWrapper) return;
+
+    // The box a line really has: an outlined box is padded by the width of its
+    // stroke, and that padding is not room for text. Same sum as app.js's
+    // contentBox(), in the box's own pixels - the editor's artboard is scaled,
+    // so rectangles from getBoundingClientRect() are not.
+    const room = el => {
+      const style = doc.defaultView.getComputedStyle(el);
+      return Math.max(0, el.clientWidth - (parseFloat(style.paddingLeft) || 0) - (parseFloat(style.paddingRight) || 0));
+    };
+
+    const titleDistance = Math.max(title.scrollWidth - room(titleContainer), 0);
+
+    let artistDistance = 0;
+    if (artist && artistWrapper) {
+      let visible = room(artistWrapper);
+
+      // As app.js: a bar on the artist's own line eats into its room, and one
+      // on a row of its own does not.
+      const bar = root.querySelector('.progress-container');
+      if (bar) {
+        const wrapperRect = artistWrapper.getBoundingClientRect();
+        const barRect = bar.getBoundingClientRect();
+        const scale = artistWrapper.offsetWidth ? wrapperRect.width / artistWrapper.offsetWidth : 1;
+        const sharesTheLine = barRect.top < wrapperRect.bottom - scale && barRect.bottom > wrapperRect.top + scale;
+        if (sharesTheLine && barRect.left < wrapperRect.right) {
+          visible = Math.max(0, (barRect.left - wrapperRect.left) / (scale || 1));
+        }
+      }
+
+      artistDistance = Math.max(artist.scrollWidth - visible, 0);
+    }
+
+    // The same durations app.js gives the animation.
+    const pxPerSecond = scroll.speed || 120;
+    const pause = scroll.pauseDuration || 1;
+    const move = distance => distance > 0 ? Math.max(distance / pxPerSecond, 0.5) : 0;
+    const pass = distance => distance > 0 ? pause + move(distance) + pause + move(distance) : 0;
+    const duration = Math.max(pass(titleDistance), pass(artistDistance), 8);
+
+    const vars = doc.documentElement.style;
+    vars.setProperty('--scroll-distance', titleDistance + 'px');
+    vars.setProperty('--artist-distance', artistDistance + 'px');
+    vars.setProperty('--scroll-duration', duration + 's');
+
+    title.classList.toggle('scroll', titleDistance > 0);
+    titleWrapper.classList.toggle('scrolling', titleDistance > 0);
+    // What app.js sets for the same reason: an aligned title that overflows
+    // starts at its beginning even where `safe` alignment is not supported.
+    titleContainer.classList.toggle('overflowing', titleDistance > 0);
+
+    if (artist && artistWrapper) {
+      artist.classList.toggle('scroll', artistDistance > 0);
+      artistWrapper.classList.toggle('scrolling', artistDistance > 0);
+    }
   });
 }
 
@@ -1621,12 +2114,14 @@ function renderMedia() {
 
     canvas.style.display = 'block';
     cover.style.display = 'none';
+    if (state.model) syncPixelArt();
     return;
   }
 
   cover.src = song.cover || placeholderArt(song.palette || {});
   cover.style.display = 'block';
   canvas.style.display = 'none';
+  if (state.model) syncPixelArt();
 }
 
 /**
@@ -1732,6 +2227,8 @@ $('zoom').addEventListener('change', event => {
   const zoom = Number(event.target.value);
   applyZoom(zoom);
   rememberZoom(zoom);
+  // The ambience is drawn at the size the preview had; start it again at this one.
+  syncEditorAmbience();
 });
 
 /* ------------------------------------------------------------ overlay */
@@ -1744,10 +2241,16 @@ function positionOverlay() {
   const overlay = $('overlay');
   overlay.innerHTML = '';
 
-  for (const module of parts()) {
+  // Back to front, the order they are drawn in, so a click lands on the part
+  // that is on top where two overlap.
+  for (const module of stackOrder()) {
+    // A hidden part is not on stream, so it is not on the canvas either:
+    // nothing to see, nothing to grab. It is found again in the list.
+    if (module.hidden) continue;
+
     const hit = document.createElement('div');
-    hit.className = 'hit' + (state.selection === module.type ? ' selected' : '') +
-      (module.hidden ? ' hidden-module' : '');
+    hit.className = 'hit' + (isSelected(module.type) ? ' selected' : '') +
+      (module.locked ? ' locked' : '');
     hit.dataset.type = module.type;
     hit.style.left = module.x + 'px';
     hit.style.top = module.y + 'px';
@@ -1755,7 +2258,12 @@ function positionOverlay() {
     hit.style.height = module.h + 'px';
     hit.title = labelOf(module);
 
-    if (state.selection === module.type) {
+    if (isLabel(module.type) && module.text.includes('{requester}')) {
+      hit.title = 'Only the editor always shows this label. In OBS it appears only while a song a viewer ' +
+        'requested is playing, with their name in it.';
+    }
+
+    if (state.selection === module.type && !state.group.length && !module.locked) {
       // All eight handles, always. On something thin - a 6px progress bar is
       // shorter than the handles themselves - the ones along the thin axis are
       // pushed clear of the box, so the middle is still free to grab and drag.
@@ -1781,14 +2289,57 @@ function positionOverlay() {
     overlay.appendChild(hit);
   }
 
-  const module = selected();
-  const canvasSize = `${state.model.canvas.width} × ${state.model.canvas.height}`;
+  const canvas = state.model.canvas;
 
-  $('readout').textContent = module
-    ? `${labelOf(module)} · x ${module.x}  y ${module.y}  w ${module.w}  h ${module.h}`
-    : state.selection === 'canvas'
-      ? `Canvas · ${canvasSize}`
-      : `Nothing selected · canvas ${canvasSize}`;
+  // Last, so its handles sit above any part that reaches the edge. Only the
+  // right and bottom: those are the edges that move without taking every
+  // part along with them.
+  if (state.selection === 'canvas') {
+    const frame = document.createElement('div');
+    frame.className = 'canvas-frame' + (canvas.locked ? ' locked' : '');
+
+    if (!canvas.locked) {
+      for (const dir of ['e', 'se', 's']) {
+        const handle = document.createElement('div');
+        handle.className = 'handle';
+        handle.dataset.dir = dir;
+        frame.appendChild(handle);
+      }
+    }
+
+    overlay.appendChild(frame);
+  } else if ((canvas.inset || []).some(Boolean)) {
+    const edge = document.createElement('div');
+    edge.className = 'canvas-frame edge';
+    overlay.appendChild(edge);
+  }
+
+  const module = selected();
+  const canvasSize = `${canvas.width} × ${canvas.height}`;
+  // Said here because the canvas no longer shows it: a hidden part has no
+  // outline, and a locked one has no handles.
+  const status = part => part.hidden ? ' · hidden' : part.locked ? ' · locked' : '';
+
+  // x, y, w and h picked out in green, as they are in the settings panel.
+  // Built from text nodes: a part's name is whatever somebody typed.
+  const coords = pairs => pairs.flatMap(([key, value]) => {
+    const letter = document.createElement('b');
+    letter.className = 'coord';
+    letter.textContent = key;
+    return [letter, ` ${value}  `];
+  });
+  const readout = $('readout');
+
+  if (state.group.length) {
+    readout.textContent = `${state.group.length} parts selected · drag any of them to move them together`;
+  } else if (module) {
+    readout.replaceChildren(`${labelOf(module)} · `,
+      ...coords([['x', module.x], ['y', module.y], ['w', module.w], ['h', module.h]]), status(module).trim());
+  } else if (state.selection === 'canvas') {
+    readout.replaceChildren('Canvas · ', ...coords([['w', canvas.width], ['h', canvas.height]]), canvas.locked ? '· locked' : '');
+  } else {
+    readout.textContent = `Nothing selected · canvas ${canvasSize} · Ctrl+click or drag a box to pick several`;
+  }
 
   checkFit();
 }
@@ -1937,32 +2488,68 @@ async function loadFit() {
 /* ------------------------------------------------------- drag / resize */
 
 let drag = null;
+let marquee = null;
+
+/** Where the pointer is, in the canvas's own pixels whatever the zoom. */
+function canvasPoint(event) {
+  const rect = $('artboard').getBoundingClientRect();
+  return { x: (event.clientX - rect.left) / state.zoom, y: (event.clientY - rect.top) / state.zoom };
+}
+
+// Ctrl or Shift at the moment of the click. Held while dragging they also
+// turn snapping off, which is why a modified click only toggles the part once
+// the pointer has come back up without going anywhere.
+const toggling = event => event.ctrlKey || event.metaKey || event.shiftKey;
+
+// How far the pointer has to travel before a press counts as a drag, in
+// screen pixels. Below it, a Ctrl+click stays a click and a click on empty
+// space stays a deselect.
+const DRAG_START = 3;
 
 $('overlay').addEventListener('pointerdown', event => {
+  if (event.target.closest('.canvas-frame')) {
+    startCanvasResize(event);
+    return;
+  }
+
   const hit = event.target.closest('.hit');
 
-  // Clicking the empty space around the widget lets go of whatever was
-  // selected, so the outline and handles stop covering the design.
+  // Empty space starts a selection box. A click that never becomes one
+  // selects the canvas, or nothing - see endMarquee.
   if (!hit) {
-    if (state.selection !== null) select(null);
+    startMarquee(event);
     return;
   }
 
   const type = hit.dataset.type;
-  if (state.selection !== type) select(type);
+  const inGroup = state.group.includes(type);
 
-  const module = moduleOf(type);
+  // A plain press on a part outside the group selects it alone. With Ctrl
+  // held nothing changes yet: it is a toggle if the pointer stays put.
+  if (!toggling(event) && !inGroup && (state.selection !== type || state.group.length)) select(type);
+
+  // A group can hold a locked part, picked from the list. It stays where it
+  // is while the rest of the group moves.
+  const members = inGroup ? state.group.filter(member => movable(moduleOf(member))) : [type];
 
   drag = {
     type,
+    members,
+    grouped: inGroup,
+    toggle: toggling(event),
+    moved: false,
     // Pushed on the first movement, not here: a click that goes nowhere
     // should not fill the undo stack with copies of the same theme.
     pushed: false,
     dir: event.target.classList.contains('handle') ? event.target.dataset.dir : null,
     startX: event.clientX,
     startY: event.clientY,
-    origin: { x: module.x, y: module.y, w: module.w, h: module.h }
+    origins: new Map(members.map(member => {
+      const part = moduleOf(member);
+      return [member, { x: part.x, y: part.y, w: part.w, h: part.h }];
+    }))
   };
+  drag.origin = drag.origins.get(type);
 
   // Capture on the overlay, not the hit: selecting rebuilds the overlay's
   // children, so `event.target` may already be detached by now.
@@ -1970,17 +2557,176 @@ $('overlay').addEventListener('pointerdown', event => {
   event.preventDefault();
 });
 
-// The overlay only covers the design itself. Clicking the space around it -
-// the backdrop the theme is being previewed against - drops the selection as
-// well, so the outline and handles get out of the way.
+// The overlay only has the parts in it. A press anywhere else - on the canvas
+// between them, through a locked part, or on the backdrop the theme is being
+// previewed against - starts a selection box as well. The backdrop is the
+// only way to start one on a design with no gaps in it.
 $('stage').addEventListener('pointerdown', event => {
-  if (event.target === $('stage') || event.target === $('artboard')) {
-    if (state.selection !== null) select(null);
-  }
+  const target = event.target;
+  if (target === $('stage') || target === $('artboard') || $('widget').contains(target)) startMarquee(event);
 });
 
+/** Whether a part can be dragged or nudged. Hidden or locked, it cannot. */
+function movable(part) {
+  return Boolean(part) && !part.hidden && !part.locked;
+}
+
+// The same limits the server holds the canvas to - see themeStore.js.
+const CANVAS_LIMITS = { width: [120, 1920], height: [30, 1080] };
+
+function startCanvasResize(event) {
+  drag = {
+    canvas: true,
+    dir: event.target.dataset.dir,
+    moved: false,
+    startX: event.clientX,
+    startY: event.clientY,
+    origin: { width: state.model.canvas.width, height: state.model.canvas.height }
+  };
+
+  $('overlay').setPointerCapture(event.pointerId);
+  event.preventDefault();
+}
+
+/**
+ * Drags the canvas's right or bottom edge. The widget is sized inline while
+ * it happens, because the stylesheet that sizes it comes back from the server
+ * a moment later - clearInlineBoxes takes the inline size off again.
+ */
+function resizeCanvas(event) {
+  const canvas = state.model.canvas;
+  const clamp = (value, [min, max]) => Math.min(max, Math.max(min, Math.round(value)));
+
+  if (!drag.moved) {
+    if (Math.hypot(event.clientX - drag.startX, event.clientY - drag.startY) < DRAG_START) return;
+    pushHistory();
+    drag.moved = true;
+  }
+
+  if (drag.dir.includes('e')) {
+    canvas.width = clamp(drag.origin.width + (event.clientX - drag.startX) / state.zoom, CANVAS_LIMITS.width);
+  }
+  if (drag.dir.includes('s')) {
+    canvas.height = clamp(drag.origin.height + (event.clientY - drag.startY) / state.zoom, CANVAS_LIMITS.height);
+  }
+
+  $('widget').style.width = canvas.width + 'px';
+  $('widget').style.height = canvas.height + 'px';
+  positionOverlay();
+}
+
+function startMarquee(event) {
+  marquee = {
+    origin: canvasPoint(event),
+    startX: event.clientX,
+    startY: event.clientY,
+    // With Ctrl held the box adds to what is already selected.
+    base: toggling(event) ? [...selectedTypes()] : [],
+    additive: toggling(event),
+    moved: false,
+    picked: '',
+    el: null
+  };
+
+  $('stage').setPointerCapture(event.pointerId);
+  event.preventDefault();
+}
+
+/**
+ * Selects every visible part the box touches, the way Figma does. Touching
+ * rather than containing, because on a layout built from cards almost
+ * everything is inside something else - a box that had to swallow a whole
+ * card to catch it would catch the art above it too.
+ */
+function moveMarquee(event) {
+  if (!marquee.moved) {
+    if (Math.hypot(event.clientX - marquee.startX, event.clientY - marquee.startY) < DRAG_START) return;
+    marquee.moved = true;
+    marquee.el = document.createElement('div');
+    marquee.el.className = 'marquee';
+    $('artboard').appendChild(marquee.el);
+  }
+
+  const at = canvasPoint(event);
+  const box = {
+    x: Math.min(marquee.origin.x, at.x),
+    y: Math.min(marquee.origin.y, at.y),
+    w: Math.abs(at.x - marquee.origin.x),
+    h: Math.abs(at.y - marquee.origin.y)
+  };
+
+  Object.assign(marquee.el.style, {
+    left: box.x + 'px', top: box.y + 'px', width: box.w + 'px', height: box.h + 'px',
+    // The artboard is scaled, and a 1px outline scaled with it is a fat one.
+    borderWidth: (1 / state.zoom) + 'px'
+  });
+
+  const touched = parts()
+    .filter(part => movable(part) &&
+      part.x < box.x + box.w && part.x + part.w > box.x &&
+      part.y < box.y + box.h && part.y + part.h > box.y)
+    .map(part => part.type);
+
+  const picked = [...marquee.base, ...touched.filter(type => !marquee.base.includes(type))];
+
+  // Only redrawn when the answer changes: a redraw rebuilds the settings panel.
+  const key = picked.join('|');
+  if (key === marquee.picked) return;
+  marquee.picked = key;
+  selectMany(picked);
+}
+
+/**
+ * A click that never became a box selects what it landed on: the canvas, if
+ * it was on the canvas, and nothing if it was on the backdrop around it -
+ * which is how the outline and handles are taken off the design.
+ */
+function endMarquee() {
+  if (!marquee.moved && !marquee.additive) {
+    const { x, y } = marquee.origin;
+    const { width, height } = state.model.canvas;
+    const target = x >= 0 && y >= 0 && x <= width && y <= height ? 'canvas' : null;
+    if (state.selection !== target || state.group.length) select(target);
+  }
+  marquee.el?.remove();
+  marquee = null;
+}
+
+/** The box around a group: what it snaps with, as though it were one part. */
+function boundsOf(boxes) {
+  const x = Math.min(...boxes.map(box => box.x));
+  const y = Math.min(...boxes.map(box => box.y));
+  const w = Math.max(...boxes.map(box => box.x + box.w)) - x;
+  const h = Math.max(...boxes.map(box => box.y + box.h)) - y;
+  return { x, y, w, h };
+}
+
 window.addEventListener('pointermove', event => {
+  if (marquee) {
+    moveMarquee(event);
+    return;
+  }
+
   if (!drag) return;
+
+  if (drag.canvas) {
+    resizeCanvas(event);
+    return;
+  }
+
+  if (!drag.moved) {
+    // A Ctrl+click that wobbles is still a click, and so is a click on one
+    // of a group - see the pointerup below.
+    const clicking = drag.toggle || drag.grouped;
+    if (clicking && Math.hypot(event.clientX - drag.startX, event.clientY - drag.startY) < DRAG_START) return;
+    drag.moved = true;
+
+    // Ctrl held from the start and then dragged: it was never a toggle, so
+    // the part is selected the way a plain press would have.
+    if (drag.toggle && drag.members.length === 1 && (state.selection !== drag.type || state.group.length)) {
+      select(drag.type);
+    }
+  }
 
   // Holding Ctrl or Shift turns snapping off for as long as it is held, for
   // the times when "nearly there" is exactly where you want it.
@@ -1993,6 +2739,14 @@ window.addEventListener('pointermove', event => {
     pushHistory();
     drag.pushed = true;
   }
+
+  $('stage').classList.toggle('freeform', freeform);
+
+  if (drag.grouped) {
+    moveGroup(dx, dy, freeform);
+    return;
+  }
+
   const module = moduleOf(drag.type);
   const box = { ...drag.origin };
   let matches = [];
@@ -2024,7 +2778,6 @@ window.addEventListener('pointermove', event => {
     ? { ...box, guides: [] }
     : snap(box, drag.type, drag.dir, matches, spacings);
 
-  $('stage').classList.toggle('freeform', freeform);
   Object.assign(module, {
     x: Math.round(snapped.x), y: Math.round(snapped.y),
     w: Math.round(snapped.w), h: Math.round(snapped.h)
@@ -2035,11 +2788,70 @@ window.addEventListener('pointermove', event => {
   drawGuides(snapped.guides, matches, spacings.length ? { spacings, box: { ...module } } : null, { ...module });
 });
 
+/**
+ * Moves a whole group by the same amount.
+ *
+ * The group snaps as one box - its outer edges and middle - against
+ * everything outside it. Snapping each member on its own would pull them
+ * apart, one catching on a line the others missed.
+ */
+function moveGroup(dx, dy, freeform) {
+  const members = new Set(drag.members);
+  const bounds = boundsOf([...drag.origins.values()]);
+  const box = { ...bounds, x: bounds.x + dx, y: bounds.y + dy };
+
+  const spacings = freeform ? [] : snapToMatchingGaps(box, members);
+  const snapped = freeform ? { ...box, guides: [] } : snap(box, members, null, [], spacings);
+
+  const shiftX = Math.round(snapped.x - bounds.x);
+  const shiftY = Math.round(snapped.y - bounds.y);
+
+  for (const [type, origin] of drag.origins) {
+    const part = moduleOf(type);
+    part.x = origin.x + shiftX;
+    part.y = origin.y + shiftY;
+    applyLiveBox(type, part);
+  }
+
+  const moved = { ...bounds, x: bounds.x + shiftX, y: bounds.y + shiftY };
+  positionOverlay();
+  drawGuides(snapped.guides, [], spacings.length ? { spacings, box: moved } : null, moved);
+}
+
 window.addEventListener('pointerup', () => {
+  if (marquee) {
+    endMarquee();
+    return;
+  }
+
   if (!drag) return;
+  const { toggle, moved, type, grouped } = drag;
+
+  if (drag.canvas) {
+    drag = null;
+    if (!moved) return;
+    markChanged();
+    refreshCss();
+    renderProps();
+    return;
+  }
+
   drag = null;
   $('stage').classList.remove('freeform');
   drawGuides([]);
+
+  if (toggle && !moved) {
+    toggleSelected(type);
+    return;
+  }
+
+  // A press on one of a group keeps the group, in case it becomes a drag.
+  // Let go without moving and it was a click on that one part.
+  if (!moved && grouped) {
+    select(type);
+    return;
+  }
+
   markChanged();
   refreshCss();
   renderProps();
@@ -2056,9 +2868,17 @@ window.addEventListener('pointerup', () => {
  * progress bar. Returns the pairs to draw, so the two equal gaps can be shown
  * while it holds.
  */
+/**
+ * Whether a part is the thing being dragged, which never snaps to itself.
+ * `moving` is one part's type, or a Set of them for a group.
+ */
+function isMoving(type, moving) {
+  return moving instanceof Set ? moving.has(type) : type === moving;
+}
+
 function snapToMatchingGaps(box, type) {
   const others = parts()
-    .filter(module => module.type !== type && !module.hidden)
+    .filter(module => !isMoving(module.type, type) && !module.hidden)
     .map(module => ({ type: module.type, x: module.x, y: module.y, w: module.w, h: module.h }));
 
   // One part is enough: the box can center between it and the canvas edge.
@@ -2164,7 +2984,7 @@ function snapToMatchingSize(box, type) {
   const matches = [];
 
   const candidates = parts()
-    .filter(module => module.type !== type && !module.hidden)
+    .filter(module => !isMoving(module.type, type) && !module.hidden)
     .map(module => ({ label: labelOf(module), type: module.type, w: module.w, h: module.h }));
 
   candidates.push({ label: 'the canvas', type: 'canvas', w: width, h: height });
@@ -2198,7 +3018,7 @@ function snap(box, type, dir, sizeMatches = [], spacings = []) {
   const guides = [];
 
   const others = parts()
-    .filter(module => module.type !== type && !module.hidden)
+    .filter(module => !isMoving(module.type, type) && !module.hidden)
     .map(module => ({ x: module.x, y: module.y, w: module.w, h: module.h }));
 
   const vTargets = [0, width / 2, width];
@@ -2457,10 +3277,46 @@ function drawGuides(guides, sizeMatches = [], spacing = null, dragged = null) {
   }
 }
 
+// "/" jumps to the panel's search from anywhere that is not a text field.
+window.addEventListener('keydown', event => {
+  if (event.key !== '/' || event.ctrlKey || event.metaKey || event.altKey) return;
+  const typing = event.target.closest && event.target.closest('input, textarea, select, [contenteditable]');
+  if (typing) return;
+  event.preventDefault();
+  $('panel-search').focus();
+  $('panel-search').select();
+});
+
+$('panel-search').addEventListener('input', event => setPanelSearch(event.target.value));
+$('panel-search').addEventListener('keydown', event => {
+  if (event.key !== 'Escape') return;
+  event.target.value = '';
+  setPanelSearch('');
+  event.target.blur();
+});
+
+// The panel is rebuilt on every change; a search in progress survives that.
+new MutationObserver(() => {
+  if (panelSearch.query && !panelSearch.opening) applyPanelSearch();
+}).observe($('props'), { childList: true });
+new MutationObserver(() => {
+  if (panelSearch.query) applyPanelSearch();
+}).observe($('modules'), { childList: true });
+
+// Ctrl+S saves, as the Save button's tooltip has always said - from anywhere,
+// a field being typed in included, and never the browser's "save page".
+window.addEventListener('keydown', event => {
+  if (!(event.ctrlKey || event.metaKey) || event.key.toLowerCase() !== 's') return;
+  event.preventDefault();
+  if ($('preset-sheet').classList.contains('hidden') && !$('btn-save').disabled) $('btn-save').click();
+});
+
 window.addEventListener('keydown', event => {
   // The font picker takes its own arrow keys, the way the <select> it
   // replaced did - they are not for nudging the part it belongs to.
   if (event.target.matches('input, select, textarea') || event.target.closest('.font-picker')) return;
+  // The premade showroom takes the arrow keys while it is open.
+  if (!$('preset-sheet').classList.contains('hidden')) return;
 
   if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'z') {
     event.preventDefault();
@@ -2468,8 +3324,22 @@ window.addEventListener('keydown', event => {
     return;
   }
 
-  const module = selected();
-  if (!module) return;
+  // Ctrl+] and Ctrl+[ step the selection up and down the stack, and with Shift
+  // take it all the way - the keys Figma uses. By code, not key, so they are
+  // the same two keys on every keyboard layout.
+  if ((event.ctrlKey || event.metaKey) && (event.code === 'BracketRight' || event.code === 'BracketLeft')) {
+    const types = selectedTypes();
+    if (!types.length) return;
+    event.preventDefault();
+    const up = event.code === 'BracketRight';
+    stackMove(types, event.shiftKey ? (up ? 'front' : 'back') : (up ? 'forward' : 'backward'));
+    return;
+  }
+
+  // The whole group moves, as it does when it is dragged - apart from any part
+  // in it that is locked, or hidden and so not on the canvas at all.
+  const moving = selectedTypes().map(moduleOf).filter(movable);
+  if (!moving.length) return;
 
   const step = event.shiftKey ? 10 : 1;
   const moves = { ArrowLeft: [-step, 0], ArrowRight: [step, 0], ArrowUp: [0, -step], ArrowDown: [0, step] };
@@ -2478,29 +3348,442 @@ window.addEventListener('keydown', event => {
 
   event.preventDefault();
   pushHistory();
-  module.x += move[0];
-  module.y += move[1];
+  for (const module of moving) {
+    module.x += move[0];
+    module.y += move[1];
+  }
   markChanged();
   refreshCss();
   positionOverlay();
   renderProps();
 });
 
+/* ---------------------------------------------------- several at once */
+
+// What a setting reads as when the selected parts do not agree about it.
+const MIXED = Symbol('mixed');
+// How a stand-in hands over the parts behind it, for the few fields that have
+// to do something different to each one - a font picks each part's weight.
+const PARTS = Symbol('parts');
+
+const isMixed = value => value === MIXED;
+
+/**
+ * One object that stands in for several parts, so the fields the editor
+ * already has can edit a whole selection. Reading a setting gives its value
+ * when the parts agree, and MIXED when they do not. Writing it sets it on
+ * every one of them.
+ *
+ * `read` compares a setting some other way than by its value. `then` runs on
+ * each part after a write, for a setting that drags another along with it.
+ */
+function allOf(parts, { read = {}, then = {} } = {}) {
+  return new Proxy({}, {
+    get(_, key) {
+      if (key === PARTS) return parts;
+      const values = parts.map(part => (read[key] ? read[key](part) : part[key]));
+      if (values.some(isMixed)) return MIXED;
+      const first = JSON.stringify(values[0]);
+      return values.every(value => JSON.stringify(value) === first) ? values[0] : MIXED;
+    },
+    set(_, key, value) {
+      for (const part of parts) {
+        part[key] = Array.isArray(value) ? [...value] : value;
+        then[key]?.(part);
+      }
+      return true;
+    }
+  });
+}
+
+/** Which settings a part has, by the kind of thing it is. */
+function kindOf(type) {
+  if (isIcon(type)) return 'icon';
+  if (isCard(type)) return 'card';
+  if (type === 'art' || type === 'progress') return type;
+  return 'text';
+}
+
+/**
+ * The settings every selected part has, each one changing all of them.
+ *
+ * "Has" means has in the same sense, not just under the same name: text and
+ * icons both have a drop shadow thrown at an angle, so they share one, but a
+ * card's shadow is a soft glow all round, and that one is kept apart.
+ */
+function sharedFields(parts) {
+  const kinds = new Set(parts.map(part => kindOf(part.type)));
+  const only = (...allowed) => [...kinds].every(kind => allowed.includes(kind));
+  const any = key => parts.some(part => part[key]);
+  const every = test => parts.every(test);
+  const all = allOf(parts);
+  const fields = [];
+
+  if (only('text')) {
+    fields.push(
+      field('Font', fontInput(all)),
+      field('Size', sliderInput(all, 'fontSize', { min: 8, max: 96 })),
+      field('Weight', weightInput(all))
+    );
+  }
+
+  if (only('text', 'icon')) fields.push(field('Color', colorInput(all, 'color')));
+
+  if (only('icon')) {
+    fields.push(
+      field('Line weight', sliderInput(all, 'strokeWidth', { min: 0.5, max: 4, step: 0.1 })),
+      field('Rotation', sliderInput(all, 'rotate', { min: 0, max: 360, step: 5 }))
+    );
+  }
+
+  if (only('text')) {
+    fields.push(
+      field('Letter spacing', sliderInput(all, 'letterSpacing', { min: -3, max: 12, step: 0.5 })),
+      field('Align', selectInput(all, 'align', [['left', 'Left'], ['center', 'Center'], ['right', 'Right']]))
+    );
+  }
+
+  if (only('text', 'icon')) fields.push(field('Opacity', sliderInput(all, 'opacity', { min: 0, max: 1, step: 0.05 })));
+
+  if (only('text')) {
+    fields.push(
+      checkboxInput('UPPERCASE', all, 'uppercase'),
+      checkboxInput('Italic', all, 'italic'),
+      field('Glow', sliderInput(all, 'glow', { min: 0, max: 40 })),
+      field('Outline', sliderInput(all, 'outline', { min: 0, max: 12, step: 0.5 }))
+    );
+    if (any('glow')) fields.push(field('Glow color', colorInput(all, 'glowColor')));
+    if (any('outline')) fields.push(field('Outline color', colorInput(all, 'outlineColor')));
+  }
+
+  if (only('text', 'icon')) {
+    fields.push(field('Drop shadow', sliderInput(all, 'shadow', { min: 0, max: 40 })));
+    if (any('shadow')) {
+      fields.push(
+        field('Shadow angle', sliderInput(all, 'shadowAngle', { min: 0, max: 360, step: 5 })),
+        field('Shadow blur', sliderInput(all, 'shadowBlur', { min: 0, max: 40 })),
+        field('Shadow color', colorInput(all, 'shadowColor'))
+      );
+    }
+  }
+
+  if (only('card')) {
+    const gradient = every(part => part.backgroundMode === 'gradient');
+    fields.push(
+      field('Background style', selectInput(all, 'backgroundMode', [['solid', 'Solid color'], ['gradient', 'Gradient']])),
+      field(gradient ? 'Gradient from' : 'Background', colorInput(all, 'background'))
+    );
+    if (gradient) {
+      fields.push(
+        field('Gradient to', colorInput(all, 'backgroundTo')),
+        field('Angle', sliderInput(all, 'gradientAngle', { min: 0, max: 360, step: 5 }))
+      );
+    }
+    fields.push(field('Fill opacity', sliderInput(all, 'fillOpacity', { min: 0, max: 1, step: 0.05 })));
+  }
+
+  if (only('card', 'art')) {
+    // One radius for all of them. A part rounding each corner on its own
+    // reads as mixed, and setting the radius puts it back to one for all four.
+    const rounded = allOf(parts, {
+      read: { radius: part => (part.corners ? MIXED : part.radius) },
+      then: { radius: part => { part.corners = null; } }
+    });
+    fields.push(
+      field('Corner radius', sliderInput(rounded, 'radius', { min: 0, max: 200 })),
+      field('Border width', sliderInput(all, 'borderWidth', { min: 0, max: 12 })),
+      field('Border color', colorInput(all, 'borderColor'))
+    );
+    if (every(part => part.borderWidth)) {
+      fields.push(field('Border style', selectInput(all, 'borderMode', [['solid', 'One color'], ['gradient', 'Gradient ring']])));
+      if (every(part => part.borderMode === 'gradient')) fields.push(field('Border to', colorInput(all, 'borderTo')));
+    }
+    fields.push(field('Shadow', sliderInput(all, 'shadow', { min: 0, max: 80 })));
+  }
+
+  if (only('card')) {
+    fields.push(
+      field('Frost', sliderInput(all, 'blur', { min: 0, max: 40 })),
+      field('Bevel', sliderInput(all, 'bevel', { min: 0, max: 8 }))
+    );
+  }
+
+  return fields;
+}
+
+/** The group's own settings sections: what they share, and their size. */
+function groupSections(parts) {
+  const sections = [];
+  const fields = sharedFields(parts);
+
+  const shared = group('Change all of them', { note: fields.length ? '' : 'nothing in common' });
+  shared.body.append(...(fields.length
+    ? fields
+    : [propNote('These parts have no settings in common, apart from their size. Pick parts of one ' +
+      'kind - all text, all icons, or all cards - to change their settings together.')]));
+  sections.push(shared);
+
+  // Locked means locked here too: a locked part keeps its size.
+  const sizable = parts.filter(part => !part.locked);
+  if (sizable.length) {
+    const all = allOf(sizable);
+    const size = group('Size');
+    const pair = document.createElement('div');
+    pair.className = 'pair coords';
+    pair.append(field('Width', numberInput(all, 'w', { min: 4 })), field('Height', numberInput(all, 'h', { min: 2 })));
+    size.body.append(pair);
+    if (sizable.length < parts.length) size.body.append(propNote('Locked parts keep their size.'));
+    sections.push(size);
+  }
+
+  return sections;
+}
+
+/* ------------------------------------------------------------ stacking */
+
+/** Every part, back to front. The same order as stackOf() in services/themeStore.js. */
+function stackOrder() {
+  return parts().sort((a, b) => (a.z ?? 0) - (b.z ?? 0));
+}
+
+/**
+ * Writes an order back as ranks from 0. A card's old "behind or over the art"
+ * setting is kept true to where it now is, so the setting and the stack can
+ * never say two different things.
+ */
+function restack(order) {
+  order.forEach((part, rank) => { part.z = rank; });
+  const art = moduleOf('art');
+  for (const card of state.model.cards || []) card.layer = card.z < art.z ? 'back' : 'front';
+}
+
+/** A new part's place: a card just behind the art, as cards always went, anything else on top. */
+function stackNew(part) {
+  const order = stackOrder().filter(entry => entry !== part);
+  order.splice(isCard(part.type) ? order.indexOf(moduleOf('art')) : order.length, 0, part);
+  restack(order);
+}
+
+const overlaps = (a, b) => a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+
+/**
+ * The stack with these parts moved, or null if they would not move at all.
+ *
+ * Forward and backward step past the next part that is really in the way -
+ * showing, and overlapping - rather than the next one in the list. The stack
+ * is not drawn anywhere, so a step past a hidden part, or one off in another
+ * corner, would look like the button did nothing.
+ */
+function stackTarget(types, where) {
+  const order = stackOrder();
+  const moving = order.filter(part => types.includes(part.type));
+  const rest = order.filter(part => !types.includes(part.type));
+  if (!moving.length || !rest.length) return null;
+
+  let at = where === 'front' ? rest.length : 0;
+
+  if (where === 'forward' || where === 'backward') {
+    const up = where === 'forward';
+    const edge = order.indexOf(up ? moving[moving.length - 1] : moving[0]);
+    const beyond = (up ? order.slice(edge + 1) : order.slice(0, edge).reverse())
+      .filter(part => !types.includes(part.type) && !part.hidden);
+    const bounds = boundsOf(moving);
+    const target = beyond.find(part => overlaps(part, bounds)) || beyond[0];
+    if (!target) return null;
+    at = rest.indexOf(target) + (up ? 1 : 0);
+  }
+
+  rest.splice(at, 0, ...moving);
+  return rest.some((part, index) => part !== order[index]) ? rest : null;
+}
+
+function stackMove(types, where) {
+  const order = stackTarget(types, where);
+  if (!order) return;
+  commit(() => restack(order));
+  renderProps();
+}
+
+/** Where a part sits, by the parts it overlaps on either side. */
+function stackWhere(part) {
+  const order = stackOrder();
+  const at = order.indexOf(part);
+  const near = list => list.find(other => !other.hidden && overlaps(other, part));
+  const under = near(order.slice(0, at).reverse());
+  const over = near(order.slice(at + 1));
+
+  if (under && over) return 'Over ' + labelOf(under) + ', under ' + labelOf(over) + '.';
+  if (under) return 'Over ' + labelOf(under) + '. Nothing is on top of it.';
+  if (over) return 'Under ' + labelOf(over) + '. Nothing is under it.';
+  return 'Nothing overlaps it.';
+}
+
+/** The four stacking buttons, for one part or a group. */
+function layerField(types) {
+  const row = document.createElement('div');
+  row.className = 'align-row four';
+
+  const actions = [
+    ['To back', 'back', 'Send it behind everything (Ctrl+Shift+[)'],
+    ['Backward', 'backward', 'Send it behind the next part it overlaps (Ctrl+[)'],
+    ['Forward', 'forward', 'Bring it over the next part it overlaps (Ctrl+])'],
+    ['To front', 'front', 'Bring it over everything (Ctrl+Shift+])']
+  ];
+
+  for (const [label, where, tip] of actions) {
+    const button = document.createElement('button');
+    button.className = 'mini';
+    button.textContent = label;
+    button.title = tip;
+    button.disabled = !stackTarget(types, where);
+    button.addEventListener('click', () => stackMove(types, where));
+    row.appendChild(button);
+  }
+
+  return field('Layer', row, types.length === 1 ? stackWhere(moduleOf(types[0])) : undefined);
+}
+
 /* -------------------------------------------------------------- panels */
 
 function select(type) {
   const changed = state.selection !== type;
   state.selection = type;
+  state.group = [];
   renderModules();
   renderProps();
   positionOverlay();
 
-  // An icon's settings start below both part lists, off the bottom of a
+  // An icon's or card's settings start below the part lists, off the bottom of a
   // laptop screen, so choosing one brings them up. Only on a new selection,
   // and only as far as needed: a panel that jumps while you edit is worse.
-  if (changed && isIcon(type)) {
+  if (changed && (isIcon(type) || isCard(type) || isLabel(type))) {
     $('props').querySelector('.group')?.scrollIntoView({ block: 'nearest' });
   }
+}
+
+/** Every part that is selected: the group if there is one, else the one part. */
+function selectedTypes() {
+  if (state.group.length) return state.group;
+  return state.selection && state.selection !== 'canvas' ? [state.selection] : [];
+}
+
+function isSelected(type) {
+  return selectedTypes().includes(type);
+}
+
+/**
+ * Selects exactly these parts - none, one, or a group.
+ *
+ * One part is an ordinary selection, with its handles and its settings. Two
+ * or more have neither: a handle means resizing, and there is no one size to
+ * give a title and a card at once.
+ */
+function selectMany(types) {
+  const unique = [...new Set(types)].filter(type => moduleOf(type));
+  if (unique.length < 2) {
+    select(unique[0] ?? null);
+    return;
+  }
+
+  state.group = unique;
+  state.selection = unique[unique.length - 1];
+  renderModules();
+  renderProps();
+  positionOverlay();
+}
+
+/** Ctrl+click: in the selection or out of it, leaving the rest alone. */
+function toggleSelected(type) {
+  const current = selectedTypes();
+  selectMany(current.includes(type) ? current.filter(entry => entry !== type) : [...current, type]);
+}
+
+/** A click on a part in the list, which Ctrl turns into toggling it. */
+function pickFromList(event, type) {
+  if (event.ctrlKey || event.metaKey || event.shiftKey) toggleSelected(type);
+  else select(type);
+}
+
+/**
+ * The search at the top of the panel: hides every part and setting whose
+ * name does not match, and opens the sections that have one that does.
+ *
+ * It matches what a setting is called - its label, its buttons, its section's
+ * title - not the choices inside a menu, or searching "bold" would turn up
+ * every font list. The panel is rebuilt on every change, so the filter is
+ * put back on whenever it is.
+ */
+const panelSearch = { query: '', opening: false };
+
+function searchText(element) {
+  return [...element.querySelectorAll('label, summary, button, .name, .prop-head')]
+    .map(node => node.textContent + ' ' + (node.getAttribute('aria-label') || ''))
+    .join(' ')
+    .toLowerCase();
+}
+
+function applyPanelSearch() {
+  const query = panelSearch.query;
+  const panel = $('panel');
+  panel.classList.toggle('searching', Boolean(query));
+
+  for (const node of panel.querySelectorAll('.search-miss, .search-hit')) node.classList.remove('search-miss', 'search-hit');
+  $('panel-nomatch').classList.add('hidden');
+  if (!query) return;
+
+  let found = 0;
+
+  for (const row of $('modules').children) {
+    const hit = row.classList.contains('module-row') && row.textContent.toLowerCase().includes(query);
+    row.classList.toggle('search-miss', !hit);
+    if (hit) found++;
+  }
+
+  panelSearch.opening = true;
+  for (const child of $('props').children) {
+    if (!child.matches('details.group')) {
+      child.classList.add('search-miss');
+      continue;
+    }
+
+    const whole = child.querySelector(':scope > summary').textContent.toLowerCase().includes(query);
+    let hits = 0;
+
+    for (const item of child.querySelectorAll(':scope > .group-body > *')) {
+      const hit = whole || searchText(item).includes(query);
+      item.classList.toggle('search-miss', !hit);
+      if (hit) hits++;
+      if (hit && !whole) {
+        for (const label of item.querySelectorAll('label')) {
+          if (label.textContent.toLowerCase().includes(query)) label.classList.add('search-hit');
+        }
+      }
+    }
+
+    child.classList.toggle('search-miss', !hits);
+    if (hits) {
+      child.open = true;
+      found += hits;
+    }
+  }
+  panelSearch.opening = false;
+
+  if (!found) {
+    const nothing = $('panel-nomatch');
+    nothing.textContent = `Nothing here is called "${query}". Try another word, or select a different part.`;
+    nothing.classList.remove('hidden');
+  }
+}
+
+function setPanelSearch(value) {
+  const was = panelSearch.query;
+  panelSearch.query = String(value || '').trim().toLowerCase();
+  // Cleared: the sections go back to however they were folded before.
+  if (was && !panelSearch.query) {
+    renderProps();
+    return;
+  }
+  applyPanelSearch();
 }
 
 function renderModules() {
@@ -2509,7 +3792,8 @@ function renderModules() {
 
   const hint = document.createElement('p');
   hint.className = 'panel-hint';
-  hint.textContent = 'Click a part to edit it:';
+  hint.innerHTML = 'Click a part to edit it. <b>Ctrl</b>+click, or drag a box across the canvas, ' +
+    'to pick several and change them together.';
   list.appendChild(hint);
 
   const canvas = state.model.canvas;
@@ -2544,13 +3828,18 @@ function renderModules() {
   canvasGo.className = 'go';
   canvasGo.textContent = '\u203a';
 
-  canvasRow.append(canvasName, canvasTag, canvasEye, canvasGo);
+  const canvasLock = lockButton(canvas, {
+    on: 'The canvas size is locked - click to unlock',
+    off: 'Lock the canvas size, so its edges cannot be dragged'
+  });
+
+  canvasRow.append(canvasName, canvasTag, canvasLock, canvasEye, canvasGo);
   canvasRow.addEventListener('click', () => select('canvas'));
   list.appendChild(canvasRow);
 
   for (const module of state.model.modules) {
     const row = document.createElement('div');
-    row.className = 'module-row' + (state.selection === module.type ? ' selected' : '');
+    row.className = 'module-row' + (isSelected(module.type) ? ' selected' : '');
 
     const name = document.createElement('span');
     name.className = 'name';
@@ -2558,7 +3847,7 @@ function renderModules() {
 
     const tag = document.createElement('span');
     tag.className = 'tag' + (module.hidden ? ' hidden-tag' : '');
-    tag.textContent = module.hidden ? 'hidden' : 'required';
+    tag.textContent = module.hidden ? 'hidden' : module.type === 'next' ? 'optional' : 'required';
 
     const eye = document.createElement('button');
     eye.className = 'eye';
@@ -2575,14 +3864,16 @@ function renderModules() {
     go.className = 'go';
     go.textContent = '\u203a';
 
-    row.append(name, tag, eye, go);
+    row.append(name, tag, lockButton(module, PART_LOCK), eye, go);
     row.classList.toggle('is-hidden', Boolean(module.hidden));
     row.title = 'Edit ' + MODULE_LABELS[module.type].toLowerCase();
-    row.addEventListener('click', () => select(module.type));
+    row.addEventListener('click', event => pickFromList(event, module.type));
     list.appendChild(row);
   }
 
+  renderCardRows(list);
   renderIconRows(list);
+  renderLabelRows(list);
 }
 
 /**
@@ -2599,6 +3890,7 @@ function renderIconRows(list) {
 
   const headingText = document.createElement('span');
   headingText.textContent = 'Icons';
+  if (icons.length) headingText.insertAdjacentHTML('beforeend', '<span class="list-count">' + icons.length + '</span>');
 
   const add = document.createElement('button');
   add.className = 'add-icon';
@@ -2627,7 +3919,7 @@ function renderIconRows(list) {
     const type = 'icon:' + icon.id;
 
     const row = document.createElement('div');
-    row.className = 'module-row icon-row' + (state.selection === type ? ' selected' : '') +
+    row.className = 'module-row icon-row' + (isSelected(type) ? ' selected' : '') +
       (icon.hidden ? ' is-hidden' : '');
 
     const glyph = document.createElement('span');
@@ -2658,9 +3950,9 @@ function renderIconRows(list) {
       removeIcon(icon);
     });
 
-    row.append(glyph, name, eye, remove);
+    row.append(glyph, name, lockButton(icon, PART_LOCK), eye, remove);
     row.title = 'Edit ' + iconTitle(icon.name).toLowerCase();
-    row.addEventListener('click', () => select(type));
+    row.addEventListener('click', event => pickFromList(event, type));
     list.appendChild(row);
   }
 }
@@ -2675,10 +3967,340 @@ function removeIcon(icon) {
     state.model.icons.forEach((entry, at) => { entry.id = 'i' + at; });
   });
 
+  // Which is also why a group cannot outlive it: its ids now name other icons.
+  if (state.group.length) select('canvas');
+
   if (isIcon(state.selection) && !moduleOf(state.selection)) select('canvas');
 
   renderAll();
   note(gone + ' removed.', 'good');
+}
+
+// Matches CARD_LIMIT in services/themeStore.js, which is what enforces it.
+const CARD_LIMIT = 8;
+
+const CARD_GLYPH = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" ' +
+  'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="6" width="18" height="12" rx="3"/></svg>';
+
+/**
+ * The cards, between the six parts and the icons.
+ *
+ * A card is a plain shape to put behind the parts. Hide the canvas, give the
+ * art, the text and the bar a card each, and the widget comes apart into
+ * separate tiles - which is all the Detached layout is.
+ */
+function renderCardRows(list) {
+  const cards = state.model.cards || [];
+
+  const heading = document.createElement('div');
+  heading.className = 'list-heading';
+
+  const headingText = document.createElement('span');
+  headingText.textContent = 'Cards';
+  if (cards.length) headingText.insertAdjacentHTML('beforeend', '<span class="list-count">' + cards.length + '</span>');
+
+  const add = document.createElement('button');
+  add.className = 'add-icon';
+  add.type = 'button';
+  add.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" ' +
+    'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+    '<path d="M5 12h14"/><path d="M12 5v14"/></svg> Add';
+  add.title = cards.length >= CARD_LIMIT
+    ? 'A theme can hold ' + CARD_LIMIT + ' cards'
+    : 'Add a shape to put behind the other parts';
+  add.disabled = cards.length >= CARD_LIMIT;
+  add.addEventListener('click', addCard);
+
+  heading.append(headingText, add);
+  list.appendChild(heading);
+
+  if (!cards.length) {
+    const empty = document.createElement('p');
+    empty.className = 'list-empty';
+    empty.textContent = 'None yet. Add one to put a tile behind the art, the text, or the bar.';
+    list.appendChild(empty);
+    return;
+  }
+
+  for (const card of cards) {
+    const type = 'card:' + card.id;
+    const label = labelOf(cardOf(type));
+
+    const row = document.createElement('div');
+    row.className = 'module-row icon-row' + (isSelected(type) ? ' selected' : '') +
+      (card.hidden ? ' is-hidden' : '');
+
+    const glyph = document.createElement('span');
+    glyph.className = 'row-glyph';
+    glyph.innerHTML = CARD_GLYPH;
+
+    const name = document.createElement('span');
+    name.className = 'name';
+    name.textContent = label;
+
+    const eye = document.createElement('button');
+    eye.className = 'eye';
+    eye.innerHTML = card.hidden ? EYE_OFF : EYE_ON;
+    eye.title = card.hidden ? 'Hidden - click to show it' : 'Hide this card';
+    eye.addEventListener('click', event => {
+      event.stopPropagation();
+      toggleHidden(card);
+    });
+
+    const remove = document.createElement('button');
+    remove.className = 'eye remove';
+    remove.title = 'Remove this card';
+    remove.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" ' +
+      'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+      '<path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>';
+    remove.addEventListener('click', event => {
+      event.stopPropagation();
+      removeCard(card);
+    });
+
+    row.append(glyph, name, lockButton(card, PART_LOCK), eye, remove);
+    row.title = 'Edit ' + label.toLowerCase();
+    row.addEventListener('click', event => pickFromList(event, type));
+    list.appendChild(row);
+  }
+}
+
+function removeCard(card) {
+  const gone = labelOf(card);
+
+  commit(() => {
+    state.model.cards = state.model.cards.filter(entry => entry !== card);
+    // Positional, like icon ids, so the ones after it shift up.
+    state.model.cards.forEach((entry, at) => { entry.id = 'c' + at; });
+  });
+
+  if (state.group.length) select('canvas');
+
+  if (isCard(state.selection) && !moduleOf(state.selection)) select('canvas');
+
+  renderAll();
+  note(gone + ' removed.', 'good');
+}
+
+/** Drops a new card in the middle of the canvas, selected and ready to drag. */
+function addCard() {
+  const cards = state.model.cards || (state.model.cards = []);
+  if (cards.length >= CARD_LIMIT) return;
+
+  const canvas = state.model.canvas;
+  // Never bigger than the canvas it lands on, or its handles are out of reach.
+  const w = Math.min(160, canvas.width - 32);
+  const h = Math.min(64, canvas.height - 16);
+
+  commit(() => {
+    // The same settings as defaultCard() in services/themeStore.js.
+    cards.push({
+      id: 'c' + cards.length, hidden: false,
+      x: Math.round((canvas.width - w) / 2), y: Math.round((canvas.height - h) / 2), w, h,
+      layer: 'back',
+      background: 'var(--album-dark)', backgroundMode: 'solid',
+      backgroundTo: 'var(--album-vibrant)', gradientAngle: 135,
+      fillOpacity: 0.85,
+      radius: 16, corners: null,
+      borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)',
+      shadow: 0, blur: 0
+    });
+    stackNew(cards[cards.length - 1]);
+  });
+
+  select('card:c' + (cards.length - 1));
+  renderAll();
+  note('Card added. Drag it where you want it, and resize it from its corners.', 'good');
+}
+
+// Matches LABEL_LIMIT in services/themeStore.js.
+const LABEL_LIMIT = 8;
+
+const LABEL_GLYPH = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" ' +
+  'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7V5h16v2"/><path d="M9 19h6"/><path d="M12 5v14"/></svg>';
+
+/**
+ * Labels: text of your own. After the icons, because they are added the same
+ * way and are the same kind of thing - as many as you like, and removable.
+ */
+function renderLabelRows(list) {
+  const labels = state.model.labels || [];
+
+  const heading = document.createElement('div');
+  heading.className = 'list-heading';
+
+  const headingText = document.createElement('span');
+  headingText.textContent = 'Labels';
+  if (labels.length) headingText.insertAdjacentHTML('beforeend', '<span class="list-count">' + labels.length + '</span>');
+
+  const add = document.createElement('button');
+  add.className = 'add-icon';
+  add.type = 'button';
+  add.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" ' +
+    'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+    '<path d="M5 12h14"/><path d="M12 5v14"/></svg> Add';
+  add.title = labels.length >= LABEL_LIMIT
+    ? 'A theme can hold ' + LABEL_LIMIT + ' labels'
+    : 'Add a line of your own text';
+  add.disabled = labels.length >= LABEL_LIMIT;
+  add.addEventListener('click', () => addLabel());
+
+  heading.append(headingText, add);
+  list.appendChild(heading);
+
+  if (!labels.length) {
+    const empty = document.createElement('p');
+    empty.className = 'list-empty';
+    empty.textContent = 'None yet. Add "Now playing", or "Requested by {requester}" to name who asked for the song.';
+    list.appendChild(empty);
+    return;
+  }
+
+  for (const label of labels) {
+    const type = 'label:' + label.id;
+    const name = labelOf(labelPartOf(type));
+
+    const row = document.createElement('div');
+    row.className = 'module-row icon-row' + (isSelected(type) ? ' selected' : '') +
+      (label.hidden ? ' is-hidden' : '');
+
+    const glyph = document.createElement('span');
+    glyph.className = 'row-glyph';
+    glyph.innerHTML = LABEL_GLYPH;
+
+    const text = document.createElement('span');
+    text.className = 'name';
+    text.textContent = name;
+
+    const eye = document.createElement('button');
+    eye.className = 'eye';
+    eye.innerHTML = label.hidden ? EYE_OFF : EYE_ON;
+    eye.title = label.hidden ? 'Hidden - click to show it' : 'Hide this label';
+    eye.addEventListener('click', event => {
+      event.stopPropagation();
+      toggleHidden(label);
+    });
+
+    const remove = document.createElement('button');
+    remove.className = 'eye remove';
+    remove.title = 'Remove this label';
+    remove.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" ' +
+      'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+      '<path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>';
+    remove.addEventListener('click', event => {
+      event.stopPropagation();
+      removeLabel(label);
+    });
+
+    row.append(glyph, text, lockButton(label, PART_LOCK), eye, remove);
+    row.title = 'Edit this label';
+    row.addEventListener('click', event => pickFromList(event, type));
+    list.appendChild(row);
+  }
+}
+
+function removeLabel(label) {
+  commit(() => {
+    state.model.labels = state.model.labels.filter(entry => entry !== label);
+    state.model.labels.forEach((entry, at) => { entry.id = 'l' + at; });
+  });
+
+  // Positional ids again: a group naming them would now point at others.
+  if (state.group.length) select('canvas');
+  if (isLabel(state.selection) && !moduleOf(state.selection)) select('canvas');
+
+  renderAll();
+  note('Label removed.', 'good');
+}
+
+/** A new label in the middle of the canvas, selected with its text ready to type over. */
+function addLabel(text = 'Now playing') {
+  const labels = state.model.labels || (state.model.labels = []);
+  if (labels.length >= LABEL_LIMIT) return;
+
+  const canvas = state.model.canvas;
+  const w = Math.min(180, canvas.width - 32);
+
+  commit(() => {
+    // The same settings as defaultLabel() in services/themeStore.js.
+    labels.push({
+      id: 'l' + labels.length, text, hidden: false,
+      x: Math.round((canvas.width - w) / 2), y: Math.round(canvas.height / 2 - 12), w, h: 24,
+      font: 'system', fontSize: 14, fontWeight: 600, color: '#ffffff',
+      letterSpacing: 0, align: 'left', opacity: 0.9,
+      uppercase: false, italic: false, glow: 0, glowColor: 'var(--album-vibrant)',
+      outline: 0, outlineColor: '#000000',
+      shadow: 0, shadowAngle: 135, shadowBlur: 0, shadowColor: 'rgba(0,0,0,0.55)'
+    });
+    stackNew(labels[labels.length - 1]);
+  });
+
+  select('label:l' + (labels.length - 1));
+  renderAll();
+  requestAnimationFrame(() => $('props').querySelector('.text-field')?.select());
+}
+
+/**
+ * What a {requester} label does on stream, said where it cannot be missed.
+ *
+ * The editor shows every label all the time, so a label that OBS only shows
+ * now and then looks exactly like one it always shows. Without a real
+ * requester the text also reads as written, {requester} and all, which is
+ * easy to take for what the stream will say.
+ */
+function requesterCallout(label) {
+  const box = document.createElement('div');
+
+  if (!label.text.includes('{requester}')) {
+    box.className = 'place-hint';
+    box.innerHTML = 'Add <code>{requester}</code> to name the viewer who asked for the song playing.';
+    return box;
+  }
+
+  const now = state.song && state.song.requester;
+  box.className = 'callout';
+  box.innerHTML = '<strong>Only the editor always shows this label</strong>' +
+    'In OBS it appears only while a song a viewer requested is playing, with <code>{requester}</code> ' +
+    'replaced by their name. For any other song it stays hidden.' +
+    (now ? ' Right now it says <b>' + escapeHtml(now) + '</b>, who requested the song playing.' : '');
+  return box;
+}
+
+/**
+ * Free text, for a label or the Up next caption. One undo step per edit rather
+ * than per keystroke: history is taken on the first keystroke after the field
+ * is focused, and the rest ride on it.
+ */
+function textInput(target, key, { max, placeholder, rerender } = {}) {
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.className = 'text-field';
+  input.value = target[key] || '';
+  input.maxLength = max;
+  if (placeholder) input.placeholder = placeholder;
+
+  let typing = false;
+  input.addEventListener('focus', () => { typing = false; });
+  input.addEventListener('input', () => {
+    const hadToken = String(target[key] || '').includes('{requester}');
+    commit(() => { target[key] = input.value; }, { history: !typing });
+    typing = true;
+    // The list row shows a label's text, so it follows along.
+    if (rerender) renderModules();
+    // Typing {requester} in or out changes what the panel has to warn about.
+    // Rebuilt without losing the field being typed in.
+    if (rerender && hadToken !== input.value.includes('{requester}')) {
+      const at = input.selectionStart;
+      renderProps();
+      const again = $('props').querySelector('.text-field');
+      if (again) {
+        again.focus();
+        again.setSelectionRange(at, at);
+      }
+    }
+  });
+
+  return input;
 }
 
 function googleHref(entries) {
@@ -2734,11 +4356,15 @@ function fontInput(module) {
   const picker = document.createElement('div');
   picker.className = 'font-picker';
 
+  // Several parts at once, when `module` stands in for a selection.
+  const parts = module[PARTS] || [module];
+  const shown = state.fonts[module.font];
+
   const trigger = document.createElement('button');
   trigger.type = 'button';
   trigger.className = 'font-trigger';
-  trigger.textContent = state.fonts[module.font].label;
-  trigger.style.fontFamily = state.fonts[module.font].stack;
+  trigger.textContent = shown ? shown.label : 'Mixed';
+  if (shown) trigger.style.fontFamily = shown.stack;
   trigger.setAttribute('aria-haspopup', 'listbox');
   trigger.setAttribute('aria-expanded', 'false');
 
@@ -2784,8 +4410,9 @@ function fontInput(module) {
 
     // Opened on the font in use, in the middle of the list where there is
     // room either side of it, the way a <select> opens on its value.
-    list.scrollTop = current.offsetTop - (list.clientHeight - current.offsetHeight) / 2;
-    current.focus({ preventScroll: true });
+    const start = current || options[0];
+    list.scrollTop = start.offsetTop - (list.clientHeight - start.offsetHeight) / 2;
+    start.focus({ preventScroll: true });
     list.scrollIntoView({ block: 'nearest' });
   };
 
@@ -2796,27 +4423,31 @@ function fontInput(module) {
 
   const choose = (option, { keyboard = false } = {}) => {
     const key = option.dataset.font;
-    if (key === module.font) {
+    if (parts.every(part => part.font === key)) {
       close();
       return;
     }
 
     commit(() => {
-      module.font = key;
-      // The new family may not ship the weight that was set, so it gets the
-      // nearest it has. The weight asked for is remembered, not overwritten:
-      // going back to a font that has it brings it back, instead of leaving
-      // the stand-in behind as a change nobody made.
-      const wanted = state.memory.weights[module.type] ?? module.fontWeight;
-      const weights = state.fonts[key].weights;
+      // Each part on its own, so picking one font for a title and an artist
+      // keeps each one's weight where the new font has it.
+      for (const part of parts) {
+        part.font = key;
+        // The new family may not ship the weight that was set, so it gets the
+        // nearest it has. The weight asked for is remembered, not overwritten:
+        // going back to a font that has it brings it back, instead of leaving
+        // the stand-in behind as a change nobody made.
+        const wanted = state.memory.weights[part.type] ?? part.fontWeight;
+        const weights = state.fonts[key].weights;
 
-      if (weights.includes(wanted)) {
-        module.fontWeight = wanted;
-        delete state.memory.weights[module.type];
-      } else {
-        state.memory.weights[module.type] = wanted;
-        module.fontWeight = weights.reduce((best, weight) =>
-          Math.abs(weight - wanted) < Math.abs(best - wanted) ? weight : best, weights[0]);
+        if (weights.includes(wanted)) {
+          part.fontWeight = wanted;
+          delete state.memory.weights[part.type];
+        } else {
+          state.memory.weights[part.type] = wanted;
+          part.fontWeight = weights.reduce((best, weight) =>
+            Math.abs(weight - wanted) < Math.abs(best - wanted) ? weight : best, weights[0]);
+        }
       }
     });
     loadUsedFonts();
@@ -2906,18 +4537,23 @@ document.addEventListener('pointerdown', event => {
 });
 
 function weightInput(module) {
-  const weights = state.fonts[module.font].weights;
+  // Across a selection, only the weights every one of its fonts has.
+  const parts = module[PARTS] || [module];
+  const lists = [...new Set(parts.map(part => part.font))].map(font => state.fonts[font].weights);
+  const weights = lists[0].filter(weight => lists.every(list => list.includes(weight)));
   const select = selectInput(module, 'fontWeight', weights.map(weight => [String(weight), String(weight)]));
 
   select.addEventListener('change', () => {
     // Chosen by hand, so this is now the weight wanted.
-    delete state.memory.weights[module.type];
+    for (const part of parts) delete state.memory.weights[part.type];
     loadUsedFonts();
   });
 
-  if (weights.length === 1) {
+  if (weights.length < 2) {
     select.disabled = true;
-    select.title = state.fonts[module.font].label + ' ships one weight only.';
+    select.title = lists.length > 1
+      ? 'These fonts have no weights in common. Pick one font for all of them first.'
+      : state.fonts[module.font].label + ' ships one weight only.';
   }
 
   return select;
@@ -2945,17 +4581,42 @@ const FIELD_TIPS = {
   'Shadow color': 'The color of that shadow. Black at part opacity is the usual choice.',
   'Corner radius': 'How rounded the corners are. 0 is square.',
   'Independent corners': 'Round each corner by its own amount, like Figma. Turn it off to go back to one radius.',
-  'Shadow': 'A soft shadow behind the artwork.',
+  'Shadow': 'A soft shadow behind this part, to lift it off what is behind it.',
   'Fit': 'Album art is square: fill the box (cropping) or fit inside it (letterboxed).',
-  'Background': 'The color behind everything.',
+  'Background': 'The color it is filled with.',
   'Background style': 'A flat color, or a gradient between two colors.',
   'Gradient from': 'The color the gradient starts at.',
   'Gradient to': 'The color the gradient ends at.',
-  'Angle': 'Which way the gradient runs, in degrees. 90 is top to bottom.',
-  'Border width': 'Thickness of the outline around the widget. 0 removes it.',
-  'Border color': 'Color of that outline.',
+  'Angle': 'Which way the gradient runs, in degrees. 90 is left to right, 180 is top to bottom.',
+  'Border width': 'How thick the border is. 0 removes it.',
+  'Border color': 'The color of the border.',
   'Blur': 'Softens the panel behind the text - its background and the artwork. Not your gameplay.',
   'Dim': 'Turns down what the panel is showing, behind the text. 0 is untouched, 1 is black.',
+  'Layer': 'Which parts this one is drawn over, and which it is drawn under.',
+  'Bevel': 'A raised edge - light along the top and left, shade along the bottom and right. Makes a card look like a button.',
+  'Border style': 'One color, or a gradient ring from the border color to a second one.',
+  'Border to': 'The color the gradient ring ends at.',
+  'Pixelate': 'Draws the art in blocks this many pixels across, like an old game. 0 leaves it alone. Works on Canvas videos too.',
+  'Spin': 'Turns the art like a record - seconds per turn. 0 keeps it still. It stops when the music does.',
+  'Fill style': 'One color, or a gradient along the bar. The far color only shows once the song gets there.',
+  'Fill from': 'The color the played part starts with.',
+  'Fill to': 'The color it reaches at the end of the song.',
+  'Wave length': 'How long one wave of the squiggle is, in pixels.',
+  'Line width': 'How thick the squiggle and the line after it are.',
+  'Knob': 'A dot riding the playhead, this many pixels across. 0 is none.',
+  'Knob color': 'The color of that dot.',
+  'Knob shape': 'Round, or square for a pixel look.',
+  'Text': 'What the label says. {requester} becomes whoever asked for the song.',
+  'Caption': 'What the row says before the songs, like "Up next". Leave it empty for none.',
+  'Caption color': 'The color of that caption.',
+  'Songs shown': 'How many queued songs to show at most.',
+  'Show': 'Everything queued in Spotify - including the rest of your playlist - or only the songs chat requested.',
+  'Album pictures': 'A small cover on each song.',
+  'Who asked': 'The name of the viewer who requested each song.',
+  'Chip color': 'The pill behind each song.',
+  'Chip roundness': 'How rounded those pills are.',
+  'Fill opacity': 'How see-through the fill is. The border stays solid.',
+  'Frost': 'Blurs whatever of the widget is behind the card, like frosted glass. It cannot blur your scene: OBS puts that behind the widget, where the widget cannot see it.',
   'Track color': 'The unfilled part of the progress bar.',
   'Fill color': 'The part of the progress bar that fills as the song plays.',
   'Album art': 'Whether to play Spotify Canvas videos when a track has one.',
@@ -2963,6 +4624,8 @@ const FIELD_TIPS = {
   'Scroll speed': 'How fast a title too long to fit slides across, in pixels per second.',
   'Show progress bar': 'Show the bar that fills as the song plays.',
   'Scroll long text': 'Slide titles that do not fit, instead of cutting them off.',
+  'Reward effects': 'When a song a viewer requested starts, play the effect they have earned. Who gets what is set in the admin panel, under Viewer rewards.',
+  'Milestones': 'On a viewer\'s milestone songs, the widget steps aside for a few seconds to celebrate them.',
   'UPPERCASE': 'Show the text in capitals.',
   'Italic': 'Slant the text.',
   'Hidden': 'Keep this part out of the widget without deleting it.'
@@ -2976,6 +4639,56 @@ const EYE_OFF = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stro
   'stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8' +
   'a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07' +
   'a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>';
+
+const LOCK_ON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" ' +
+  'stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"></rect>' +
+  '<path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>';
+
+const LOCK_OFF = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" ' +
+  'stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"></rect>' +
+  '<path d="M7 11V7a5 5 0 0 1 9.9-1"></path></svg>';
+
+/**
+ * Locking is saved with the theme, the way hiding is, so it is undoable too.
+ * The widget never reads it - it only stops the editor moving the part.
+ */
+function toggleLocked(target) {
+  pushHistory();
+  target.locked = !target.locked;
+  markChanged();
+  renderModules();
+  renderProps();
+  positionOverlay();
+
+  if (target === state.model.canvas) {
+    note(target.locked
+      ? 'The canvas size is locked. Click the padlock again to resize it.'
+      : 'The canvas size is unlocked.', 'good');
+    return;
+  }
+
+  note(target.locked
+    ? labelOf(target) + ' is locked in place. Click the padlock again to move it.'
+    : labelOf(target) + ' is unlocked.', 'good');
+}
+
+/** The padlock beside the eye in a list row. */
+function lockButton(target, { on, off }) {
+  const button = document.createElement('button');
+  button.className = 'eye lock' + (target.locked ? ' on' : '');
+  button.innerHTML = target.locked ? LOCK_ON : LOCK_OFF;
+  button.title = target.locked ? on : off;
+  button.addEventListener('click', event => {
+    event.stopPropagation();
+    toggleLocked(target);
+  });
+  return button;
+}
+
+const PART_LOCK = {
+  on: 'Locked in place - click to unlock',
+  off: 'Lock in place, so it cannot be dragged or resized'
+};
 
 /** Hiding is a design choice, so it is undoable and redraws everything. */
 function toggleHidden(module) {
@@ -3020,6 +4733,11 @@ function group(title, { note } = {}) {
 
   section.append(summary, body);
   section.addEventListener('toggle', () => {
+    // A search opens the sections it finds something in; that is not the
+    // same as somebody unfolding them, so nothing is remembered while one is
+    // on. (The event comes later than the change, so a flag set around the
+    // change would be gone by then.)
+    if (panelSearch.query) return;
     if (section.open) foldedGroups.delete(title);
     else foldedGroups.add(title);
   });
@@ -3059,14 +4777,14 @@ function visibilityButton(module) {
   return button;
 }
 
-function field(label, control, why) {
+/** `tip` is for a label that means something else here than FIELD_TIPS says. */
+function field(label, control, why, tip = FIELD_TIPS[label] || why) {
   const wrap = document.createElement('div');
   wrap.className = 'prop';
 
   const tag = document.createElement('label');
   tag.textContent = label;
 
-  const tip = FIELD_TIPS[label] || why;
   if (tip) {
     tag.title = tip;
     wrap.title = tip;
@@ -3106,15 +4824,24 @@ function numberInput(target, key, { min, max, step = 1 } = {}) {
 
   const input = document.createElement('input');
   input.type = 'number';
-  input.value = target[key];
+  const shown = () => (isMixed(target[key]) ? '' : target[key]);
+  input.value = shown();
+  input.placeholder = isMixed(target[key]) ? 'Mixed' : '';
   if (min !== undefined) input.min = min;
   if (max !== undefined) input.max = max;
   input.step = step;
 
+  const clamp = next => {
+    if (min !== undefined) next = Math.max(min, next);
+    if (max !== undefined) next = Math.min(max, next);
+    return next;
+  };
+
   const apply = value => {
     let next = Number(value);
-    if (!Number.isFinite(next)) {
-      input.value = target[key];
+    // An emptied box - a mixed one left as it was, or one cleared - is not 0.
+    if (value === '' || !Number.isFinite(next)) {
+      input.value = shown();
       return;
     }
 
@@ -3136,7 +4863,15 @@ function numberInput(target, key, { min, max, step = 1 } = {}) {
     button.title = hint;
     button.tabIndex = -1;   // tabbing should land on the number, not the arrows
     // Held down it repeats and speeds up, in whatever this field's step is.
-    holdRepeat(button, steps => apply(Number(input.value) + delta * steps));
+    holdRepeat(button, steps => {
+      if (isMixed(target[key])) {
+        stepEach(target, key, delta * steps, clamp);
+        input.placeholder = isMixed(target[key]) ? 'Mixed' : '';
+        input.value = shown();
+        return;
+      }
+      apply(Number(input.value) + delta * steps);
+    });
     return button;
   };
 
@@ -3144,29 +4879,49 @@ function numberInput(target, key, { min, max, step = 1 } = {}) {
   return wrap;
 }
 
+/**
+ * A stepper on a mixed setting moves each part from where it is, the way
+ * Figma does: two boxes of 120 and 200, one step up, are 121 and 201.
+ */
+function stepEach(target, key, delta, clamp) {
+  commit(() => {
+    for (const part of target[PARTS]) part[key] = clamp(Number(part[key]) + delta);
+  });
+}
+
 function sliderInput(target, key, { min, max, step = 1 } = {}) {
   const wrap = document.createElement('div');
   wrap.className = 'slider';
 
+  const mixed = isMixed(target[key]);
+  if (mixed) wrap.classList.add('mixed');
+
   const range = document.createElement('input');
   range.type = 'range';
   range.min = min; range.max = max; range.step = step;
-  range.value = target[key];
+  // A thumb has to be somewhere; faded, in the middle, it claims nothing.
+  range.value = mixed ? (min + max) / 2 : target[key];
 
   const box = document.createElement('input');
   box.type = 'number';
-  box.value = target[key];
+  box.value = mixed ? '' : target[key];
+  box.placeholder = mixed ? 'Mixed' : '';
   box.min = min; box.max = max; box.step = step;
 
   // Turning a glow, an outline or a drop shadow on (or off) adds or removes
   // the fields that only mean something once it is on, which means rebuilding
   // the panel. `builtOff` is the state this panel was built for, so a value
   // that leaves 0 and comes back needs no rebuild at all.
-  const reveals = key === 'glow' || key === 'outline' || key === 'shadow';
-  const builtOff = Number(target[key]) === 0;
-  const needsReveal = () => reveals && builtOff !== (Number(target[key]) === 0);
+  const reveals = key === 'glow' || key === 'outline' || key === 'shadow' || key === 'knob';
+  const isOff = () => !isMixed(target[key]) && Number(target[key]) === 0;
+  const builtOff = isOff();
+  const needsReveal = () => reveals && builtOff !== isOff();
 
-  const set = (value, options) => commit(() => { target[key] = Number(value); }, options);
+  const set = (value, options) => {
+    wrap.classList.remove('mixed');
+    box.placeholder = '';
+    commit(() => { target[key] = Number(value); }, options);
+  };
 
   // One drag is one change, not one per pixel: the first tick records the
   // value to come back to and the rest ride on it.
@@ -3188,6 +4943,11 @@ function sliderInput(target, key, { min, max, step = 1 } = {}) {
   });
 
   box.addEventListener('change', () => {
+    // Emptied is not 0 - it puts back what was there.
+    if (box.value === '') {
+      box.value = isMixed(target[key]) ? '' : target[key];
+      return;
+    }
     range.value = box.value;
     set(box.value);
     if (needsReveal()) renderProps();
@@ -3281,7 +5041,17 @@ function selectInput(target, key, options) {
     select.appendChild(option);
   }
 
-  select.value = target[key];
+  if (isMixed(target[key])) {
+    const mixed = document.createElement('option');
+    mixed.value = '';
+    mixed.textContent = 'Mixed';
+    mixed.disabled = true;
+    select.prepend(mixed);
+    select.value = '';
+  } else {
+    select.value = target[key];
+  }
+
   select.addEventListener('change', () => {
     let borderNote = false;
 
@@ -3290,7 +5060,8 @@ function selectInput(target, key, options) {
       const value = select.value;
       target[key] = /^-?\d+(\.\d+)?$/.test(value) ? Number(value) : value;
 
-      if (key !== 'backgroundMode') return;
+      // A card has a background style too, but no default border to spare.
+      if (key !== 'backgroundMode' || target !== state.model.canvas) return;
 
       // The default 1px pale border reads as a bright hairline against the
       // dark end of a gradient, so take it off when it has not been changed -
@@ -3316,8 +5087,9 @@ function selectInput(target, key, options) {
       renderProps();
     }
 
-    // Choosing a waveform brings its own settings with it.
-    if (key === 'style') renderProps();
+    // Choosing a waveform brings its own settings with it, and a gradient
+    // its second color.
+    if (key === 'style' || key === 'fillMode' || key === 'borderMode') renderProps();
   });
   return select;
 }
@@ -3339,7 +5111,7 @@ function seedInput(target) {
 
   const button = document.createElement('button');
   button.type = 'button';
-  button.className = 'ghost sm';
+  button.className = 'sm shuffle-btn';
   button.textContent = 'Shuffle';
   button.addEventListener('click', () => {
     commit(() => {
@@ -3364,7 +5136,8 @@ function checkboxInput(label, target, key) {
 
   const box = document.createElement('input');
   box.type = 'checkbox';
-  box.checked = Boolean(target[key]);
+  box.checked = !isMixed(target[key]) && Boolean(target[key]);
+  box.indeterminate = isMixed(target[key]);
   const tip = FIELD_TIPS[label];
   if (tip) wrap.title = tip;
   box.addEventListener('change', () => commit(() => { target[key] = box.checked; }));
@@ -3413,6 +5186,13 @@ function colorInput(target, key, { none, isNone, some } = {}) {
 
   const showSelection = () => {
     const current = target[key];
+    wrap.classList.toggle('mixed', isMixed(current));
+    if (isMixed(current)) {
+      for (const button of buttons) button.classList.remove('active');
+      picker.classList.remove('active');
+      return;
+    }
+
     const custom = /^#[0-9a-f]{3,8}$/i.test(current) || /^rgba?\(/.test(current);
 
     const off = isNone ? isNone() : current === 'transparent';
@@ -3468,28 +5248,48 @@ function colorInput(target, key, { none, isNone, some } = {}) {
  * back the border that was there. Picking a color while there is no border
  * turns one on, or choosing it would look like it did nothing.
  */
+/**
+ * A border that is one color, or a gradient ring from the border color to a
+ * second one. Only offered once there is a border to style.
+ */
+function borderStyleFields(target) {
+  if (!target.borderWidth) return [];
+
+  const fields = [field('Border style', selectInput(target, 'borderMode', [
+    ['solid', 'One color'],
+    ['gradient', 'Gradient ring']
+  ]))];
+
+  if (target.borderMode === 'gradient') fields.push(field('Border to', colorInput(target, 'borderTo')));
+  return fields;
+}
+
 // The border every new theme starts with, in services/themeStore.js.
 const DEFAULT_BORDER = 'rgba(255,255,255,0.08)';
 
-function borderFields(canvas) {
-  const width = sliderInput(canvas, 'borderWidth', { min: 0, max: 12 });
+// `key` names whose border this is, so None on a card and then a color on the
+// canvas does not hand the canvas the card's width back.
+function borderFields(target, key = 'canvas') {
+  const width = sliderInput(target, 'borderWidth', { min: 0, max: 12 });
   const memory = state.memory;
+  // Only the canvas border is ever taken off by a gradient. See selectInput().
+  const ownsAutoOff = target === state.model.canvas;
 
   const showWidth = () => {
-    for (const input of width.querySelectorAll('input')) input.value = canvas.borderWidth;
+    for (const input of width.querySelectorAll('input')) input.value = target.borderWidth;
   };
 
-  const colors = colorInput(canvas, 'borderColor', {
+  const colors = colorInput(target, 'borderColor', {
     none: () => {
       // Kept, so a color picked next brings back the border that was there
       // rather than a 1px one - None and back is then no change at all.
-      if (canvas.borderWidth > 0) memory.borderWidth = canvas.borderWidth;
-      canvas.borderWidth = 0;
+      if (target.borderWidth > 0) memory.borderWidths[key] = target.borderWidth;
+      target.borderWidth = 0;
     },
-    isNone: () => canvas.borderWidth === 0 || canvas.borderColor === 'transparent',
+    isNone: () => target.borderWidth === 0 || target.borderColor === 'transparent',
     some: () => {
-      memory.borderAutoOff = false;
-      if (canvas.borderWidth === 0) canvas.borderWidth = memory.borderWidth || 1;
+      if (ownsAutoOff) memory.borderAutoOff = false;
+      if (target.borderWidth === 0) target.borderWidth = memory.borderWidths[key] || 1;
     }
   });
 
@@ -3499,8 +5299,8 @@ function borderFields(canvas) {
   width.addEventListener('input', () => {
     // Set by hand, so it is no longer the width None took away, nor one a
     // gradient turned off.
-    memory.borderWidth = null;
-    memory.borderAutoOff = false;
+    delete memory.borderWidths[key];
+    if (ownsAutoOff) memory.borderAutoOff = false;
     colors.refresh();
   });
 
@@ -3544,15 +5344,38 @@ function boxFields(module) {
   const section = group('Position & size', { note: module.w + ' \u00d7 ' + module.h });
 
   const position = document.createElement('div');
-  position.className = 'pair';
+  position.className = 'pair coords';
   position.append(field('X', numberInput(module, 'x')), field('Y', numberInput(module, 'y')));
 
   const size = document.createElement('div');
-  size.className = 'pair';
+  size.className = 'pair coords';
   size.append(field('Width', numberInput(module, 'w')), field('Height', numberInput(module, 'h')));
 
-  section.body.append(position, size, alignButtons(module));
+  const fields = document.createElement('div');
+  fields.append(position, size, alignButtons(module));
+  section.body.append(...lockedFields(module, fields));
   return section;
+}
+
+/**
+ * Fields that set where something is and how big, made inert while it is
+ * locked. Locked in place means from here too, not only on the canvas - so
+ * a switch above them says why they do nothing, and unlocks in one click.
+ */
+function lockedFields(target, fields) {
+  if (!target.locked) return [fields];
+
+  fields.inert = true;
+  fields.classList.add('locked-fields');
+
+  const canvas = target === state.model.canvas;
+  const button = document.createElement('button');
+  button.className = 'visibility';
+  button.innerHTML = LOCK_ON + '<span>' + (canvas ? 'Size locked' : 'Locked in place') + '</span>' +
+    '<span class="why-hidden">click to unlock</span>';
+  button.title = canvas ? 'Unlock the canvas, so it can be resized again' : 'Unlock it, so it can be moved and resized again';
+  button.addEventListener('click', () => toggleLocked(target));
+  return [button, fields];
 }
 
 function renderProps() {
@@ -3562,8 +5385,11 @@ function renderProps() {
   if (state.selection === null) {
     const empty = document.createElement('p');
     empty.className = 'panel-hint';
-    empty.textContent = 'Nothing selected. Click a part on the canvas, or one in the list above, to change it.';
-    host.appendChild(empty);
+    empty.innerHTML = 'Nothing selected. Click a part on the canvas, or one in the list above, to change it. ' +
+      'To change several at once, <b>Ctrl</b>+click each one, or drag a box across them from an empty spot.';
+    // These belong to the whole theme, not to a part, so they are there
+    // whatever is selected - including nothing.
+    host.append(empty, placementProps(), themeProps());
     return;
   }
 
@@ -3589,13 +5415,28 @@ function renderProps() {
     section.body.appendChild(panelSwitch);
 
     const size = document.createElement('div');
-    size.className = 'pair';
+    size.className = 'pair coords';
     size.append(field('Width', numberInput(canvas, 'width')), field('Height', numberInput(canvas, 'height')));
 
     const gradient = canvas.backgroundMode === 'gradient';
 
+    // Drawn in from the canvas edge, the panel leaves room for parts to stick
+    // out over it. Top and bottom together, then left and right, because that
+    // is how people think about it - "taller than the panel" - not clockwise.
+    const inset = canvas.inset || (canvas.inset = [0, 0, 0, 0]);
+    const insetRows = document.createElement('div');
+    for (const sides of [[['Top', 0], ['Bottom', 2]], [['Left', 3], ['Right', 1]]]) {
+      const pair = document.createElement('div');
+      pair.className = 'pair';
+      pair.append(...sides.map(([label, side]) => field(label, numberInput(inset, side, { min: 0 }))));
+      insetRows.appendChild(pair);
+    }
+
     section.body.append(
-      size,
+      ...lockedFields(canvas, size),
+      field('Panel inset', insetRows,
+        'Draws the panel smaller than the canvas. Parts can sit in the space around it, so they ' +
+        'stick out over its edge. The canvas is still the size OBS shows.'),
       field('Background style', selectInput(canvas, 'backgroundMode', [
         ['solid', 'Solid color'],
         ['gradient', 'Gradient']
@@ -3624,6 +5465,26 @@ function renderProps() {
     );
 
     host.append(section, placementProps(), themeProps());
+    return;
+  }
+
+  if (state.group.length) {
+    const section = group(state.group.length + ' parts selected');
+    const names = document.createElement('ul');
+    names.className = 'group-parts';
+    for (const type of state.group) {
+      const item = document.createElement('li');
+      item.textContent = labelOf(moduleOf(type));
+      names.appendChild(item);
+    }
+
+    section.body.append(
+      names,
+      layerField(state.group),
+      propNote('Drag any of them to move them all, or nudge them with the arrow keys. ' +
+        '<b>Ctrl</b>+click a part to add or drop it. Click one on its own to edit its settings.')
+    );
+    host.append(section, ...groupSections(state.group.map(moduleOf)), placementProps(), themeProps());
     return;
   }
 
@@ -3656,10 +5517,43 @@ function renderProps() {
       );
     }
 
-    section.body.insertBefore(visibilityButton(module), section.body.firstChild);
+    section.body.prepend(visibilityButton(module), layerField([module.type]));
     // Color first, then the box. An icon is placed by dragging it on the
     // canvas; what people open the panel for is its color, and below the
     // position fields it was off the bottom of the screen.
+    host.append(section, box, placementProps(), themeProps());
+    return;
+  }
+
+  if (isCard(module.type)) {
+    const gradient = module.backgroundMode === 'gradient';
+
+    section.body.append(
+      field('Background style', selectInput(module, 'backgroundMode', [
+        ['solid', 'Solid color'],
+        ['gradient', 'Gradient']
+      ])),
+      field(gradient ? 'Gradient from' : 'Background', colorInput(module, 'background'))
+    );
+
+    if (gradient) {
+      section.body.append(
+        field('Gradient to', colorInput(module, 'backgroundTo')),
+        field('Angle', sliderInput(module, 'gradientAngle', { min: 0, max: 360, step: 5 }))
+      );
+    }
+
+    section.body.append(
+      field('Fill opacity', sliderInput(module, 'fillOpacity', { min: 0, max: 1, step: 0.05 })),
+      radiusInput(module, { max: 200 }),
+      ...borderFields(module, module.type),
+      field('Shadow', sliderInput(module, 'shadow', { min: 0, max: 80 })),
+      field('Frost', sliderInput(module, 'blur', { min: 0, max: 40 })),
+      field('Bevel', sliderInput(module, 'bevel', { min: 0, max: 8 }))
+    );
+    section.body.append(...borderStyleFields(module));
+
+    section.body.prepend(visibilityButton(module), layerField([module.type]));
     host.append(section, box, placementProps(), themeProps());
     return;
   }
@@ -3669,23 +5563,59 @@ function renderProps() {
   if (module.type === 'art') {
     section.body.append(
       radiusInput(module, { max: 200 }),
+      ...borderFields(module, 'art'),
       field('Shadow', sliderInput(module, 'shadow', { min: 0, max: 80 }),
         'A soft drop shadow behind the artwork, to lift it off the panel.'),
       field('Fit', selectInput(module, 'fit', [['cover', 'Fill the box'], ['contain', 'Fit inside']]),
-        'Album art is square. "Fill the box" crops it to your shape; "Fit inside" keeps all of it.')
+        'Album art is square. "Fill the box" crops it to your shape; "Fit inside" keeps all of it.'),
+      ...borderStyleFields(module),
+      field('Blur', sliderInput(module, 'blur', { min: 0, max: 40 }),
+        'Blurs the album art or Canvas video inside its own edges, which stay sharp. Good for art ' +
+        'that sits behind text.',
+        'Blurs the album art or Canvas video. Its border stays sharp.'),
+      field('Pixelate', sliderInput(module, 'pixelate', { min: 0, max: 32 })),
+      field('Spin', sliderInput(module, 'spin', { min: 0, max: 60 }))
     );
   } else if (module.type === 'progress') {
+    const gradient = module.fillMode === 'gradient';
+
     section.body.append(
       field('Shape', selectInput(module, 'style', [
         ['bar', 'A bar'],
-        ['waveform', 'A waveform']
+        ['waveform', 'A waveform'],
+        ['squiggle', 'A squiggle']
       ]), module.style === 'waveform'
         ? 'Give the box some height - a waveform in a 6px bar is a bar.'
-        : 'A waveform draws the bar as a row of lines of differing heights.'),
-      radiusInput(module, { max: 999 }),
+        : module.style === 'squiggle'
+          ? 'The part already played is a moving wave; the rest is a plain line. The box height is how tall the wave is.'
+          : 'A waveform draws the bar as a row of lines of differing heights.'),
+      // A waveform's radius rounds each line, not the box around them - the
+      // box is see-through - so it has one roundness, and no corners of its own.
+      ...(module.style === 'squiggle' ? []
+        : module.style === 'waveform' ? [field('Line roundness', sliderInput(module, 'radius', { min: 0, max: 6 }),
+          'How rounded the ends of each line are. 0 is square.')]
+          : [radiusInput(module, { max: 999 })]),
       field('Track color', colorInput(module, 'trackColor')),
-      field('Fill color', colorInput(module, 'fillColor'))
+      field('Fill style', selectInput(module, 'fillMode', [['solid', 'One color'], ['gradient', 'Gradient']])),
+      field(gradient ? 'Fill from' : 'Fill color', colorInput(module, 'fillColor'))
     );
+
+    if (gradient) section.body.append(field('Fill to', colorInput(module, 'fillTo')));
+
+    if (module.style === 'squiggle') {
+      section.body.append(
+        field('Wave length', sliderInput(module, 'waveLength', { min: 8, max: 80 })),
+        field('Line width', sliderInput(module, 'lineWidth', { min: 1, max: 12 }))
+      );
+    }
+
+    section.body.append(field('Knob', sliderInput(module, 'knob', { min: 0, max: 40 })));
+    if (module.knob) {
+      section.body.append(
+        field('Knob color', colorInput(module, 'knobColor')),
+        field('Knob shape', selectInput(module, 'knobShape', [['circle', 'Round'], ['square', 'Square']]))
+      );
+    }
 
     if (module.style === 'waveform') {
       section.body.append(
@@ -3697,6 +5627,44 @@ function renderProps() {
       );
     }
   } else {
+    if (isLabel(module.type)) {
+      const insert = document.createElement('button');
+      insert.className = 'mini';
+      insert.type = 'button';
+      insert.textContent = 'Add who requested it';
+      insert.title = 'Adds {requester}, which the widget swaps for the viewer who asked for the song';
+      insert.disabled = module.text.includes('{requester}');
+      insert.addEventListener('click', () => {
+        commit(() => { module.text = (module.text + ' {requester}').trim(); });
+        renderModules();
+        renderProps();
+      });
+
+      section.body.append(
+        field('Text', textInput(module, 'text', { max: 60, rerender: true })),
+        insert,
+        requesterCallout(module)
+      );
+    }
+
+    if (module.type === 'next') {
+      section.body.append(
+        propNote('Shows what plays next, and only while something is queued - it fades in and out on ' +
+          'its own. The songs here are your real queue.'),
+        field('Show', selectInput(module, 'source', [
+          ['queue', 'Everything in the Spotify queue'],
+          ['requests', 'Only chat requests']
+        ])),
+        field('Caption', textInput(module, 'label', { max: 24, placeholder: 'No caption' })),
+        field('Caption color', colorInput(module, 'labelColor')),
+        field('Songs shown', sliderInput(module, 'count', { min: 1, max: 5 })),
+        checkboxInput('Album pictures', module, 'thumbs'),
+        checkboxInput('Who asked', module, 'requester'),
+        field('Chip color', colorInput(module, 'chipColor')),
+        field('Chip roundness', sliderInput(module, 'chipRadius', { min: 0, max: 40 }))
+      );
+    }
+
     section.body.append(
       field('Font', fontInput(module)),
       field('Size', sliderInput(module, 'fontSize', { min: 8, max: 96 })),
@@ -3735,7 +5703,7 @@ function renderProps() {
 
   // The old "Hidden" tickbox was easy to miss; this is a switch that says
   // what state the part is in.
-  section.body.insertBefore(visibilityButton(module), section.body.firstChild);
+  section.body.prepend(visibilityButton(module), layerField([module.type]));
   host.append(section, placementProps(), themeProps());
 }
 
@@ -3898,19 +5866,368 @@ function themeProps() {
       'How fast a title too long to fit slides across, in pixels per second. 70 is a gentle crawl; 200 is brisk.')
   );
 
+  // A section of its own, open, rather than one more line in Behavior - which
+  // starts folded, and is where nobody would look for an animation.
+  const change = group('Song change', { note: 'applies to the whole theme' });
+  change.body.append(field('Animation', transitionInput(props),
+    'How the art and text change over when the song does. A skip back to the song before runs the other way.'));
+
+  const all = document.createDocumentFragment();
+  all.append(change, rewardsSection(props), ambienceSection(props), section);
+  return all;
+}
+
+/**
+ * Buttons that play a reward over the preview, with the song's own colors.
+ *
+ * Who gets which effect is the channel's to decide, on the admin page - the
+ * theme only says whether it celebrates viewers at all - so any of them can
+ * be tried here, in any colors. It is effects.js, the file the widget plays
+ * them with.
+ */
+function perkPreview(props) {
+  const wrap = document.createElement('div');
+  wrap.className = 'transition-input preview-box';
+
+  const fx = window.QueueifyFx || { EFFECTS: [], PALETTES: [], GROUPS: [], groupOf: () => null };
+
+  const effect = document.createElement('select');
+  for (const group of fx.GROUPS) {
+    const holder = document.createElement('optgroup');
+    holder.label = group.label;
+    for (const entry of fx.EFFECTS.filter(each => each.group === group.name)) {
+      const option = document.createElement('option');
+      option.value = entry.name;
+      option.textContent = entry.label;
+      holder.appendChild(option);
+    }
+    effect.appendChild(holder);
+  }
+  effect.value = perkPreview.effect || 'fireworks';
+
+  const colors = document.createElement('select');
+  for (const entry of fx.PALETTES) {
+    const option = document.createElement('option');
+    option.value = entry.name;
+    option.textContent = entry.label;
+    colors.appendChild(option);
+  }
+  colors.value = perkPreview.colors || 'album';
+  colors.title = 'Colors to try it in. The admin page sets the colors each effect plays in.';
+
+  const chosen = () => ({ effect: effect.value, style: { colors: colors.value } });
+
+  for (const select of [effect, colors]) {
+    select.addEventListener('change', () => {
+      perkPreview.effect = effect.value;
+      perkPreview.colors = colors.value;
+      sync();
+      playPreviewPerk(chosen());
+    });
+  }
+
+  const pickers = document.createElement('div');
+  pickers.className = 'pair';
+  pickers.append(effect, colors);
+
+  const row = document.createElement('div');
+  row.className = 'align-row';
+  const button = (label, title, perk) => {
+    const element = document.createElement('button');
+    element.type = 'button';
+    element.className = 'mini';
+    element.textContent = label;
+    element.title = title;
+    element.addEventListener('click', () => playPreviewPerk(perk()));
+    return element;
+  };
+  const buttons = [
+    button('Play effect', 'Play it over the preview, as a viewer\'s song starting would', chosen),
+    button('Play a milestone', 'A 100th song, shown the way this theme shows milestones', () => ({ ...chosen(), power: 3, milestone: 100 }))
+  ];
+  row.append(...buttons);
+
+  // Each button needs its own half on; the menus, either.
+  const sync = () => {
+    const effectsOn = Boolean(props.perks), milestonesOn = Boolean(props.milestone.enabled);
+    buttons[0].disabled = !effectsOn;
+    buttons[1].disabled = !milestonesOn;
+    effect.disabled = colors.disabled = !effectsOn && !milestonesOn;
+  };
+  sync();
+  wrap.sync = sync;
+
+  // Said outright: sitting under the theme's settings, these read as one
+  // more of them, and nothing here is kept.
+  const head = document.createElement('p');
+  head.className = 'preview-head';
+  head.textContent = 'Try them on this theme';
+  const note = document.createElement('p');
+  note.className = 'place-hint';
+  note.textContent = 'Just a preview - nothing here is saved. On stream, each viewer gets the effect their tier or their own pick gives them.';
+
+  wrap.append(head, note, pickers, row);
+  return wrap;
+}
+
+function previewColors() {
+  const style = getComputedStyle($('widget'));
+  return {
+    vibrant: style.getPropertyValue('--album-vibrant').trim(),
+    light: style.getPropertyValue('--album-light').trim(),
+    dark: style.getPropertyValue('--album-dark').trim()
+  };
+}
+
+function playPreviewPerk({ effect, style = {}, power = 2, milestone = null }) {
+  if (!window.QueueifyFx) return;
+  QueueifyFx.stop();
+
+  const colors = previewColors();
+  const play = from => QueueifyFx.play(effect, { host: $('artboard'), from, target: $('widget'), colors, power, style });
+
+  if (!milestone) {
+    play(null);
+    return;
+  }
+
+  // As on stream: the widget steps aside for the milestone. An effect that
+  // moves the widget's parts waits for it to be back.
+  const shown = QueueifyFx.milestone({ number: milestone, name: 'viewer' }, {
+    host: $('artboard'), target: $('widget'), colors,
+    font: getComputedStyle($('title')).fontFamily,
+    seconds: state.model.properties.milestone.seconds
+  });
+  if (QueueifyFx.groupOf(effect) === 'widget') shown.done.then(() => play(null));
+  else setTimeout(() => play(shown.origin), 160);
+}
+
+/**
+ * What the channel gives, in one line, so "celebrate viewers' requests"
+ * means something here and not only on the admin page. Read once; the admin
+ * page is where it changes.
+ */
+let rewardsSummary = null;
+
+function describeRewards(target) {
+  const write = data => {
+    const perks = data.perks;
+    const label = name => {
+      const known = window.QueueifyFx && QueueifyFx.EFFECTS.find(effect => effect.name === name);
+      return known ? known.label : name;
+    };
+    if (!perks.enabled) {
+      target.innerHTML = 'Reward effects are turned off for the whole channel, in the <a href="admin.html#perks">admin panel</a>.';
+      return;
+    }
+    const tiers = perks.tiers.map(tier => `${escapeHtml(tier.name)} (${tier.at}+ songs): ${escapeHtml(tier.effect === 'none' ? 'nothing' : label(tier.effect))}`);
+    // One effect for every sub tier reads as one; different ones, by tier.
+    const defaults = [1, 2, 3].map(tier => perks.subDefaults[tier]);
+    const named = name => (name === 'none' ? 'the effect for their song count' : escapeHtml(label(name)));
+    const subs = defaults.every(name => name === defaults[0])
+      ? `their pick, or ${named(defaults[0])}`
+      : `their pick, or ${defaults.map((name, i) => `${named(name)} (Tier ${i + 1})`).join(', ')}`;
+    target.innerHTML = [...tiers, `Subs: ${subs}`].join(' · ') +
+      '. <a href="admin.html#perks">Change them</a>';
+  };
+
+  if (rewardsSummary) {
+    write(rewardsSummary);
+    return;
+  }
+  api('/api/admin/perks').then(data => {
+    rewardsSummary = data;
+    write(data);
+  }).catch(() => {
+    target.innerHTML = 'Who gets which effect is set in the <a href="admin.html#perks">admin panel</a>.';
+  });
+}
+
+function rewardsSection(props) {
+  const rewards = group('Viewer rewards', { note: 'applies to the whole theme' });
+  const hint = text => {
+    const element = document.createElement('p');
+    element.className = 'place-hint';
+    element.textContent = text;
+    return element;
+  };
+
+  // Two switches, because they are two different things: an effect over the
+  // widget, and the widget stepping aside. A theme may want one and not the
+  // other - a slim banner, say, that would rather not be taken over.
+  const effects = checkboxInput('Reward effects', props, 'perks');
+  const effectsHint = hint('When a song a viewer requested starts, play the effect their song count gives them, or a sub\'s own pick.');
+
+  const summary = document.createElement('p');
+  summary.className = 'place-hint';
+  describeRewards(summary);
+
+  const milestones = checkboxInput('Milestones', props.milestone, 'enabled');
+  const milestonesHint = hint('On milestones like a viewer\'s 100th song, the widget steps aside for a few seconds to celebrate them.');
+  const seconds = field('Show them for', sliderInput(props.milestone, 'seconds', { min: 1.5, max: 15, step: 0.5 }),
+    'Seconds a milestone takes the widget over for.');
+  seconds.hidden = !props.milestone.enabled;
+
+  const preview = perkPreview(props);
+
+  // A checkbox does not redraw the panel, so what depends on it is told.
+  effects.querySelector('input').addEventListener('change', () => preview.sync());
+  milestones.querySelector('input').addEventListener('change', () => {
+    seconds.hidden = !props.milestone.enabled;
+    preview.sync();
+  });
+
+  rewards.body.append(effects, effectsHint, summary, milestones, milestonesHint, seconds, preview);
+  return rewards;
+}
+
+/* The theme's ambience, running on the preview while its settings say so. */
+let editorAmbience = null;
+let editorAmbienceKey = '';
+
+function syncEditorAmbience() {
+  const settings = (state.model && state.model.properties.ambience) || { style: 'none' };
+  const key = JSON.stringify([settings, $('zoom').value, state.model && state.model.canvas.width, state.model && state.model.canvas.height]);
+  const wanted = window.QueueifyFx && settings.style && settings.style !== 'none';
+
+  if (!wanted) {
+    if (editorAmbience) editorAmbience.stop();
+    editorAmbience = null;
+    editorAmbienceKey = '';
+    return;
+  }
+  if (editorAmbience && key === editorAmbienceKey) return;
+
+  if (editorAmbience) editorAmbience.stop();
+  editorAmbienceKey = key;
+  editorAmbience = QueueifyFx.ambience(settings.style, {
+    host: $('artboard'), target: $('widget'), colors: previewColors(),
+    palette: settings.colors, amount: settings.amount, speed: settings.speed
+  });
+}
+
+function ambienceSection(props) {
+  const settings = props.ambience;
+  const section = group('Ambience', { note: 'applies to the whole theme' });
+
+  const style = selectInput(settings, 'style', (window.QueueifyFx ? QueueifyFx.AMBIENCES : [{ name: 'none', label: 'None' }]).map(entry => [entry.name, entry.label]));
+  style.addEventListener('change', () => {
+    renderProps();
+    syncEditorAmbience();
+  });
+
+  section.body.append(field('Drift', style,
+    'A quiet drift across the widget while music plays. It never bursts or flashes - those are viewers\' rewards - and it fades out while one plays.'));
+
+  if (settings.style !== 'none') {
+    const colors = selectInput(settings, 'colors', (window.QueueifyFx ? QueueifyFx.PALETTES : []).map(entry => [entry.name, entry.label]));
+    const amount = sliderInput(settings, 'amount', { min: 0.25, max: 3, step: 0.05 });
+    const speed = sliderInput(settings, 'speed', { min: 0.25, max: 3, step: 0.05 });
+    for (const control of [colors, amount, speed]) {
+      control.addEventListener('input', () => syncEditorAmbience());
+      control.addEventListener('change', () => syncEditorAmbience());
+    }
+    section.body.append(
+      field('Colors', colors, 'Album follows the song playing.'),
+      field('How much', amount, 'How many there are, as a multiple of the usual.'),
+      field('How fast', speed, 'How quickly they drift, as a multiple of the usual.')
+    );
+  }
+
+  // Whenever the panel is drawn - a theme opened, undo, redo - the preview
+  // follows what the theme now says.
+  setTimeout(syncEditorAmbience);
   return section;
+}
+
+// As app.js: how long the way out and the way in take, stagger included.
+const SONG_OUT_MS = 240;
+const SONG_IN_MS = 640;
+let songChangeTimer = null;
+
+/**
+ * Plays the theme's song change on the preview, without changing the song:
+ * the art and text go out and come back. The classes and timings are the
+ * ones app.js uses on stream, and the animation itself is in the stylesheet
+ * the server writes, so this is the real thing.
+ */
+function previewSongChange(direction) {
+  const widget = $('widget');
+  clearTimeout(songChangeTimer);
+  widget.classList.remove('song-out', 'song-in');
+  widget.classList.toggle('dir-prev', direction === 'prev');
+  void widget.offsetWidth;
+  widget.classList.add('song-out');
+
+  songChangeTimer = setTimeout(() => {
+    widget.classList.remove('song-out');
+    void widget.offsetWidth;
+    widget.classList.add('song-in');
+    songChangeTimer = setTimeout(() => widget.classList.remove('song-in', 'dir-prev'), SONG_IN_MS);
+  }, SONG_OUT_MS);
+}
+
+/** The animation to use, and two buttons to watch it both ways. */
+function transitionInput(props) {
+  const wrap = document.createElement('div');
+  wrap.className = 'transition-input';
+
+  const select = selectInput(props, 'transition', [
+    ['none', 'None'],
+    ['slide', 'Slide'],
+    ['fade', 'Fade'],
+    ['flip', 'Flip'],
+    ['pop', 'Pop'],
+    ['wipe', 'Wipe']
+  ]);
+
+  const row = document.createElement('div');
+  row.className = 'align-row';
+  const buttons = [['Previous', 'prev'], ['Next', 'next']].map(([label, direction]) => {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'mini';
+    button.textContent = direction === 'prev' ? '← ' + label : label + ' →';
+    button.title = 'Play it on the preview, as a skip ' + (direction === 'prev' ? 'back' : 'on') + ' would';
+    button.addEventListener('click', () => previewSongChange(direction));
+    return button;
+  });
+  row.append(...buttons);
+
+  const sync = () => { for (const button of buttons) button.disabled = props.transition === 'none'; };
+  // Choosing one plays it, once the stylesheet with it in has come back.
+  select.addEventListener('change', () => {
+    sync();
+    if (props.transition !== 'none') setTimeout(() => previewSongChange('next'), 350);
+  });
+  sync();
+
+  wrap.append(select, row);
+  return wrap;
 }
 
 /**
  * Drops a selection that points at something no longer in the model.
  *
- * Revert, undo, redo, import and "start from a layout" all swap the whole
+ * Revert, undo, redo, import and picking a premade theme all swap the whole
  * model out from under the editor, and an icon that was selected when they
  * ran is simply gone afterwards. That left `selected()` undefined, which threw
  * inside renderProps - and because that throw happened before positionOverlay,
  * the old outline and its handles stayed painted on the canvas over nothing.
  */
 function ensureSelection() {
+  // A group loses whatever an undo or a revert took away, and stops being a
+  // group once it is down to one part.
+  if (state.group.length) {
+    state.group = state.group.filter(type => moduleOf(type));
+    if (state.group.length < 2) {
+      state.selection = state.group[0] ?? state.selection;
+      state.group = [];
+    } else if (!state.group.includes(state.selection)) {
+      state.selection = state.group[state.group.length - 1];
+    }
+  }
+
   if (state.selection === null || state.selection === 'canvas') return;
   // Assigned rather than select()ed: renderAll is about to draw all three of
   // the things select() would redraw.
@@ -3921,6 +6238,7 @@ function renderAll() {
   ensureSelection();
   applyZoom(state.zoom);
   loadUsedFonts();
+  renderCards();
   renderIcons();
   renderProgress();
   renderModules();
@@ -3938,18 +6256,24 @@ async function loadThemes(selectName) {
   state.fonts = data.fonts;
   state.fontCategories = data.fontCategories || {};
   state.presets = data.presets || [];
+  fillDevPresets();
   loadMenuFonts();
 
   const picker = $('theme-open');
-  // Only the themes that can actually be opened. The built-in ones are
-  // read-only, so listing them grayed out was clutter with nothing behind it.
-  picker.innerHTML = '<option value="">- new theme -</option>' +
-    data.themes.filter(theme => theme.editable).map(theme =>
-      '<option value="' + escapeHtml(theme.name) + '">' + escapeHtml(theme.label) +
-      (theme.name === data.active ? ' • live' : '') + '</option>'
-    ).join('');
+  const option = (value, label, name) => '<option value="' + escapeHtml(value) + '">' + escapeHtml(label) +
+    (name === data.active ? ' • live' : '') + '</option>';
 
-  picker.value = selectName || state.name || '';
+  // Your own themes, then the built-in ones. Those open read-only - see
+  // openBuiltIn() - and only the ones with an editor version to open.
+  const builtIn = data.themes.filter(theme => theme.builtIn && state.presets.some(preset => preset.id === theme.name));
+  picker.innerHTML = '<option value="">- new theme -</option>' +
+    data.themes.filter(theme => theme.editable).map(theme => option(theme.name, theme.label, theme.name)).join('') +
+    (builtIn.length
+      ? '<optgroup label="Built in (read-only)">' +
+        builtIn.map(theme => option('builtin:' + theme.name, theme.name, theme.name)).join('') + '</optgroup>'
+      : '');
+
+  picker.value = selectName || state.name || (state.builtIn ? 'builtin:' + state.builtIn : '');
   $('btn-delete').disabled = !state.name;
   $('btn-duplicate').disabled = !state.name;
 
@@ -3958,7 +6282,36 @@ async function loadThemes(selectName) {
   setDirty(state.dirty);
 }
 
+/**
+ * A built-in theme, to look at. They are the fallback every install has, so
+ * they cannot be changed. What opens is the premade each one is made from or
+ * matches, as a new theme: change it all you like, and saving it needs a
+ * name of its own.
+ */
+function openBuiltIn(name) {
+  const twin = state.presets.find(preset => preset.id === name);
+  if (!twin) throw new Error('"' + name + '" is built in, and there is no editor version of it to open.');
+
+  state.name = null;
+  state.builtIn = name;
+  state.presetId = twin.id;
+  state.model = JSON.parse(JSON.stringify(twin.model));
+  state.model.label = name;
+  state.history.length = state.future.length = 0;
+  $('theme-label').value = name;
+  // Looking is not changing: nothing to be asked about when you move on.
+  markSaved();
+  select('canvas');
+  renderAll();
+  $('theme-open').value = 'builtin:' + name;
+  $('btn-delete').disabled = $('btn-duplicate').disabled = true;
+  fillDevPresets();
+  note('<b>' + escapeHtml(name) + '</b> is built in, so it is read-only. Change anything you like, then give it ' +
+    'a new name and save it as a theme of your own.', 'good');
+}
+
 async function openTheme(name) {
+  state.builtIn = null;
   if (!name) {
     const data = await api('/api/themes');
     state.name = null;
@@ -3987,11 +6340,16 @@ async function openTheme(name) {
 
 $('theme-open').addEventListener('change', async event => {
   if (state.dirty && !await askDiscard('Open another theme')) {
-    $('theme-open').value = state.name || '';
+    $('theme-open').value = state.name || (state.builtIn ? 'builtin:' + state.builtIn : '');
     return;
   }
   try {
-    await openTheme(event.target.value);
+    const value = event.target.value;
+    if (value.startsWith('builtin:')) {
+      openBuiltIn(value.slice(8));
+      return;
+    }
+    await openTheme(value);
     note('');
   } catch (err) {
     note(err.message, 'bad');
@@ -4000,41 +6358,529 @@ $('theme-open').addEventListener('change', async event => {
 
 /* ------------------------------------------------------- starting points */
 
-function showPresets() {
-  const list = $('preset-list');
-  list.innerHTML = '';
+/**
+ * The premade picker: every premade in a list down the left, grouped by shape,
+ * and the one picked shown large on the right, playing the song you are
+ * playing - at the size it will be in OBS, wherever that fits.
+ *
+ * The preview is a page of its own in an iframe, because a theme's stylesheet
+ * is written for a page of its own. It comes from the server's generator, so
+ * a premade looks exactly as it will on stream, and the list is fetched fresh
+ * on every open.
+ */
+const showroom = { index: 0, shown: [], query: '', ticker: null };
 
-  for (const preset of state.presets) {
-    const button = document.createElement('button');
-    button.className = 'preset';
-    button.innerHTML = escapeHtml(preset.label) + '<small>' + escapeHtml(preset.description) + '</small>';
-    button.addEventListener('click', () => {
-      state.name = null;
-      state.model = JSON.parse(JSON.stringify(preset.model));
-      state.history.length = state.future.length = 0;
-      $('theme-label').value = state.model.label;
-      state.baseline = null;
-      forgetEdits();
-      markChanged();
-      $('preset-sheet').classList.add('hidden');
-      select('canvas');
-      renderAll();
-      note('Started from "' + escapeHtml(preset.label) + '". Give it a name and save when you like it.', 'good');
-    });
-    list.appendChild(button);
-  }
+// Grouped by the shape of the box a theme takes up in a scene, because that
+// is what decides whether it fits a layout. First match wins.
+const SHAPES = [
+  ['Banner', canvas => canvas.width >= canvas.height * 2.5],
+  ['Panel', canvas => canvas.width > canvas.height],
+  ['Portrait', () => true]
+];
 
-  $('preset-sheet').classList.remove('hidden');
+function shapeOf(preset) {
+  return SHAPES.find(([, fits]) => fits(preset.model.canvas))[0];
 }
 
-$('btn-presets').addEventListener('click', async () => {
-  if (state.dirty && !await askDiscard('Start from a layout')) return;
-  showPresets();
+// Remembered between opens: which backdrop to judge a theme against. There
+// used to be a painted "stream" backdrop as well, and dark is what it stood for.
+function showroomScene(scene) {
+  try {
+    if (scene) localStorage.setItem('queueify.showroomScene', scene);
+    const saved = localStorage.getItem('queueify.showroomScene');
+    return ['dark', 'light', 'clear'].includes(saved) ? saved : 'dark';
+  } catch {
+    return scene || 'dark';
+  }
+}
+
+async function showPresets() {
+  $('preset-sheet').classList.remove('hidden');
+  $('preset-list').innerHTML = '<p class="picker-empty">Loading…</p>';
+  $('picker-search').value = showroom.query = '';
+  setScene(showroomScene());
+
+  try {
+    state.presets = (await api('/api/presets')).presets;
+  } catch (err) {
+    $('preset-list').innerHTML = '<p class="picker-empty">Could not load the premade themes: ' + escapeHtml(err.message) + '</p>';
+    return;
+  }
+
+  fillDevPresets();
+  drawList(state.presetId);
+  $('preset-list').querySelector('[aria-selected="true"]')?.focus({ preventScroll: true });
+}
+
+function closePresets() {
+  $('preset-sheet').classList.add('hidden');
+  clearInterval(showroom.ticker);
+  showroom.ticker = null;
+}
+
+/** The list, grouped by shape and narrowed by the search box. */
+function drawList(keep) {
+  const query = showroom.query.trim().toLowerCase();
+  const matches = preset => !query ||
+    [preset.label, preset.description, ...(preset.tags || [])].some(text => text.toLowerCase().includes(query));
+
+  const groups = SHAPES.map(([shape]) => ({
+    shape,
+    presets: state.presets.filter(preset => shapeOf(preset) === shape && matches(preset))
+  })).filter(group => group.presets.length);
+
+  // In the order they are drawn, so the arrow keys go down the list as you see it.
+  showroom.shown = groups.flatMap(group => group.presets);
+
+  const list = $('preset-list');
+  list.replaceChildren();
+
+  for (const group of groups) {
+    const heading = document.createElement('div');
+    heading.className = 'picker-group';
+    heading.id = 'picker-group-' + group.shape.toLowerCase();
+    heading.textContent = group.shape;
+
+    const rows = document.createElement('div');
+    rows.setAttribute('role', 'group');
+    rows.setAttribute('aria-labelledby', heading.id);
+    rows.append(...group.presets.map(premadeRow));
+
+    list.append(heading, rows);
+  }
+
+  $('btn-use-preset').disabled = !showroom.shown.length;
+  if (!showroom.shown.length) {
+    list.innerHTML = '<p class="picker-empty">No premade matches that.</p>';
+    return;
+  }
+
+  const at = showroom.shown.findIndex(preset => preset.id === keep);
+  selectPremade(at === -1 ? 0 : at);
+}
+
+function premadeRow(preset) {
+  const row = document.createElement('div');
+  row.className = 'picker-row';
+  row.dataset.id = preset.id;
+  row.tabIndex = -1;
+  row.setAttribute('role', 'option');
+  row.setAttribute('aria-selected', 'false');
+
+  const name = document.createElement('span');
+  name.className = 'picker-row-name';
+  name.textContent = preset.label;
+
+  const size = document.createElement('span');
+  size.className = 'picker-row-size';
+  size.textContent = preset.model.canvas.width + ' × ' + preset.model.canvas.height;
+
+  row.append(name, size);
+  row.addEventListener('click', () => selectPremade(showroom.shown.indexOf(preset)));
+  row.addEventListener('dblclick', () => usePreset(preset));
+  return row;
+}
+
+/**
+ * The page in the stage, as large as it fits - but never past actual size.
+ * A premade shown bigger than it will be in OBS is a premade that disappoints.
+ */
+function loadPreview(frame, preset) {
+  const { width, height } = preset.model.canvas;
+  frame.width = width;
+  frame.height = height;
+  frame.dataset.width = width;
+  frame.dataset.height = height;
+
+  frame.onload = () => {
+    fillPreview(frame.contentDocument, state.song || {}, preset.model, { live: true });
+    fitStage();
+    frame.classList.add('is-shown');
+  };
+  frame.srcdoc = preset.page;
+}
+
+/** Centers a preview in its box, as large as it fits. Returns the scale it used. */
+function fitPreview(frame, { pad = 16, max = 1 } = {}) {
+  const box = frame.parentElement;
+  if (!box) return 1;
+
+  const width = Number(frame.dataset.width);
+  const height = Number(frame.dataset.height);
+  const scale = Math.min((box.clientWidth - pad * 2) / width, (box.clientHeight - pad * 2) / height, max);
+  const left = (box.clientWidth - width * scale) / 2;
+  const top = (box.clientHeight - height * scale) / 2;
+
+  frame.style.transform = 'translate(' + left + 'px, ' + top + 'px) scale(' + scale + ')';
+  return scale;
+}
+
+const STAGE_FIT = { pad: 24, max: 1 };
+
+function fitStage() {
+  const frame = $('showroom-frame');
+  if (frame.dataset.width) fitPreview(frame, STAGE_FIT);
+}
+
+/**
+ * Says whether the stage shows a premade at its real size. Worked out from the
+ * stage rather than the loaded page, so it is right at once - the page waits
+ * on the theme's fonts, and can take a moment.
+ */
+function showScale(canvas) {
+  const box = $('showroom-scene');
+  const room = STAGE_FIT.pad * 2;
+  const scale = Math.min((box.clientWidth - room) / canvas.width, (box.clientHeight - room) / canvas.height, STAGE_FIT.max);
+  const size = canvas.width + ' × ' + canvas.height + ' px';
+  $('showroom-scale').textContent = (scale >= 1 ? 'Actual size' : 'Shown at ' + Math.round(scale * 100) + '%') + ' · ' + size;
+}
+
+function selectPremade(at) {
+  const shown = showroom.shown;
+  if (!shown.length) return;
+
+  // Stops at either end, the way a list does.
+  showroom.index = Math.max(0, Math.min(at, shown.length - 1));
+  const preset = shown[showroom.index];
+
+  for (const row of $('preset-list').querySelectorAll('.picker-row')) {
+    const on = row.dataset.id === preset.id;
+    row.setAttribute('aria-selected', String(on));
+    row.tabIndex = on ? 0 : -1;
+    if (on) revealRow(row);
+  }
+
+  $('showroom-name').textContent = preset.label;
+  $('showroom-desc').textContent = preset.description;
+
+  const asksRequester = (preset.model.labels || []).some(label => label.text.includes('{requester}'));
+  $('showroom-note').hidden = !asksRequester;
+  $('showroom-note').innerHTML = asksRequester
+    ? 'The <code>{requester}</code> label shows here all the time. In OBS it only appears while a ' +
+      'viewer\'s request is playing.'
+    : '';
+
+  const { canvas } = preset.model;
+  showScale(canvas);
+  const facts = [
+    ['Size in OBS', canvas.width + ' × ' + canvas.height + ' px'],
+    ['Shape', shapeOf(preset)],
+    ['Uses', premadeFeatures(preset.model).join(', ') || 'Nothing beyond the basics']
+  ];
+  $('showroom-facts').replaceChildren(...facts.map(([term, value]) => {
+    const pair = document.createElement('div');
+    const dt = document.createElement('dt');
+    const dd = document.createElement('dd');
+    dt.textContent = term;
+    dd.textContent = value;
+    pair.append(dt, dd);
+    return pair;
+  }));
+
+  // Faded out, swapped, and faded back in once the new page has drawn.
+  const frame = $('showroom-frame');
+  frame.classList.remove('is-shown');
+  clearTimeout(showroom.swap);
+  showroom.swap = setTimeout(() => loadPreview(frame, preset), 120);
+  startTicker();
+}
+
+/**
+ * Scrolls the list - and only the list - to show a row.
+ *
+ * Not scrollIntoView: that scrolls every scrollable box around the row too,
+ * and it used to slide the whole dialog sideways.
+ */
+function revealRow(row) {
+  const list = $('preset-list');
+  const top = row.offsetTop - list.offsetTop;
+  const bottom = top + row.offsetHeight;
+
+  if (top < list.scrollTop + 8) list.scrollTop = Math.max(0, top - 36);
+  else if (bottom > list.scrollTop + list.clientHeight - 8) list.scrollTop = bottom - list.clientHeight + 8;
+}
+
+/** What a premade is built from, in the words the editor uses for it. */
+function premadeFeatures(model) {
+  const part = type => model.modules.find(module => module.type === type);
+  const art = part('art');
+  const progress = part('progress');
+  const features = [];
+
+  if (!part('next').hidden) features.push('Up next row');
+  if ((model.labels || []).some(label => label.text.includes('{requester}'))) features.push('who requested it');
+  if (!progress.hidden && progress.style === 'squiggle') features.push('squiggle bar');
+  if (!progress.hidden && progress.style === 'waveform') features.push('waveform bar');
+  if (!progress.hidden && progress.knob) features.push('progress knob');
+  if (!art.hidden && art.pixelate) features.push('pixelated art');
+  if (!art.hidden && art.spin) features.push('spinning art');
+  if (!art.hidden && art.borderWidth && art.borderMode === 'gradient') features.push('gradient ring');
+  if (model.canvas.blur) features.push('blurred background');
+  else if (model.canvas.dim) features.push('dimmed background');
+  if (model.canvas.hidden) features.push('no background panel');
+  else if ((model.canvas.inset || []).some(Boolean)) features.push('parts over the panel edge');
+  if ((model.icons || []).length) features.push('icons');
+  if (model.properties.media.mode === 'canvas' && !art.hidden) features.push('Canvas videos');
+
+  // Sentence case: the first one starts with a capital, the rest run on.
+  if (features.length) features[0] = features[0].charAt(0).toUpperCase() + features[0].slice(1);
+  return features;
+}
+
+function setScene(scene) {
+  $('showroom-scene').dataset.scene = scene;
+  for (const button of $('showroom-scenes').querySelectorAll('button')) {
+    button.setAttribute('aria-pressed', String(button.dataset.scene === scene));
+  }
+}
+
+/**
+ * Keeps the preview's song moving, the way app.js does on stream: elapsed
+ * time, the bar, and the knob, from where Spotify last said it was.
+ */
+function startTicker() {
+  clearInterval(showroom.ticker);
+  showroom.ticker = setInterval(() => {
+    const doc = $('showroom-frame').contentDocument;
+    const song = state.song || {};
+    if (!doc || !song.durationMs || !song.isPlaying || !song.fetchedAt) return;
+
+    const progressMs = Math.min(song.progressMs + (Date.now() - song.fetchedAt), song.durationMs);
+    setPreviewProgress(doc, progressMs, song.durationMs);
+  }, 500);
+}
+
+function setPreviewProgress(doc, progressMs, durationMs) {
+  const widget = doc.querySelector('.widget');
+  if (!widget) return;
+
+  const pct = durationMs ? Math.min(100, (progressMs / durationMs) * 100) : 38;
+  const bar = doc.querySelector('.progress');
+  if (bar) bar.style.width = pct + '%';
+  widget.style.setProperty('--progress', String(pct / 100));
+
+  const set = (selector, text) => {
+    const el = doc.querySelector(selector);
+    if (el && el.textContent !== text) el.textContent = text;
+  };
+  set('.elapsed', clock(durationMs ? progressMs : 99000, durationMs || 254000));
+  set('.duration', clock(durationMs || 254000));
+}
+
+/**
+ * Puts the song into a preview page the way the widget would: text, art,
+ * album colors, how far through it is, and the extras. `live` previews scroll
+ * a long title the way the widget does.
+ */
+function fillPreview(doc, song, model, { live = false } = {}) {
+  const widget = doc && doc.querySelector('.widget');
+  if (!widget) return;
+
+  const palette = song.palette || {};
+  widget.style.setProperty('--album-vibrant', palette.vibrant || '#1DB954');
+  widget.style.setProperty('--album-dark', palette.darkMuted || '#141419');
+  widget.style.setProperty('--album-light', palette.lightVibrant || '#ffffff');
+  widget.style.setProperty('--album-muted', palette.muted || 'rgba(255,255,255,.7)');
+
+  const set = (selector, text) => {
+    const el = doc.querySelector(selector);
+    if (el) el.textContent = text;
+  };
+  set('.title', song.title || 'Song title');
+  set('.artist', song.artist || 'Artist name');
+
+  const cover = doc.querySelector('img.cover');
+  if (cover) cover.src = song.cover || placeholderArt(palette);
+  const video = doc.querySelector('video.canvas');
+  if (video) video.style.display = 'none';
+
+  const durationMs = song.durationMs || 0;
+  const progressMs = Math.min((song.progressMs || 0) + (song.isPlaying && song.fetchedAt ? Date.now() - song.fetchedAt : 0), durationMs);
+  setPreviewProgress(doc, progressMs, durationMs);
+
+  fillExtras(widget, song);
+
+  if (model) {
+    syncPixelArt(widget, model.modules.find(module => module.type === 'art'));
+    // Measured once the theme's fonts are in, or the widths are the fallback's.
+    if (live) doc.fonts.ready.then(() => showScrolling(widget, model.properties));
+  }
+}
+
+window.addEventListener('resize', () => {
+  if ($('preset-sheet').classList.contains('hidden')) return;
+  fitStage();
+  const preset = showroom.shown[showroom.index];
+  if (preset) showScale(preset.model.canvas);
 });
 
-$('btn-preset-cancel').addEventListener('click', () => $('preset-sheet').classList.add('hidden'));
+$('btn-use-preset').addEventListener('click', () => {
+  const preset = showroom.shown[showroom.index];
+  if (preset) usePreset(preset);
+});
+$('btn-preset-close').addEventListener('click', closePresets);
+$('showroom-scenes').addEventListener('click', event => {
+  const button = event.target.closest('button[data-scene]');
+  if (button) setScene(showroomScene(button.dataset.scene));
+});
+$('picker-search').addEventListener('input', event => {
+  showroom.query = event.target.value;
+  drawList(showroom.shown[showroom.index]?.id);
+});
+
+window.addEventListener('keydown', event => {
+  if ($('preset-sheet').classList.contains('hidden')) return;
+  const inSearch = event.target === $('picker-search');
+
+  // Esc empties the search first, the way a search box does, then closes.
+  if (event.key === 'Escape') {
+    event.preventDefault();
+    if (inSearch && showroom.query) {
+      $('picker-search').value = showroom.query = '';
+      drawList(showroom.shown[showroom.index]?.id);
+    } else {
+      closePresets();
+    }
+    return;
+  }
+
+  // Up and down move through the list even while typing a search, so the
+  // hands never have to leave the keyboard. Left and right stay the caret's.
+  const moves = { ArrowUp: -1, ArrowDown: 1 };
+  if (moves[event.key]) {
+    event.preventDefault();
+    selectPremade(showroom.index + moves[event.key]);
+    if (!inSearch) $('preset-list').querySelector('[aria-selected="true"]')?.focus({ preventScroll: true });
+    return;
+  }
+
+  if (!inSearch && (event.key === 'Home' || event.key === 'End')) {
+    event.preventDefault();
+    selectPremade(event.key === 'Home' ? 0 : showroom.shown.length - 1);
+    $('preset-list').querySelector('[aria-selected="true"]')?.focus({ preventScroll: true });
+    return;
+  }
+
+  // A focused button keeps its own Enter.
+  const onButton = event.target.closest && event.target.closest('button');
+  if (event.key === 'Enter' && !onButton) {
+    event.preventDefault();
+    const preset = showroom.shown[showroom.index];
+    if (preset) usePreset(preset);
+  }
+});
+
+function usePreset(preset) {
+  state.name = null;
+  state.builtIn = null;
+  state.presetId = preset.id;
+  state.model = JSON.parse(JSON.stringify(preset.model));
+  state.history.length = state.future.length = 0;
+  $('theme-label').value = state.model.label;
+  state.baseline = null;
+  forgetEdits();
+  markChanged();
+  closePresets();
+  select('canvas');
+  renderAll();
+  fillDevPresets();
+  note('Started from <b>' + escapeHtml(preset.label) + '</b>. Give it a name and save when you like it.', 'good');
+}
+
+/* ------------------------------------------------ premade dev tool */
+
+/**
+ * TEMPORARY - the premade to write this design over, defaulting to the one
+ * it was started from. Remove with #dev-preset once the premades are done.
+ */
+function fillDevPresets() {
+  const target = $('dev-preset-target');
+  if (!target) return;
+
+  target.replaceChildren(...(state.presets || []).map(preset => {
+    const option = document.createElement('option');
+    option.value = preset.id;
+    option.textContent = preset.label;
+    return option;
+  }));
+  if (state.presetId) target.value = state.presetId;
+}
+
+/**
+ * TEMPORARY - queues songs as though a viewer requested them in chat, then
+ * pulls the song again so the preview's Up next row and {requester} labels
+ * pick them up. Remove with #dev-queue once testing is done.
+ */
+$('dev-queue').addEventListener('submit', async event => {
+  event.preventDefault();
+  const links = $('dev-queue-links').value.trim();
+  if (!links) return;
+
+  $('btn-dev-queue').disabled = true;
+  try {
+    const { requester, results } = await api('/api/dev/queue', {
+      method: 'POST',
+      body: JSON.stringify({ links, requester: $('dev-queue-as').value })
+    });
+
+    const queued = results.filter(result => result.ok);
+    const failed = results.filter(result => !result.ok);
+
+    if (queued.length) $('dev-queue-links').value = '';
+    note(
+      (queued.length
+        ? 'Queued ' + queued.map(result => '<b>' + escapeHtml(result.title) + '</b>').join(', ') +
+          ' as <b>' + escapeHtml(requester) + '</b>. '
+        : '') +
+      failed.map(result => escapeHtml(result.link) + ' ' + escapeHtml(result.reason) + '.').join(' '),
+      failed.length && !queued.length ? 'bad' : 'good'
+    );
+
+    // Spotify takes a moment to list a new song in its queue.
+    setTimeout(loadSong, 1500);
+  } catch (err) {
+    note(err.message, 'bad');
+  } finally {
+    $('btn-dev-queue').disabled = false;
+  }
+});
+
+$('btn-dev-preset').addEventListener('click', async () => {
+  const id = $('dev-preset-target').value;
+  const preset = (state.presets || []).find(entry => entry.id === id);
+  if (!preset) return;
+
+  const ok = await askConfirm(
+    'The premade "' + preset.label + '" will be replaced with the design open now. ' +
+    'Everyone who picks it from the gallery gets this version.',
+    { title: 'Save over "' + preset.label + '"?', confirm: 'Save over it', cancel: 'Cancel', danger: true }
+  );
+  if (!ok) return;
+
+  try {
+    await api('/api/presets/' + encodeURIComponent(id), {
+      method: 'PUT',
+      body: JSON.stringify({ model: state.model })
+    });
+    state.presets = (await api('/api/presets')).presets;
+    note('Saved over the premade <b>' + escapeHtml(preset.label) + '</b>.' +
+      (id === 'default' ? ' The built-in default theme was rebuilt from it too.' : ''), 'good');
+  } catch (err) {
+    note(err.message, 'bad');
+  }
+});
+
+async function openPresets() {
+  if (state.dirty && !await askDiscard('Open the premade themes')) return;
+  showPresets();
+}
+
+$('btn-presets').addEventListener('click', openPresets);
+$('btn-presets-top').addEventListener('click', openPresets);
+
+$('btn-preset-cancel').addEventListener('click', closePresets);
 $('preset-sheet').addEventListener('click', event => {
-  if (event.target === $('preset-sheet')) $('preset-sheet').classList.add('hidden');
+  if (event.target === $('preset-sheet')) closePresets();
 });
 
 // A blank canvas, every time. This used to open the layout picker whenever
@@ -4043,14 +6889,16 @@ $('preset-sheet').addEventListener('click', event => {
 $('btn-new').addEventListener('click', async () => {
   if (state.dirty && !await askDiscard('Start a new theme')) return;
   await openTheme('');
-  note('Blank theme. <b>Start from a layout</b> in the ⋯ menu if you would rather not.', 'good');
+  note('Blank theme. <b>Premade themes</b>, in the top bar, has finished designs to start from.', 'good');
 });
 
 /* ------------------------------------------------------------ share */
 
 // A theme is a small JSON model, so sharing one is just a file.
 $('btn-export').addEventListener('click', () => {
-  const payload = JSON.stringify({ queueifyTheme: 1, ...state.model }, null, 2);
+  // Without the `type` parts() stamps on icons and cards - see snapshot().
+  const payload = JSON.stringify({ queueifyTheme: 1, ...state.model },
+    (key, value) => key === 'type' && isStamp(value) ? undefined : value, 2);
   const url = URL.createObjectURL(new Blob([payload], { type: 'application/json' }));
 
   const link = document.createElement('a');
@@ -4081,6 +6929,7 @@ $('import-file').addEventListener('change', async event => {
     });
 
     state.name = null;
+    state.builtIn = null;
     state.model = model;
     state.history.length = state.future.length = 0;
     $('theme-label').value = model.label;
@@ -4152,6 +7001,13 @@ $('btn-save').addEventListener('click', async () => {
 
   const existing = state.themes.find(theme => theme.name === name);
 
+  if (name !== state.name && existing && existing.builtIn) {
+    note('<b>' + escapeHtml(name) + '</b> is built in and read-only. Give your copy a new name to save it.', 'bad');
+    $('theme-label').focus();
+    $('theme-label').select();
+    return;
+  }
+
   if (name !== state.name && existing) {
     note('A theme called "' + name + '" already exists. Pick another name.', 'bad');
     return;
@@ -4166,6 +7022,7 @@ $('btn-save').addEventListener('click', async () => {
     });
 
     state.name = saved.name;
+    state.builtIn = null;
     state.model = saved.model;
     markSaved();
     await loadThemes(saved.name);
@@ -4287,6 +7144,228 @@ function renderIcons() {
   }
 }
 
+/**
+ * Pixelation for the previews, drawn rather than filtered.
+ *
+ * On stream the art is pixelated by an SVG filter (see fxMarkup in
+ * services/themeStore.js), drawn once at the size OBS renders. Here the same
+ * filter ran at the screen's pixel density times the zoom, and again on every
+ * drag and edit - which is what made a pixelated background crawl.
+ *
+ * So previews draw the art onto a canvas one pixel per block - nearest
+ * neighbor, the same one-pixel-per-block the filter samples - and let the
+ * browser scale that up with hard edges. The canvas takes the art's classes,
+ * so the theme's own rules - box, corners, ring, shadow, spin - dress it.
+ */
+function syncPixelArt(widget = $('widget'), art = state.model && moduleOf('art')) {
+  const doc = widget.ownerDocument;
+  const sources = [widget.querySelector('img.cover'), widget.querySelector('video.canvas')].filter(Boolean);
+  let canvas = widget.querySelector('canvas.pixel-art');
+
+  if (!art || !art.pixelate) {
+    if (canvas) canvas.remove();
+    for (const source of sources) source.style.visibility = source.style.filter = '';
+    return;
+  }
+
+  if (!canvas) {
+    canvas = doc.createElement('canvas');
+    canvas.className = 'cover pixel-art';
+    sources[sources.length - 1].after(canvas);
+  }
+
+  const columns = Math.max(1, Math.round(art.w / art.pixelate));
+  const rows = Math.max(1, Math.round(art.h / art.pixelate));
+  if (canvas.width !== columns) canvas.width = columns;
+  if (canvas.height !== rows) canvas.height = rows;
+
+  canvas.pixelArt = art;
+  Object.assign(canvas.style, { filter: 'none', imageRendering: 'pixelated', objectFit: 'fill', display: '' });
+  // Hidden rather than removed, so they keep loading - and a Canvas video keeps
+  // playing, which a display: none one may not.
+  for (const source of sources) {
+    source.style.filter = 'none';
+    source.style.visibility = 'hidden';
+  }
+
+  drawPixels(canvas, widget);
+}
+
+function drawPixels(canvas, widget) {
+  const art = canvas.pixelArt;
+  const video = widget.querySelector('video.canvas');
+  const image = widget.querySelector('img.cover');
+  const playing = video && video.style.display === 'block' && video.readyState >= 2;
+  const source = playing ? video : image;
+  const width = playing ? video.videoWidth : image && image.naturalWidth;
+  const height = playing ? video.videoHeight : image && image.naturalHeight;
+
+  const context = canvas.getContext('2d');
+  context.imageSmoothingEnabled = false;
+  context.clearRect(0, 0, canvas.width, canvas.height);
+
+  if (source && width && height) {
+    const own = width / height;
+    const box = art.w / art.h;
+
+    if (art.fit === 'contain') {
+      // Worked out in the art's own pixels, then scaled down to the canvas.
+      const drawW = own > box ? art.w : art.h * own;
+      const drawH = own > box ? art.w / own : art.h;
+      const across = canvas.width / art.w;
+      const down = canvas.height / art.h;
+      context.drawImage(source, (art.w - drawW) / 2 * across, (art.h - drawH) / 2 * down, drawW * across, drawH * down);
+    } else {
+      // Cropped to the box, as object-fit: cover crops it.
+      const cropW = own > box ? height * box : width;
+      const cropH = own > box ? height : width / box;
+      context.drawImage(source, (width - cropW) / 2, (height - cropH) / 2, cropW, cropH, 0, 0, canvas.width, canvas.height);
+    }
+  }
+
+  // A cover is drawn once it has loaded; a playing video, every frame.
+  if (image && !image.dataset.pixelWatch) {
+    image.dataset.pixelWatch = '1';
+    image.addEventListener('load', () => {
+      const current = widget.querySelector('canvas.pixel-art');
+      if (current) drawPixels(current, widget);
+    });
+  }
+
+  if (playing && !canvas.dataset.looping) {
+    canvas.dataset.looping = '1';
+    const view = widget.ownerDocument.defaultView;
+    const frame = () => {
+      if (!canvas.isConnected || video.style.display !== 'block') {
+        delete canvas.dataset.looping;
+        return;
+      }
+      drawPixels(canvas, widget);
+      view.requestAnimationFrame(frame);
+    };
+    view.requestAnimationFrame(frame);
+  }
+}
+
+let extrasShown = null;
+
+/**
+ * The parts that only exist when a theme uses them - labels, the Up next row,
+ * the knob and the pixel filter - from the same markup the page gets.
+ *
+ * Rebuilt only when that markup changes. Rebuilding replays the chips'
+ * entrance, and would take away the element a label drag is moving.
+ */
+function renderExtras(markup) {
+  if (markup === extrasShown) return;
+  extrasShown = markup;
+
+  const widget = $('widget');
+  for (const stale of widget.querySelectorAll('.qlabel, .next-wrapper, .progress-knob, .queueify-fx, .art-blur')) stale.remove();
+  widget.insertAdjacentHTML('beforeend', markup || '');
+  fillExtras();
+}
+
+/**
+ * Fills the extras the way the widget would, from the song being previewed:
+ * {requester} in labels, and the Up next chips from the real queue.
+ *
+ * Nothing is made up. With nobody to name, a label shows what it was written
+ * as, dimmed - on stream it would be faded out - and with nothing queued the
+ * row says so. The row is always shown here, because it is being designed,
+ * where on stream it only comes in while something is queued.
+ */
+function fillExtras(widget = $('widget'), song = state.song || {}) {
+  widget.classList.add('has-next');
+
+  for (const label of widget.querySelectorAll('.qlabel')) {
+    const template = label.dataset.text || '';
+    const waiting = template.includes('{requester}') && !song.requester;
+    const text = label.querySelector('.qlabel-text');
+
+    if (text) text.textContent = waiting ? template : template.replace(/\{requester\}/g, song.requester || '');
+    label.style.opacity = waiting ? '.4' : '';
+    label.title = waiting ? 'Nobody requested the song playing, so on stream this label is faded out.' : '';
+  }
+
+  const wrapper = widget.querySelector('.next-wrapper');
+  if (!wrapper) return;
+
+  const count = Number(wrapper.dataset.count) || 2;
+  const queue = (Array.isArray(song.upNext) ? song.upNext : [])
+    .filter(item => wrapper.dataset.source !== 'requests' || item.requester)
+    .slice(0, count);
+
+  // Only rebuilt when the queue has changed, as app.js does. New chips replay
+  // their slide-in, and the song is asked for every few seconds - rebuilding
+  // every time made the row flash on each answer, which OBS never does.
+  const list = wrapper.querySelector('.next-list');
+  const key = JSON.stringify([queue, wrapper.dataset.source]);
+  if (list.dataset.shown === key) return;
+  list.dataset.shown = key;
+
+  if (queue.length) {
+    list.replaceChildren(...queue.map(item => nextChip(item, wrapper.dataset)));
+    return;
+  }
+
+  const empty = widget.ownerDocument.createElement('span');
+  empty.className = 'next-item';
+  empty.style.opacity = '.45';
+  empty.textContent = wrapper.dataset.source === 'requests' ? 'No requests queued' : 'Nothing queued';
+  empty.title = 'On stream this row is hidden until something is queued.';
+  list.replaceChildren(empty);
+}
+
+/** One Up next chip, built exactly as widget/public/app.js builds it. */
+function nextChip(item, options) {
+  const chip = document.createElement('span');
+  // Built in the editor's page, even for a preview that lives in another one:
+  // appending it there adopts it.
+  chip.className = 'next-item';
+
+  if (options.thumbs === '1' && item.cover) {
+    const thumb = document.createElement('img');
+    thumb.className = 'next-thumb';
+    thumb.alt = '';
+    thumb.src = item.cover;
+    chip.classList.add('has-thumb');
+    chip.append(thumb);
+  }
+
+  const text = document.createElement('span');
+  text.className = 'next-text';
+  text.textContent = item.artist ? item.title + ' \u00b7 ' + item.artist : item.title;
+  chip.append(text);
+
+  if (options.requester === '1' && item.requester) {
+    const by = document.createElement('span');
+    by.className = 'next-by';
+    by.textContent = item.requester;
+    chip.append(by);
+  }
+
+  return chip;
+}
+
+/**
+ * The card elements inside the preview, ahead of the album art as in the
+ * generated index.html - their layer only works in that order. Empty boxes:
+ * everything about how they look is in the stylesheet.
+ */
+function renderCards() {
+  const widget = $('widget');
+
+  for (const stale of widget.querySelectorAll('.card')) stale.remove();
+
+  const first = widget.firstElementChild;
+  for (const card of state.model.cards || []) {
+    const el = document.createElement('div');
+    el.className = 'card card-' + card.id;
+    widget.insertBefore(el, first);
+  }
+}
+
 /* ----------------------------------------------------------- progress */
 
 /**
@@ -4340,13 +7419,15 @@ function syncIcons() {
 
 /* --------------------------------------------------------- icon picker */
 
-const picker = { query: '', pending: false };
+// `all`: every icon, or every match, rather than suggestions or the first page.
+const picker = { query: '', pending: false, all: false, drawing: 0 };
 
 async function openIconPicker() {
   if ((state.model.icons || []).length >= ICON_LIMIT) return;
 
   $('icon-sheet').classList.remove('hidden');
   $('icon-search').value = picker.query = '';
+  setShowAll(false);
   $('icon-results').innerHTML = '<p class="list-empty">Loading icons…</p>';
 
   try {
@@ -4380,10 +7461,11 @@ const ICON_SUGGESTIONS = [
 // than the extra rows are worth, and the answer is a better search term.
 const ICON_PAGE = 120;
 
-function iconMatches(query) {
+function iconMatches(query, all = false) {
   const q = query.trim().toLowerCase();
 
   if (!q) {
+    if (all) return [...iconLibrary.list].sort((a, b) => a.name.localeCompare(b.name));
     return ICON_SUGGESTIONS
       .map(name => iconLibrary.byName.get(name))
       .filter(Boolean);
@@ -4402,17 +7484,33 @@ function iconMatches(query) {
     scored.push({ icon, rank });
   }
 
-  return scored
+  const sorted = scored
     .sort((a, b) => a.rank - b.rank || a.icon.name.localeCompare(b.icon.name))
-    .slice(0, ICON_PAGE)
     .map(entry => entry.icon);
+  return all ? sorted : sorted.slice(0, ICON_PAGE);
+}
+
+function setShowAll(all) {
+  picker.all = all;
+  const button = $('btn-icon-all');
+  button.setAttribute('aria-pressed', String(all));
+  button.textContent = all ? 'Show fewer' : 'Show all icons';
 }
 
 function drawIconResults() {
   const host = $('icon-results');
-  const found = iconMatches(picker.query);
+  const found = iconMatches(picker.query, picker.all);
+  const total = picker.query.trim() ? iconMatches(picker.query, true).length : iconLibrary.list.length;
 
   host.innerHTML = '';
+  // A newer search stops an older one still being drawn.
+  const drawing = ++picker.drawing;
+
+  $('icon-count').textContent = !found.length ? ''
+    : picker.all ? `${found.length.toLocaleString()} ${picker.query.trim() ? 'matches' : 'icons'}`
+      : picker.query.trim()
+        ? (total > found.length ? `The first ${found.length} of ${total.toLocaleString()} matches` : `${found.length} ${found.length === 1 ? 'match' : 'matches'}`)
+        : 'A few for a music overlay. Search, or show all of them.';
 
   if (!found.length) {
     host.innerHTML = '<p class="list-empty">No icon matches that. Try a plainer word - ' +
@@ -4422,8 +7520,9 @@ function drawIconResults() {
 
   const grid = document.createElement('div');
   grid.className = 'icon-grid';
+  host.appendChild(grid);
 
-  for (const icon of found) {
+  const make = icon => {
     const button = document.createElement('button');
     button.type = 'button';
     button.className = 'icon-choice';
@@ -4431,10 +7530,21 @@ function drawIconResults() {
     button.setAttribute('aria-label', iconTitle(icon.name));
     button.innerHTML = iconSvg(icon.name);
     button.addEventListener('click', () => addIcon(icon.name));
-    grid.appendChild(button);
-  }
+    return button;
+  };
 
-  host.appendChild(grid);
+  // All 2,000 at once would hold the page up for a moment; drawn a screenful
+  // a frame, the first ones are there straight away.
+  let at = 0;
+  const batch = () => {
+    if (drawing !== picker.drawing) return;
+    const part = document.createDocumentFragment();
+    for (const icon of found.slice(at, at + 240)) part.appendChild(make(icon));
+    grid.appendChild(part);
+    at += 240;
+    if (at < found.length) requestAnimationFrame(batch);
+  };
+  batch();
 }
 
 /** Drops a new icon on the canvas, selected and ready to be dragged. */
@@ -4457,6 +7567,7 @@ function addIcon(name) {
       strokeWidth: 2, rotate: 0, opacity: 1, hidden: false,
       shadow: 0, shadowAngle: 135, shadowBlur: 0, shadowColor: 'rgba(0,0,0,0.55)'
     });
+    stackNew(icons[icons.length - 1]);
   });
 
   closeIconPicker();
@@ -4486,6 +7597,11 @@ $('icon-sheet').addEventListener('click', event => {
 $('icon-search').addEventListener('input', event => {
   picker.query = event.target.value;
   drawIconResults();
+});
+$('btn-icon-all').addEventListener('click', () => {
+  setShowAll(!picker.all);
+  drawIconResults();
+  $('icon-results').scrollTop = 0;
 });
 
 $('btn-help').addEventListener('click', () => toggleHelp(true));
@@ -4559,7 +7675,11 @@ window.addEventListener('beforeunload', event => {
     note(err.message, 'bad');
   }
   await Promise.all([loadSong(), loadFit()]);
-  setInterval(loadSong, 15000);
+  pollSong();
+  // Ten times a second, as app.js does: the clock ticks over on time.
+  setInterval(() => {
+    if (state.song && state.song.isPlaying && !state.song.sample) drawProgress();
+  }, 100);
 })();
 </script>
 <script src="dialogs.js"></script>

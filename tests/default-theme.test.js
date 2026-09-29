@@ -9,11 +9,11 @@ process.env.QUEUEIFY_THEMES_DIR = fs.mkdtempSync(path.join(os.tmpdir(), 'queueif
 delete require.cache[require.resolve('../services/themeStore')];
 
 const store = require('../services/themeStore');
-const { buildDefaultTheme } = require('../scripts/build-default-theme');
+const { buildDefaultTheme, buildBuiltInTheme } = require('../scripts/build-default-theme');
 
 /**
  * The built-in default theme is generated from the Default layout, so
- * "Start from a layout -> Default" and `!theme default` are the same design.
+ * "Premade themes -> Default" and `!theme default` are the same design.
  * These fail when one is changed without the other.
  */
 
@@ -28,6 +28,21 @@ test('the shipped default theme is what the Default layout generates', () => {
             `widget/themes/default/${file} is out of date - run node scripts/build-default-theme.js`
         );
     }
+});
+
+test('the shipped minimal theme is what the Minimal premade generates', () => {
+    const shippedMinimal = path.join(__dirname, '..', 'widget', 'themes', 'minimal');
+
+    for (const [file, contents] of Object.entries(buildBuiltInTheme('minimal'))) {
+        const shipped = fs.readFileSync(path.join(shippedMinimal, file), 'utf8').replace(/\r\n/g, '\n');
+
+        assert.strictEqual(
+            shipped, contents,
+            `widget/themes/minimal/${file} is out of date - run node scripts/build-default-theme.js`
+        );
+    }
+
+    assert.ok(!fs.existsSync(path.join(shippedMinimal, 'theme.json')), 'a theme.json would make it editable');
 });
 
 test('the default theme stays built-in, out of the editor\'s reach', () => {

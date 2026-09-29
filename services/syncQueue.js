@@ -33,7 +33,12 @@ function notePlay(activeTrack) {
     });
 }
 
-async function syncQueue(state) {
+/**
+ * The same sync, handing back the Spotify queue it read - or false. The
+ * widget's Up next row shows that queue, so reading it here saves asking
+ * Spotify for it twice.
+ */
+async function syncWithQueue(state) {
     const spotifyQueue = await getUserQueue();
     const currentTrack = await getCurrentTrack();
 
@@ -44,7 +49,12 @@ async function syncQueue(state) {
     notePlay(state.updateActiveTrack(currentTrack));
     state.reconcileWithSpotifyQueue(spotifyQueue.queue);
 
-    return true;
+    return spotifyQueue;
+}
+
+async function syncQueue(state) {
+    return (await syncWithQueue(state)) !== false;
 }
 
 module.exports = syncQueue;
+module.exports.syncWithQueue = syncWithQueue;

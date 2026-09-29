@@ -1,0 +1,15 @@
+The Glow and Magic effects are drawn with textures from:
+
+Particle Pack (1.1)
+by Kenney Vleugels (Kenney.nl)
+https://kenney.nl/assets/particle-pack
+
+Additional credit for creating filter templates:
+Indigo Ray, Craig Nisbet, Zoltan Erdokovy, Heliagon, ThreeDee, Killst4r and Tim2501
+
+License (Creative Commons Zero, CC0)
+http://creativecommons.org/publicdomain/zero/1.0/
+
+Thank you, Kenney. Support their work: http://support.kenney.nl
+
+Turned into white masks and resized for Queueify by scripts/build-fx-textures.js.

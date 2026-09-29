@@ -691,6 +691,44 @@ function createApp() {
         }
     });
 
+    app.get('/api/admin/perks', (req, res) => {
+        try {
+            res.json(adminConfig.readPerks());
+        } catch (err) {
+            adminError(res, err);
+        }
+    });
+
+    app.put('/api/admin/perks', (req, res) => {
+        try {
+            res.json({ ok: true, perks: adminConfig.writePerks(req.body?.perks || {}) });
+        } catch (err) {
+            adminError(res, err);
+        }
+    });
+
+    // Themes saved before rewards existed have them off. One button switches
+    // them on everywhere, instead of opening each theme in the editor.
+    app.get('/api/admin/perks/themes', async (req, res) => {
+        try {
+            res.json({ off: await themeStore.themesWithRewardsOff() });
+        } catch (err) {
+            adminError(res, err);
+        }
+    });
+
+    app.post('/api/admin/perks/themes', async (req, res) => {
+        try {
+            const result = await themeStore.turnOnRewardsEverywhere();
+            // The theme on screen shows the change straight away.
+            const active = readWidgetConfig().theme;
+            if (result.changed.includes(active)) await activateTheme(active).catch(() => {});
+            res.json({ ok: true, ...result });
+        } catch (err) {
+            adminError(res, err);
+        }
+    });
+
     app.get('/api/admin/messages', (req, res) => {
         try {
             res.json({ groups: adminConfig.readMessages(), file: adminConfig.MESSAGES_FILE });
@@ -823,7 +861,83 @@ function createApp() {
     app.post('/api/themes-preview/css', (req, res) => {
         try {
             const model = themeStore.normalizeModel(req.body?.model);
-            res.json({ css: themeStore.generateCss(model), model });
+            // The markup too, for the parts that only exist when a theme uses
+            // them - labels, Up next, the knob - so the preview is built from
+            // the same generator as the page OBS loads.
+            res.json({ css: themeStore.generateCss(model), markup: themeStore.extraMarkup(model), model });
+        } catch (err) {
+            themeError(res, err);
+        }
+    });
+
+    // The premade gallery: every premade, ready to draw. Read fresh on every
+    // open, so a premade edited a moment ago shows as it is now.
+    app.get('/api/presets', (req, res) => {
+        try {
+            res.json({
+                presets: themeStore.listPresets().map(preset => ({
+                    ...preset,
+                    page: themeStore.previewHtml(preset.model)
+                }))
+            });
+        } catch (err) {
+            themeError(res, err);
+        }
+    });
+
+    // TEMPORARY - queues songs as though a viewer had requested them in chat,
+    // for testing Up next and {requester} without typing in chat. It skips the
+    // request rules (cooldowns, blocklists, the queue being closed) on purpose:
+    // it is for you, not for viewers. Remove once testing is done.
+    app.post('/api/dev/queue', async (req, res) => {
+        const { addToQueue } = require('../spotify');
+        const requester = String(req.body?.requester || '').trim().slice(0, 40) || 'test_viewer';
+        const links = String(req.body?.links || '').split(/\s+/).filter(Boolean).slice(0, 10);
+
+        if (!links.length) {
+            res.status(400).json({ error: 'Paste a Spotify track link.' });
+            return;
+        }
+
+        const reasons = {
+            invalid: 'is not a Spotify track link',
+            noinput: 'is empty',
+            failed: 'could not be queued - is Spotify playing on a device?',
+            explicit: 'is explicit, and explicit songs are turned off',
+            toolong: 'is longer than the longest song allowed'
+        };
+
+        const results = [];
+        for (const link of links) {
+            const result = await addToQueue(link, state.maxSongLength, state.allowExplicit);
+            const status = typeof result === 'string' ? result : result.status;
+
+            if (status === 'ok') {
+                state.addPendingTrack(result.track, requester);
+                results.push({ ok: true, title: result.track.name, artist: result.track.artists });
+            } else {
+                results.push({ ok: false, link, reason: reasons[status] || 'could not be queued' });
+            }
+        }
+
+        res.json({ requester, results });
+    });
+
+    // TEMPORARY - writes the theme open in the editor over a premade, for
+    // polishing the premades without handing JSON around. Remove once they
+    // are done. The Default and Minimal premades are also built-in themes, so
+    // those are rebuilt from them in the same go.
+    app.put('/api/presets/:id', async (req, res) => {
+        try {
+            const preset = await themeStore.savePreset(req.params.id, req.body?.model);
+
+            const { GENERATED, writeBuiltInTheme } = require('../scripts/build-default-theme');
+            if (GENERATED.includes(preset.id)) {
+                const dir = path.join(themeStore.THEMES_DIR, preset.id);
+                if (fs.existsSync(dir) && !themeStore.isEditable(preset.id)) writeBuiltInTheme(preset.id, themeStore.THEMES_DIR);
+            }
+
+            res.json({ id: preset.id, label: preset.label });
         } catch (err) {
             themeError(res, err);
         }
@@ -833,7 +947,9 @@ function createApp() {
     // and against a sample track when it is not, so it always shows something.
     app.get('/api/themes-preview/song', async (req, res) => {
         try {
-            const upstream = await fetch(`${WIDGET_URL}/api/widget/song`);
+            // With the queue, so the preview's Up next row and {requester}
+            // labels show what the widget would, not stand-ins.
+            const upstream = await fetch(`${WIDGET_URL}/api/widget/song?queue=1`);
             const song = await upstream.json();
             if (song && song.title) {
                 res.json({ ...song, sample: false });
@@ -959,6 +1075,14 @@ function createApp() {
             res.status(500).json({ error: `Could not read the request log: ${err.message}` });
         }
     });
+
+    // The perk effects the widget plays, for the editor's and the admin
+    // page's previews. One file, so a preview is the real thing.
+    app.get('/effects.js', (req, res) => {
+        res.sendFile(path.join(__dirname, '..', 'widget', 'public', 'effects.js'));
+    });
+    // The Glow effects' textures, which effects.js loads from beside itself.
+    app.use('/fx-textures', express.static(path.join(__dirname, '..', 'widget', 'public', 'fx-textures')));
 
     app.use(express.static(path.join(__dirname, 'public')));
     // The README's screenshots double as the setup page's walkthrough images.

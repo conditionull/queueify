@@ -11,10 +11,12 @@ test that forgets one writes to the user's own files.
 | `QUEUEIFY_THEMES_DIR` | `widget/themes/` |
 | `QUEUEIFY_WIDGET_CONFIG_FILE` | `widget/config.json` |
 | `QUEUEIFY_SETTINGS_FILE` | `queue-settings.json` |
-| `QUEUEIFY_DATA_DIR` | `queue-state.json`, `queue-pending.json`, `queue-recent.json`, `queue-blacklist.json`, `queue-history.jsonl` |
+| `QUEUEIFY_DATA_DIR` | `queue-state.json`, `queue-pending.json`, `queue-recent.json`, `queue-blacklist.json`, `queue-history.jsonl`, `viewer-effects.json` |
 | `QUEUEIFY_HISTORY_FILE` | `queue-history.jsonl` on its own |
+| `QUEUEIFY_VIEWER_EFFECTS_FILE` | `viewer-effects.json`, the effect each sub picked with `!fx` |
 | `QUEUEIFY_ENV_FILE` | `.env` |
 | `QUEUEIFY_SCENE_THEMES_FILE` | `config/scene-themes.json` |
+| `QUEUEIFY_PRESETS_DIR` | `services/presets/` (the premade themes) |
 | `QUEUEIFY_WIDGET_URL` | the running widget server |
 
 ## Set them before the require

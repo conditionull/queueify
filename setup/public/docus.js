@@ -74,7 +74,8 @@
 
     // `page` is where the item lives when you are not on the dashboard: the
     // tools go straight to themselves rather than to their card on the
-    // dashboard that only says "open the tool".
+    // dashboard that only says "open the tool". `direct` ones have no card at
+    // all, so they are a link to their page from the dashboard too.
     const GROUPS = [
         {
             title: 'Setup', icon: 'rocket', items: [
@@ -88,9 +89,9 @@
         {
             title: 'Your bot', icon: 'bot', items: [
                 { view: 'themes', name: 'Widget themes', icon: 'palette', page: '/editor.html' },
-                { view: 'admin', name: 'Admin panel', icon: 'settings', page: '/admin.html' },
+                { view: 'admin', name: 'Admin panel', icon: 'settings', page: '/admin.html', direct: true },
                 { view: 'commands', name: 'Chat commands', icon: 'terminal' },
-                { view: 'stats', name: 'Stats', icon: 'chart', page: '/stats.html' },
+                { view: 'stats', name: 'Stats', icon: 'chart', page: '/stats.html', direct: true },
                 { view: 'changelog', name: "What's new", icon: 'sparkles' }
             ]
         }
@@ -136,7 +137,7 @@
                           (item.optional ? '<span class="d-link-tag">optional</span>' : '');
                       const on = item.view === active ? ' active' : '';
 
-                      return views
+                      return views && !item.direct
                           ? '<button type="button" class="d-link rail-item' + on + '" id="nav-' + item.view + '" data-view="' + item.view + '">' + body + '</button>'
                           : '<a class="d-link' + on + '" href="' + (item.page || '/#' + item.view) + '"' + (on ? ' aria-current="page"' : '') + '>' + body + '</a>';
                   }).join('') + '</div>' +

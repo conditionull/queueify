@@ -24,6 +24,9 @@ function formatTrack(track) {
     durationMs: track.duration_ms,
 
     cover: track.album?.images?.[0]?.url || null,
+    // Spotify lists the sizes largest first. The smallest is what a chip in
+    // the widget's Up next row needs, at a fraction of the download.
+    thumb: track.album?.images?.at(-1)?.url || null,
     isLocal: !track.id
   };
 }

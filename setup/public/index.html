@@ -772,46 +772,6 @@
     </div>
   </section>
 
-  <section class="view" id="step-admin">
-    <p class="d-eyebrow">Your bot</p>
-    <div class="step-head">
-      <h1 class="step-title">Admin Panel</h1>
-      <div class="step-state" id="state-admin"></div>
-    </div>
-    <div class="step-body">
-      <p>Change how the queue behaves, rename commands, and edit every line Queueify says in chat -
-      without opening a single file.</p>
-      <div class="row"><a href="/admin.html"><button class="btn-fancy" title="Queue settings, command aliases and every chat message">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <circle cx="12" cy="12" r="3"></circle>
-          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
-        </svg>
-        Open the Admin Panel
-      </button></a></div>
-    </div>
-  </section>
-
-  <section class="view" id="step-stats">
-    <p class="d-eyebrow">Your bot</p>
-    <div class="step-head">
-      <h1 class="step-title">Stats</h1>
-      <div class="step-state" id="state-stats"></div>
-    </div>
-    <div class="step-body">
-      <p>Every song request Queueify has ever handled, counted up - who asks for what, which
-      artists your chat keeps coming back to, and why requests get turned away.</p>
-      <div class="row"><a href="/stats.html"><button class="btn-fancy" title="Leaderboards, streams and the fun numbers">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <path d="M3 3v18h18"></path>
-          <path d="M7 15l4-5 3 3 5-7"></path>
-        </svg>
-        Open your stats
-      </button></a></div>
-    </div>
-  </section>
-
   <section class="view" id="step-commands">
     <p class="d-eyebrow">Your bot</p>
     <div class="step-head">
@@ -1435,7 +1395,11 @@ $('btn-canvas-save').addEventListener('click', async () => {
 
 // The order the rail lists them in, and the order "next" walks through.
 const VIEWS = ['twitch', 'spotify', 'reward', 'obs', 'canvas',
-  'themes', 'admin', 'commands', 'stats', 'changelog'];
+  'themes', 'commands', 'changelog'];
+
+// Sections that were only a button to their own page, and are that page now.
+// Kept, so an old #admin or #stats link still lands somewhere.
+const PAGES = { admin: '/admin.html', stats: '/stats.html' };
 
 // The ones that have to be finished before the bot can start. OBS and Canvas
 // are worth having, but nothing waits for them.
@@ -1460,6 +1424,10 @@ let view = null;
 const ANCHORS = { 'scene-themes': 'themes' };
 
 function showView(name, options = {}) {
+  if (PAGES[name]) {
+    location.replace(PAGES[name]);
+    return;
+  }
   const anchor = ANCHORS[name] ? $(name + '-heading') : null;
   if (anchor) name = ANCHORS[name];
   if (!VIEWS.includes(name)) name = VIEWS[0];
@@ -1542,7 +1510,7 @@ function updateNextBar() {
 const LABELS = {
   twitch: 'Twitch', spotify: 'Spotify', reward: 'Channel points',
   obs: 'OBS', canvas: 'Canvas videos', themes: 'Widget themes',
-  admin: 'Admin Panel', commands: 'Chat commands', stats: 'Stats',
+  commands: 'Chat commands',
   changelog: "What's new"
 };
 
@@ -2077,6 +2045,11 @@ loadChangelog();
 // Whatever the address bar asks for; otherwise the first thing still to do.
 (async () => {
   const asked = location.hash.slice(1);
+  // An old #admin or #stats link goes straight on, without waiting for status.
+  if (PAGES[asked]) {
+    location.replace(PAGES[asked]);
+    return;
+  }
   const status = await refreshStatus();
 
   if (VIEWS.includes(asked) || ANCHORS[asked]) {

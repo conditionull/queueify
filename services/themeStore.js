@@ -47,21 +47,56 @@ const THEMES_DIR = process.env.QUEUEIFY_THEMES_DIR || path.join(__dirname, '..',
 // 8 gave icons the drop shadow text already had. As with text, distance is the
 // switch and falls back to 0, so an icon saved before it gets no filter and a
 // version 7 theme generates the same stylesheet it always did.
-const MODEL_VERSION = 8;
+//
+// 9 added cards - plain shapes to put behind or between the parts, which is
+// what a detached layout is built from - and a border on the album art. A
+// theme written before them has no cards and a 0px art border, and nothing is
+// emitted for either, so a version 8 theme generates the same stylesheet.
+//
+// 10 added what the premade themes are built from: labels (text of your own,
+// which can say who requested the song), the Up next row, a squiggle-shaped
+// progress bar with a gradient fill and a knob, a gradient ring, pixelation
+// and a slow spin on the art, and gradient borders and a bevel on cards.
+// Every one of them falls back to off - Up next arrives hidden, a theme with
+// no labels has none - and nothing is emitted while they are off, so a
+// version 9 theme generates the same page and stylesheet byte for byte.
+// It also added a lock on every part and on the canvas. That is the editor's
+// alone - it stops a drag, and the widget never reads it - and it falls back
+// to unlocked, which is how every earlier theme behaved.
+//
+// And it let the parts be stacked in any order, the panel be drawn smaller
+// than the canvas so parts can stick out over its edge, the album art be
+// blurred, the song change with an animation, a viewer's song start with
+// their reward (services/perks.js), and a quiet ambience drift across it. A
+// theme saved before the animations has none - see transitionRules() - one
+// saved before rewards plays none, and none has an ambience, so it changes
+// songs the way it always did. A theme saved before
+// either gets the order the widget always drew - see defaultStack() - and no
+// inset, and nothing is emitted for either until they change, so it generates
+// the same stylesheet byte for byte.
+const MODEL_VERSION = 10;
 const NAME_PATTERN = /^[a-z0-9][a-z0-9-]{0,30}$/;
 
 // The modules the widget runtime knows how to fill. They are always present in
 // a generated theme - hiding one is a flag, not a deletion, so the elements
 // app.js queries never go missing.
-const MODULE_TYPES = ['art', 'title', 'artist', 'progress', 'elapsed', 'duration'];
+const MODULE_TYPES = ['art', 'title', 'artist', 'progress', 'elapsed', 'duration', 'next'];
 
 // The two clocks either side of the bar: how far into the song you are, and
 // how long it runs for. app.js writes the text; they are otherwise ordinary
 // text modules, so they get the same fonts, colors and outline as the title.
 const TIME_TYPES = ['elapsed', 'duration'];
 
-// Everything that is text, and so takes the text settings below.
-const TEXT_TYPES = ['title', 'artist', ...TIME_TYPES];
+// Everything that is text, and so takes the text settings below. The Up next
+// row is text too - its chips are written in the font it is given.
+const TEXT_TYPES = ['title', 'artist', ...TIME_TYPES, 'next'];
+
+// How many queued songs the Up next row can show, and how many labels a theme
+// can hold. Labels are the one place a theme carries free text, so it is kept
+// short: it is a caption, not a paragraph.
+const NEXT_LIMIT = 5;
+const LABEL_LIMIT = 8;
+const LABEL_LENGTH = 60;
 
 /* ------------------------------------------------------------- icons */
 
@@ -84,6 +119,13 @@ const LUCIDE_DIR = process.env.QUEUEIFY_LUCIDE_DIR
 // theme is not a widget any more, and the cap keeps a hand-written
 // theme.json from asking the generator to inline a megabyte of paths.
 const ICON_LIMIT = 12;
+
+// Enough to give every part a card of its own, twice over.
+const CARD_LIMIT = 8;
+
+// Words a label can hold that are filled in while the song plays. Only one so
+// far, and it is the one a Twitch bot can say that a music app cannot.
+const LABEL_TOKENS = ['{requester}'];
 
 // Lucide's own naming. It has to exclude "." and "/" before the name is put
 // anywhere near a file path - see iconBody().
@@ -155,7 +197,15 @@ function iconCatalog() {
     return [...iconNames()].sort().map(name => ({ name, tags: tags[name] || [] }));
 }
 
-const CANVAS_LIMITS = { width: [120, 1920], height: [40, 1080] };
+const CANVAS_LIMITS = { width: [120, 1920], height: [30, 1080] };
+
+// The song-change animations a theme can pick from. See transitionRules().
+const TRANSITIONS = ['none', 'slide', 'fade', 'flip', 'pop', 'wipe'];
+
+// A theme's ambience, and the colors it can be in: the same names as
+// widget/public/effects.js and services/perks.js.
+const AMBIENCES = ['none', 'embers', 'snow', 'petals', 'bokeh', 'fireflies', 'motes', 'fog', 'twinkle'];
+const AMBIENCE_COLORS = ['album', 'rainbow', 'gold', 'silver', 'ice', 'fire', 'candy', 'neon', 'sunset'];
 
 const ALBUM_COLORS = new Set([
     'var(--album-vibrant)',
@@ -189,6 +239,8 @@ const FONTS = {
     'staatliches': { label: 'Staatliches', category: 'Display', family: 'Staatliches', google: true, stack: '"Staatliches", Impact, "Arial Narrow Bold", sans-serif', weights: [400] },
     'titan-one': { label: 'Titan One', category: 'Display', family: 'Titan One', google: true, stack: '"Titan One", Impact, "Arial Narrow Bold", sans-serif', weights: [400] },
     'monoton': { label: 'Monoton', category: 'Display', family: 'Monoton', google: true, stack: '"Monoton", Impact, "Arial Narrow Bold", sans-serif', weights: [400] },
+    'unbounded': { label: 'Unbounded', category: 'Display', family: 'Unbounded', google: true, stack: '"Unbounded", "Arial Black", system-ui, sans-serif', weights: [300, 400, 500, 600, 700, 800, 900] },
+    'syne': { label: 'Syne', category: 'Display', family: 'Syne', google: true, stack: '"Syne", system-ui, -apple-system, "Segoe UI", sans-serif', weights: [400, 500, 600, 700, 800] },
     'orbitron': { label: 'Orbitron', category: 'Techno', family: 'Orbitron', google: true, stack: '"Orbitron", "Segoe UI", system-ui, sans-serif', weights: [400, 500, 600, 700, 800, 900] },
     'audiowide': { label: 'Audiowide', category: 'Techno', family: 'Audiowide', google: true, stack: '"Audiowide", "Segoe UI", system-ui, sans-serif', weights: [400] },
     'chakra-petch': { label: 'Chakra Petch', category: 'Techno', family: 'Chakra Petch', google: true, stack: '"Chakra Petch", "Segoe UI", system-ui, sans-serif', weights: [300, 400, 500, 600, 700] },
@@ -206,15 +258,23 @@ const FONTS = {
     'space-grotesk': { label: 'Space Grotesk', category: 'Sans', family: 'Space Grotesk', google: true, stack: '"Space Grotesk", system-ui, -apple-system, "Segoe UI", sans-serif', weights: [300, 400, 500, 600, 700] },
     'figtree': { label: 'Figtree', category: 'Sans', family: 'Figtree', google: true, stack: '"Figtree", system-ui, -apple-system, "Segoe UI", sans-serif', weights: [300, 400, 500, 600, 700, 800, 900] },
     'plus-jakarta-sans': { label: 'Plus Jakarta Sans', category: 'Sans', family: 'Plus Jakarta Sans', google: true, stack: '"Plus Jakarta Sans", system-ui, -apple-system, "Segoe UI", sans-serif', weights: [300, 400, 500, 600, 700, 800] },
+    'geist': { label: 'Geist', category: 'Sans', family: 'Geist', google: true, stack: '"Geist", system-ui, -apple-system, "Segoe UI", sans-serif', weights: [300, 400, 500, 600, 700, 800, 900] },
+    'instrument-sans': { label: 'Instrument Sans', category: 'Sans', family: 'Instrument Sans', google: true, stack: '"Instrument Sans", system-ui, -apple-system, "Segoe UI", sans-serif', weights: [400, 500, 600, 700] },
+    'dm-sans': { label: 'DM Sans', category: 'Sans', family: 'DM Sans', google: true, stack: '"DM Sans", system-ui, -apple-system, "Segoe UI", sans-serif', weights: [300, 400, 500, 600, 700, 800, 900] },
+    'bricolage-grotesque': { label: 'Bricolage Grotesque', category: 'Sans', family: 'Bricolage Grotesque', google: true, stack: '"Bricolage Grotesque", system-ui, -apple-system, "Segoe UI", sans-serif', weights: [300, 400, 500, 600, 700, 800] },
     'playfair-display': { label: 'Playfair Display', category: 'Serif', family: 'Playfair Display', google: true, stack: '"Playfair Display", Georgia, "Times New Roman", serif', weights: [400, 500, 600, 700, 800, 900] },
     'lora': { label: 'Lora', category: 'Serif', family: 'Lora', google: true, stack: '"Lora", Georgia, "Times New Roman", serif', weights: [400, 500, 600, 700] },
     'bitter': { label: 'Bitter', category: 'Serif', family: 'Bitter', google: true, stack: '"Bitter", Georgia, "Times New Roman", serif', weights: [300, 400, 500, 600, 700, 800, 900] },
     'fraunces': { label: 'Fraunces', category: 'Serif', family: 'Fraunces', google: true, stack: '"Fraunces", Georgia, "Times New Roman", serif', weights: [300, 400, 500, 600, 700, 800, 900] },
     'bodoni-moda': { label: 'Bodoni Moda', category: 'Serif', family: 'Bodoni Moda', google: true, stack: '"Bodoni Moda", Georgia, "Times New Roman", serif', weights: [400, 500, 600, 700, 800, 900] },
+    'instrument-serif': { label: 'Instrument Serif', category: 'Serif', family: 'Instrument Serif', google: true, stack: '"Instrument Serif", Georgia, "Times New Roman", serif', weights: [400] },
+    'dm-serif-display': { label: 'DM Serif Display', category: 'Serif', family: 'DM Serif Display', google: true, stack: '"DM Serif Display", Georgia, "Times New Roman", serif', weights: [400] },
+    'young-serif': { label: 'Young Serif', category: 'Serif', family: 'Young Serif', google: true, stack: '"Young Serif", Georgia, "Times New Roman", serif', weights: [400] },
     'jetbrains-mono': { label: 'JetBrains Mono', category: 'Mono', family: 'JetBrains Mono', google: true, stack: '"JetBrains Mono", ui-monospace, Menlo, Consolas, monospace', weights: [300, 400, 500, 600, 700, 800] },
     'space-mono': { label: 'Space Mono', category: 'Mono', family: 'Space Mono', google: true, stack: '"Space Mono", ui-monospace, Menlo, Consolas, monospace', weights: [400, 700] },
     'ibm-plex-mono': { label: 'IBM Plex Mono', category: 'Mono', family: 'IBM Plex Mono', google: true, stack: '"IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace', weights: [300, 400, 500, 600, 700] },
     'share-tech-mono': { label: 'Share Tech Mono', category: 'Mono', family: 'Share Tech Mono', google: true, stack: '"Share Tech Mono", ui-monospace, Menlo, Consolas, monospace', weights: [400] },
+    'geist-mono': { label: 'Geist Mono', category: 'Mono', family: 'Geist Mono', google: true, stack: '"Geist Mono", ui-monospace, Menlo, Consolas, monospace', weights: [300, 400, 500, 600, 700, 800, 900] },
     'vt323': { label: 'VT323', category: 'Mono', family: 'VT323', google: true, stack: '"VT323", ui-monospace, Menlo, Consolas, monospace', weights: [400] },
     'press-start-2p': { label: 'Press Start 2P', category: 'Mono', family: 'Press Start 2P', google: true, stack: '"Press Start 2P", ui-monospace, Menlo, Consolas, monospace', weights: [400] },
     'pacifico': { label: 'Pacifico', category: 'Hand', family: 'Pacifico', google: true, stack: '"Pacifico", "Segoe Script", cursive', weights: [400] },
@@ -223,6 +283,14 @@ const FONTS = {
     'permanent-marker': { label: 'Permanent Marker', category: 'Hand', family: 'Permanent Marker', google: true, stack: '"Permanent Marker", "Segoe Script", cursive', weights: [400] },
     'shadows-into-light': { label: 'Shadows Into Light', category: 'Hand', family: 'Shadows Into Light', google: true, stack: '"Shadows Into Light", "Segoe Script", cursive', weights: [400] },
     'satisfy': { label: 'Satisfy', category: 'Hand', family: 'Satisfy', google: true, stack: '"Satisfy", "Segoe Script", cursive', weights: [400] },
+    'press-start-2p': { label: 'Press Start 2P', category: 'Pixel', family: 'Press Start 2P', google: true, stack: '"Press Start 2P", "Courier New", monospace', weights: [400] },
+    'vt323': { label: 'VT323', category: 'Pixel', family: 'VT323', google: true, stack: '"VT323", "Courier New", monospace', weights: [400] },
+    'silkscreen': { label: 'Silkscreen', category: 'Pixel', family: 'Silkscreen', google: true, stack: '"Silkscreen", "Courier New", monospace', weights: [400, 700] },
+    'pixelify-sans': { label: 'Pixelify Sans', category: 'Pixel', family: 'Pixelify Sans', google: true, stack: '"Pixelify Sans", "Courier New", monospace', weights: [400, 500, 600, 700] },
+    // Lights on a grid, like a phone's glyph display. Doto has every weight, from
+    // single pin-pricks at 100 to solid dots at 900.
+    'doto': { label: 'Doto', category: 'Dot', family: 'Doto', google: true, stack: '"Doto", "Courier New", monospace', weights: [100, 200, 300, 400, 500, 600, 700, 800, 900] },
+    'dotgothic16': { label: 'DotGothic16', category: 'Dot', family: 'DotGothic16', google: true, stack: '"DotGothic16", "Courier New", monospace', weights: [400] },
 };
 
 const FONT_CATEGORIES = {
@@ -231,7 +299,9 @@ const FONT_CATEGORIES = {
     'Techno': 'Techno',
     'Sans': 'Sans serif',
     'Serif': 'Serif',
-    'Mono': 'Monospace & pixel',
+    'Mono': 'Monospace',
+    'Pixel': 'Pixel & arcade',
+    'Dot': 'Dot matrix',
     'Hand': 'Handwriting'
 };
 
@@ -327,8 +397,9 @@ function fontWeight(value, fontName, fallback) {
 function googleFonts(model) {
     const used = new Map();
 
-    for (const module of model.modules) {
-        if (!TEXT_TYPES.includes(module.type)) continue;
+    const texts = [...model.modules.filter(module => TEXT_TYPES.includes(module.type)), ...(model.labels || [])];
+
+    for (const module of texts) {
         if (module.hidden) continue;
 
         const font = FONTS[module.font];
@@ -359,7 +430,12 @@ function googleFontsHref(fonts) {
 function defaultModule(type) {
     switch (type) {
         case 'art':
-            return { type, hidden: false, x: 16, y: 16, w: 160, h: 160, radius: 24, corners: null, shadow: 18, fit: 'cover' };
+            return {
+                type, hidden: false, x: 16, y: 16, w: 160, h: 160, radius: 24, corners: null, shadow: 18, fit: 'cover',
+                borderWidth: 0, borderColor: 'rgba(255,255,255,0.35)',
+                borderMode: 'solid', borderTo: 'var(--album-vibrant)',
+                pixelate: 0, spin: 0, blur: 0
+            };
         case 'title':
             return {
                 type, hidden: false, x: 200, y: 46, w: 456, h: 36,
@@ -384,7 +460,12 @@ function defaultModule(type) {
                 radius: 999, corners: null, trackColor: 'rgba(255,255,255,0.18)', fillColor: 'var(--album-vibrant)',
                 // A plain bar, as it always was. The waveform is something you
                 // go and choose, and it wants a taller box than 6px.
-                style: 'bar', bars: 48, barGap: 2, seed: 1
+                style: 'bar', bars: 48, barGap: 2, seed: 1,
+                fillMode: 'solid', fillTo: 'var(--album-light)',
+                // The squiggle: how long one wave is, and how thick its line.
+                waveLength: 22, lineWidth: 3,
+                // A dot at the playhead. 0 is none.
+                knob: 0, knobColor: '#ffffff', knobShape: 'circle'
             };
         // The clocks sit level with the middle of the bar rather than under
         // it: 0:04 [========] 3:07 is the shape people already know.
@@ -405,6 +486,23 @@ function defaultModule(type) {
                 uppercase: false, italic: false, glow: 0, glowColor: 'var(--album-vibrant)',
                 outline: 0, outlineColor: '#000000',
                 shadow: 0, shadowAngle: 135, shadowBlur: 0, shadowColor: 'rgba(0,0,0,0.55)'
+            };
+        // Optional, so it starts hidden: a new theme does not suddenly grow a
+        // row, and neither does one saved before it existed. Shown, it still
+        // only appears while something is queued - see app.js.
+        case 'next':
+            return {
+                type, hidden: true, x: 200, y: 150, w: 456, h: 28,
+                font: 'system', fontSize: 13, fontWeight: 600, color: '#ffffff',
+                letterSpacing: 0, align: 'left', opacity: 1,
+                uppercase: false, italic: false, glow: 0, glowColor: 'var(--album-vibrant)',
+                outline: 0, outlineColor: '#000000',
+                shadow: 0, shadowAngle: 135, shadowBlur: 0, shadowColor: 'rgba(0,0,0,0.55)',
+                label: 'Up next', labelColor: 'var(--album-light)',
+                count: 2, thumbs: true, requester: false,
+                // Everything queued in Spotify, or only what chat requested.
+                source: 'queue',
+                chipColor: 'rgba(255,255,255,0.12)', chipRadius: 14
             };
         default:
             throw new ThemeError(`Unknown module type "${type}"`);
@@ -439,12 +537,21 @@ function defaultModel(label = 'New theme') {
         // Nothing by default: a new theme is the widget it always was, and an
         // icon is something you go and add.
         icons: [],
+        cards: [],
+        labels: [],
         properties: {
             media: { mode: 'canvas' },
             showProgress: true,
             updateInterval: 5000,
             hideAfter: 5,
-            scroll: { enabled: true, speed: 70, pauseDuration: 7 }
+            scroll: { enabled: true, speed: 70, pauseDuration: 7 },
+            // A new theme starts with one. An old one without the setting
+            // gets none - normalizeModel keys that on the setting, not on this.
+            transition: 'slide',
+            // The same: new themes play perks, older ones stay as they were.
+            perks: true,
+            milestone: { enabled: true, seconds: 4 },
+            ambience: { style: 'none', amount: 1, speed: 1, colors: 'album' }
         }
     };
 }
@@ -488,6 +595,9 @@ function normalizeIcons(raw, canvas) {
             id: 'i' + icons.length,
             name,
             hidden: Boolean(item.hidden),
+            locked: Boolean(item.locked),
+            // Settled across every part once they are all read - see stackParts().
+            z: Number(item.z),
             x: Math.round(number(item.x, fallback.x, -canvas.width, canvas.width * 2)),
             y: Math.round(number(item.y, fallback.y, -canvas.height, canvas.height * 2)),
             w: Math.round(number(item.w, fallback.w, 4, canvas.width * 2)),
@@ -511,6 +621,177 @@ function normalizeIcons(raw, canvas) {
     return icons;
 }
 
+/** The settings a freshly added card starts with. */
+function defaultCard() {
+    return {
+        id: '', hidden: false, x: 16, y: 16, w: 160, h: 64,
+        layer: 'back',
+        background: 'var(--album-dark)', backgroundMode: 'solid',
+        backgroundTo: 'var(--album-vibrant)', gradientAngle: 135,
+        fillOpacity: 0.85,
+        radius: 16, corners: null,
+        borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)',
+        shadow: 0, blur: 0,
+        borderMode: 'solid', borderTo: 'var(--album-vibrant)',
+        bevel: 0
+    };
+}
+
+/**
+ * The card list, cleaned up.
+ *
+ * A card is a shape and nothing else: a background, a border and a shadow in a
+ * box. That is all a detached layout needs - the art, the text and the bar each
+ * get a card of their own and the canvas is hidden, so the widget reads as
+ * separate tiles floating over the scene.
+ *
+ * As with icons, the id is positional rather than trusted, because the
+ * generated CSS builds a class name from it.
+ */
+function normalizeCards(raw, canvas) {
+    if (!Array.isArray(raw)) return [];
+
+    const cards = [];
+
+    for (const item of raw) {
+        if (cards.length >= CARD_LIMIT) break;
+        if (!item || typeof item !== 'object') continue;
+
+        const fallback = defaultCard();
+
+        cards.push({
+            id: 'c' + cards.length,
+            hidden: Boolean(item.hidden),
+            locked: Boolean(item.locked),
+            z: Number(item.z),
+            x: Math.round(number(item.x, fallback.x, -canvas.width, canvas.width * 2)),
+            y: Math.round(number(item.y, fallback.y, -canvas.height, canvas.height * 2)),
+            w: Math.round(number(item.w, fallback.w, 4, canvas.width * 2)),
+            h: Math.round(number(item.h, fallback.h, 4, canvas.height * 2)),
+            // Behind the art, or over it and under the text. See cardRules().
+            layer: pick(item.layer, ['back', 'front'], fallback.layer),
+            background: color(item.background, fallback.background),
+            backgroundMode: pick(item.backgroundMode, ['solid', 'gradient'], fallback.backgroundMode),
+            backgroundTo: color(item.backgroundTo, fallback.backgroundTo),
+            gradientAngle: Math.round(number(item.gradientAngle, fallback.gradientAngle, 0, 360)),
+            // Two decimals, for the same reason as the canvas dim.
+            fillOpacity: Math.round(number(item.fillOpacity, fallback.fillOpacity, 0, 1) * 100) / 100,
+            radius: Math.round(number(item.radius, fallback.radius, 0, 400)),
+            corners: corners(item.corners, 400),
+            borderWidth: Math.round(number(item.borderWidth, fallback.borderWidth, 0, 12)),
+            borderColor: color(item.borderColor, fallback.borderColor),
+            shadow: Math.round(number(item.shadow, fallback.shadow, 0, 80)),
+            blur: Math.round(number(item.blur, fallback.blur, 0, 40)),
+            borderMode: pick(item.borderMode, ['solid', 'gradient'], fallback.borderMode),
+            borderTo: color(item.borderTo, fallback.borderTo),
+            // A raised edge - light along the top and left, shade along the
+            // bottom and right - for buttons that look pressable.
+            bevel: Math.round(number(item.bevel, fallback.bevel, 0, 8))
+        });
+    }
+
+    return cards;
+}
+
+/**
+ * The settings every piece of text shares - the fixed text parts, the Up next
+ * row and labels alike.
+ */
+function textSettings(module, fallback) {
+    const font = fontKey(module.font);
+
+    return {
+        font,
+        fontSize: Math.round(number(module.fontSize, fallback.fontSize, 6, 200)),
+        fontWeight: fontWeight(module.fontWeight, font, fallback.fontWeight),
+        color: color(module.color, fallback.color),
+        letterSpacing: number(module.letterSpacing, fallback.letterSpacing, -5, 20),
+        align: pick(module.align, ['left', 'center', 'right'], fallback.align),
+        opacity: number(module.opacity, fallback.opacity, 0, 1),
+        uppercase: Boolean(module.uppercase),
+        italic: Boolean(module.italic),
+        glow: Math.round(number(module.glow, fallback.glow, 0, 40)),
+        glowColor: color(module.glowColor, fallback.glowColor),
+        // An outline is what keeps white text readable over a bright
+        // game. Half of it is painted outside the glyph, so the width the
+        // user picks is doubled when the CSS is written.
+        outline: number(module.outline, fallback.outline, 0, 12),
+        outlineColor: color(module.outlineColor, fallback.outlineColor),
+        // How far the shadow is thrown, and which way. Distance is the
+        // switch: at 0 there is nothing to cast, so the other three are
+        // kept but never reach the CSS. That is also what makes this
+        // invisible to a theme saved before it existed.
+        shadow: Math.round(number(module.shadow, fallback.shadow, 0, 40)),
+        // Degrees, read the same way as the canvas gradient angle - 0 is
+        // up, 90 is right - because that is the one angle convention the
+        // editor already taught its user.
+        shadowAngle: Math.round(number(module.shadowAngle, fallback.shadowAngle, 0, 360)),
+        shadowBlur: Math.round(number(module.shadowBlur, fallback.shadowBlur, 0, 40)),
+        shadowColor: color(module.shadowColor, fallback.shadowColor)
+    };
+}
+
+/**
+ * Free text from a theme file, made safe to keep: one line, no control
+ * characters, and short. It is escaped again wherever it is written into a
+ * page - this only decides what is worth storing.
+ */
+function plainText(value, fallback, max) {
+    if (typeof value !== 'string') return fallback;
+    return value.replace(/[\u0000-\u001f\u007f]+/g, ' ').replace(/\s+/g, ' ').trim().slice(0, max);
+}
+
+/** The settings a freshly added label starts with. */
+function defaultLabel(text = 'Your text') {
+    return {
+        id: '', text, hidden: false, x: 24, y: 24, w: 160, h: 24,
+        font: 'system', fontSize: 14, fontWeight: 600, color: '#ffffff',
+        letterSpacing: 0, align: 'left', opacity: 0.9,
+        uppercase: false, italic: false, glow: 0, glowColor: 'var(--album-vibrant)',
+        outline: 0, outlineColor: '#000000',
+        shadow: 0, shadowAngle: 135, shadowBlur: 0, shadowColor: 'rgba(0,0,0,0.55)'
+    };
+}
+
+/**
+ * The label list, cleaned up.
+ *
+ * A label is a line of text of your own - "Now playing", "Live on stream",
+ * or "Requested by {requester}", which the widget fills in. The text is the
+ * only thing in a label that is not a number or a checked color, so it is
+ * trimmed to one short line here and escaped when the page is written. The id
+ * is positional, as with icons and cards, because it becomes a class name.
+ */
+function normalizeLabels(raw, canvas) {
+    if (!Array.isArray(raw)) return [];
+
+    const labels = [];
+
+    for (const item of raw) {
+        if (labels.length >= LABEL_LIMIT) break;
+        if (!item || typeof item !== 'object') continue;
+
+        const fallback = defaultLabel();
+
+        labels.push({
+            id: 'l' + labels.length,
+            // Kept even when empty: a label mid-edit is still a label, and
+            // dropping it on save would lose where it was and how it looked.
+            text: plainText(item.text, '', LABEL_LENGTH),
+            hidden: Boolean(item.hidden),
+            locked: Boolean(item.locked),
+            z: Number(item.z),
+            x: Math.round(number(item.x, fallback.x, -canvas.width, canvas.width * 2)),
+            y: Math.round(number(item.y, fallback.y, -canvas.height, canvas.height * 2)),
+            w: Math.round(number(item.w, fallback.w, 4, canvas.width * 2)),
+            h: Math.round(number(item.h, fallback.h, 2, canvas.height * 2)),
+            ...textSettings(item, fallback)
+        });
+    }
+
+    return labels;
+}
+
 /**
  * Normalizes whatever the editor sent into a model the generator can trust:
  * every value clamped, every color checked, every mandatory module present.
@@ -526,6 +807,7 @@ function normalizeModel(input, { label } = {}) {
         // Hiding the panel keeps its colors, so turning it back on restores
         // the design rather than a blank default.
         hidden: Boolean(canvasIn.hidden),
+        locked: Boolean(canvasIn.locked),
         background: color(canvasIn.background, base.canvas.background),
         backgroundMode: pick(canvasIn.backgroundMode, ['solid', 'gradient'], base.canvas.backgroundMode),
         backgroundTo: color(canvasIn.backgroundTo, base.canvas.backgroundTo),
@@ -544,6 +826,12 @@ function normalizeModel(input, { label } = {}) {
         // multiplier and 1 - 0.3333333 is not something to put in a stylesheet.
         dim: Math.round(number(canvasIn.dim, base.canvas.dim, 0, 1) * 100) / 100
     };
+
+    // How far the panel is drawn in from each edge of the canvas, top, right,
+    // bottom, left - the order CSS reads them in. See panelRules().
+    const insetIn = Array.isArray(canvasIn.inset) ? canvasIn.inset : [];
+    canvas.inset = [canvas.height, canvas.width, canvas.height, canvas.width]
+        .map((across, side) => Math.round(number(insetIn[side], 0, 0, across)));
 
     const byType = new Map();
     for (const module of Array.isArray(raw.modules) ? raw.modules : []) {
@@ -564,11 +852,28 @@ function normalizeModel(input, { label } = {}) {
         const module = byType.get(type) || {};
         const missing = !byType.has(type);
 
+        // A theme saved before Up next existed gets it along the bottom of its
+        // own canvas, where switching it on shows it somewhere sensible - the
+        // default box is sized for the 680px default and would hang off the
+        // side of anything narrower.
+        if (missing && type === 'next') {
+            Object.assign(fallback, {
+                x: 16,
+                y: Math.max(0, canvas.height - fallback.h - 10),
+                w: Math.max(4, canvas.width - 32)
+            });
+        }
+
         const common = {
             type,
-            hidden: missing && predatesTimes && TIME_TYPES.includes(type)
-                ? true
+            // A part the theme never mentioned takes its default, which for
+            // the time labels on a very old theme is hidden - and for Up next
+            // is hidden on every theme, because it is something you switch on.
+            hidden: missing
+                ? fallback.hidden || (predatesTimes && TIME_TYPES.includes(type))
                 : Boolean(module.hidden),
+            locked: Boolean(module.locked),
+            z: Number(module.z),
             x: Math.round(number(module.x, fallback.x, -canvas.width, canvas.width * 2)),
             y: Math.round(number(module.y, fallback.y, -canvas.height, canvas.height * 2)),
             w: Math.round(number(module.w, fallback.w, 4, canvas.width * 2)),
@@ -581,7 +886,18 @@ function normalizeModel(input, { label } = {}) {
                 radius: Math.round(number(module.radius, fallback.radius, 0, 400)),
                 corners: corners(module.corners, 400),
                 shadow: Math.round(number(module.shadow, fallback.shadow, 0, 80)),
-                fit: pick(module.fit, ['cover', 'contain'], fallback.fit)
+                fit: pick(module.fit, ['cover', 'contain'], fallback.fit),
+                borderWidth: Math.round(number(module.borderWidth, fallback.borderWidth, 0, 12)),
+                borderColor: color(module.borderColor, fallback.borderColor),
+                // A gradient ring runs from the border color to this one.
+                borderMode: pick(module.borderMode, ['solid', 'gradient'], fallback.borderMode),
+                borderTo: color(module.borderTo, fallback.borderTo),
+                // The size of a pixel block. 0 leaves the art alone.
+                pixelate: Math.round(number(module.pixelate, fallback.pixelate, 0, 32)),
+                // Seconds per turn, like a record. 0 keeps it still.
+                spin: Math.round(number(module.spin, fallback.spin, 0, 60)),
+                // How far the art or Canvas video is blurred. See artBlurRules().
+                blur: Math.round(number(module.blur, fallback.blur, 0, 40))
             };
         }
 
@@ -592,7 +908,7 @@ function normalizeModel(input, { label } = {}) {
                 corners: corners(module.corners, 999),
                 trackColor: color(module.trackColor, fallback.trackColor),
                 fillColor: color(module.fillColor, fallback.fillColor),
-                style: pick(module.style, ['bar', 'waveform'], fallback.style),
+                style: pick(module.style, ['bar', 'waveform', 'squiggle'], fallback.style),
                 // Enough bars to read as a waveform, few enough that the
                 // generator is not writing hundreds of nth-child rules.
                 bars: Math.round(number(module.bars, fallback.bars, 8, 96)),
@@ -601,46 +917,41 @@ function normalizeModel(input, { label } = {}) {
                 // are worked out from this every time the theme is generated -
                 // storing them instead would be storing a derived value, and
                 // one that changes length the moment the bar count does.
-                seed: Math.round(number(module.seed, fallback.seed, 1, 9999))
+                seed: Math.round(number(module.seed, fallback.seed, 1, 9999)),
+                fillMode: pick(module.fillMode, ['solid', 'gradient'], fallback.fillMode),
+                fillTo: color(module.fillTo, fallback.fillTo),
+                waveLength: Math.round(number(module.waveLength, fallback.waveLength, 8, 80)),
+                lineWidth: Math.round(number(module.lineWidth, fallback.lineWidth, 1, 12)),
+                knob: Math.round(number(module.knob, fallback.knob, 0, 40)),
+                knobColor: color(module.knobColor, fallback.knobColor),
+                knobShape: pick(module.knobShape, ['circle', 'square'], fallback.knobShape)
             };
         }
 
-        const font = fontKey(module.font);
+        if (type === 'next') {
+            return {
+                ...common,
+                ...textSettings(module, fallback),
+                // What the row says before the songs. Empty is allowed: the
+                // chips can stand on their own.
+                label: plainText(module.label, fallback.label, 24),
+                labelColor: color(module.labelColor, fallback.labelColor),
+                count: Math.round(number(module.count, fallback.count, 1, NEXT_LIMIT)),
+                thumbs: module.thumbs === undefined ? fallback.thumbs : Boolean(module.thumbs),
+                requester: Boolean(module.requester),
+                source: pick(module.source, ['queue', 'requests'], fallback.source),
+                chipColor: color(module.chipColor, fallback.chipColor),
+                chipRadius: Math.round(number(module.chipRadius, fallback.chipRadius, 0, 40))
+            };
+        }
 
-        return {
-            ...common,
-            font,
-            fontSize: Math.round(number(module.fontSize, fallback.fontSize, 6, 200)),
-            fontWeight: fontWeight(module.fontWeight, font, fallback.fontWeight),
-            color: color(module.color, fallback.color),
-            letterSpacing: number(module.letterSpacing, fallback.letterSpacing, -5, 20),
-            align: pick(module.align, ['left', 'center', 'right'], fallback.align),
-            opacity: number(module.opacity, fallback.opacity, 0, 1),
-            uppercase: Boolean(module.uppercase),
-            italic: Boolean(module.italic),
-            glow: Math.round(number(module.glow, fallback.glow, 0, 40)),
-            glowColor: color(module.glowColor, fallback.glowColor),
-            // An outline is what keeps white text readable over a bright
-            // game. Half of it is painted outside the glyph, so the width the
-            // user picks is doubled when the CSS is written.
-            outline: number(module.outline, fallback.outline, 0, 12),
-            outlineColor: color(module.outlineColor, fallback.outlineColor),
-            // How far the shadow is thrown, and which way. Distance is the
-            // switch: at 0 there is nothing to cast, so the other three are
-            // kept but never reach the CSS. That is also what makes this
-            // invisible to a theme saved before it existed.
-            shadow: Math.round(number(module.shadow, fallback.shadow, 0, 40)),
-            // Degrees, read the same way as the canvas gradient angle - 0 is
-            // up, 90 is right - because that is the one angle convention the
-            // editor already taught its user.
-            shadowAngle: Math.round(number(module.shadowAngle, fallback.shadowAngle, 0, 360)),
-            shadowBlur: Math.round(number(module.shadowBlur, fallback.shadowBlur, 0, 40)),
-            shadowColor: color(module.shadowColor, fallback.shadowColor)
-        };
+        return { ...common, ...textSettings(module, fallback) };
     });
 
     const propsIn = raw.properties || {};
     const scrollIn = propsIn.scroll || {};
+    const milestoneIn = propsIn.milestone && typeof propsIn.milestone === 'object' ? propsIn.milestone : {};
+    const ambienceIn = propsIn.ambience && typeof propsIn.ambience === 'object' ? propsIn.ambience : {};
 
     const properties = {
         media: { mode: pick(propsIn.media?.mode, ['canvas', 'cover'], 'canvas') },
@@ -652,17 +963,101 @@ function normalizeModel(input, { label } = {}) {
             enabled: scrollIn.enabled !== false,
             speed: Math.round(number(scrollIn.speed, 70, 10, 600)),
             pauseDuration: Math.round(number(scrollIn.pauseDuration, 7, 0, 60))
+        },
+        // How the art and text change over to the next song. See transitionRules().
+        transition: pick(propsIn.transition, TRANSITIONS, 'none'),
+        // Whether the theme celebrates viewers' requests: their tier's
+        // effect, a sub's own pick, and the milestone takeover. Drawn by
+        // widget/public/effects.js, over the theme, so none of this - nor the
+        // ambience below - adds anything to the stylesheet.
+        perks: propsIn.perks === true,
+        // Whether a milestone takes the widget over, and for how long. A
+        // theme from before milestones had a switch of their own followed
+        // `perks`, the one switch there was.
+        milestone: {
+            enabled: milestoneIn.enabled !== undefined ? milestoneIn.enabled === true : propsIn.perks === true,
+            seconds: Math.round(number(milestoneIn.seconds, 4, 1.5, 15) * 2) / 2
+        },
+        // A quiet drift across the widget while music plays. Never a burst:
+        // those are viewers' rewards, and would mean nothing if they played
+        // all the time.
+        ambience: {
+            style: pick(ambienceIn.style, AMBIENCES, 'none'),
+            amount: Math.round(number(ambienceIn.amount, 1, 0.25, 3) * 100) / 100,
+            speed: Math.round(number(ambienceIn.speed, 1, 0.25, 3) * 100) / 100,
+            colors: pick(ambienceIn.colors, AMBIENCE_COLORS, 'album')
         }
     };
 
-    return {
+    const model = {
         version: MODEL_VERSION,
         label: String(raw.label || base.label).slice(0, 60),
         canvas,
         modules,
         icons: normalizeIcons(raw.icons, canvas),
+        cards: normalizeCards(raw.cards, canvas),
+        labels: normalizeLabels(raw.labels, canvas),
         properties
     };
+
+    stackParts(model);
+    return model;
+}
+
+/**
+ * Every part's key, back to front, in the order the widget has always drawn
+ * them: cards behind the art, the art, cards over it, the text, the bar and
+ * its clocks, icons, labels, and Up next last.
+ *
+ * Nothing ever wrote that down. Each rule gives its part a z-index - 0 for the
+ * art and the cards behind it, 1 for the canvas blur, 2 for everything else -
+ * and the page order breaks the ties. This is that order spelled out, so a
+ * theme saved before parts could be rearranged keeps it.
+ */
+function defaultStack(model) {
+    const cards = model.cards || [];
+    return [
+        ...cards.filter(card => card.layer !== 'front').map(card => 'card:' + card.id),
+        'art',
+        ...cards.filter(card => card.layer === 'front').map(card => 'card:' + card.id),
+        'title', 'artist', 'progress', 'elapsed', 'duration',
+        ...(model.icons || []).map(icon => 'icon:' + icon.id),
+        ...(model.labels || []).map(label => 'label:' + label.id),
+        'next'
+    ];
+}
+
+/** Every part by the key defaultStack() lists it under. */
+function partsByKey(model) {
+    return new Map([
+        ...model.modules.map(module => [module.type, module]),
+        ...(model.cards || []).map(card => ['card:' + card.id, card]),
+        ...(model.icons || []).map(icon => ['icon:' + icon.id, icon]),
+        ...(model.labels || []).map(label => ['label:' + label.id, label])
+    ]);
+}
+
+/**
+ * The parts' keys back to front, by their `z`. A part without one - a theme
+ * from before stacking, or a model that has not been through normalizeModel
+ * yet - takes its place in defaultStack(), which also settles any tie.
+ */
+function stackOf(model) {
+    const parts = partsByKey(model);
+    return defaultStack(model)
+        .filter(key => parts.has(key))
+        .map((key, at) => ({ key, at, z: Number.isFinite(parts.get(key).z) ? parts.get(key).z : at }))
+        .sort((a, b) => a.z - b.z || a.at - b.at)
+        .map(entry => entry.key);
+}
+
+/**
+ * Writes the stack back as plain ranks from 0, so a theme file reads in order
+ * whatever it was given - gaps, ties, or a part with no rank at all.
+ */
+function stackParts(model) {
+    const parts = partsByKey(model);
+    stackOf(model).forEach((key, rank) => { parts.get(key).z = rank; });
 }
 
 /* ---------------------------------------------------------- generation */
@@ -964,6 +1359,182 @@ ${rules}
 }
 
 /**
+ * The rules for the theme's cards.
+ *
+ * Every card is in the markup ahead of the album art, and its layer is only a
+ * z-index. A back card shares the art's z-index of 0, so the art - later in
+ * the page - is drawn over it: that is a frame or a tile behind the artwork.
+ * A front card sits at 2 with the text, and the text is later in the page, so
+ * it lands over the art and under the words: a label across a full-size
+ * cover. It is also over the canvas blur and dim, which a card is not part of.
+ *
+ * The card is three layers, because the fill has to fade on its own. The
+ * frost and the shadow are on the card itself, the fill is ::before, and the
+ * border is ::after, on top of it. The obvious ways to fade just the fill
+ * are both wrong here. `opacity` on the card fades the frost behind it too,
+ * so a frosted card turns clear as it is made lighter. `color-mix()` fades
+ * only the color, but OBS builds on Chromium before 111 do not have it, and
+ * with an album color - a variable - the whole background is then dropped
+ * rather than falling back: every see-through card would draw no fill at all.
+ *
+ * The border gets its own layer so the fill cannot paint over it: a child is
+ * always drawn after its parent's border. `box-sizing` is spelled out for the
+ * reason textRules() gives, so the border sits inside the box in the editor
+ * and on stream alike, and the rectangle you drag is the card.
+ */
+function cardRules(cards) {
+    if (!cards.length) return '';
+
+    const background = card => card.backgroundMode === 'gradient'
+        ? `linear-gradient(${card.gradientAngle}deg, ${card.background}, ${card.backgroundTo})`
+        : card.background;
+
+    const rules = cards.map(card => `.card-${card.id} {
+    position: absolute;
+${box(card)}
+    z-index: ${card.layer === 'front' ? 2 : 0};
+    border-radius: ${radiusCss(card)};${card.shadow ? `
+    box-shadow: 0 ${Math.round(card.shadow / 2)}px ${card.shadow}px rgba(0, 0, 0, .38);` : ''}${card.blur ? `
+    -webkit-backdrop-filter: blur(${card.blur}px);
+    backdrop-filter: blur(${card.blur}px);` : ''}
+    pointer-events: none;
+    ${card.hidden ? 'display: none;' : ''}
+}
+
+.card-${card.id}::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: ${background(card)};${card.fillOpacity < 1 ? `
+    opacity: ${card.fillOpacity};` : ''}${card.bevel ? `
+    box-shadow: inset ${card.bevel}px ${card.bevel}px 0 rgba(255, 255, 255, .35), inset -${card.bevel}px -${card.bevel}px 0 rgba(0, 0, 0, .35);` : ''}
+}${card.borderWidth ? `
+
+.card-${card.id}::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    box-sizing: border-box;
+${cardBorder(card)}
+    border-radius: inherit;
+}` : ''}`).join('\n\n');
+
+    return `
+
+/* Cards */
+
+${rules}
+`;
+}
+
+/**
+ * A card's border layer: a plain border, or a gradient ring.
+ *
+ * A border cannot take a gradient and keep rounded corners, so the ring is a
+ * gradient filling the whole layer with its middle masked away - the padding
+ * is the ring's width. The prefixed pair is for older OBS builds, whose
+ * Chromium only knows the -webkit- mask and calls "exclude" "xor".
+ */
+function cardBorder(card) {
+    if (card.borderMode !== 'gradient') return `    border: ${card.borderWidth}px solid ${card.borderColor};`;
+
+    return `    padding: ${card.borderWidth}px;
+    background: linear-gradient(${card.gradientAngle}deg, ${card.borderColor}, ${card.borderTo});
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);`;
+}
+
+/** The card elements. Empty, and first in the widget - see cardRules(). */
+function cardMarkup(cards) {
+    return cards.map(card => `
+        <div class="card card-${card.id}"></div>`).join('');
+}
+
+/** For the one field in a theme that is free text. */
+function escapeHtml(value) {
+    return String(value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+/**
+ * The pixelation filter the art points at.
+ *
+ * Keeps one pixel in every block and grows it to fill the block: a dot grid
+ * the size of a block, the art kept only where the dots are, then each dot
+ * dilated by half a block. It works on anything drawn, which is why the Canvas
+ * video pixelates as well as the cover.
+ */
+function fxMarkup(art) {
+    if (!art.pixelate) return '';
+
+    // Stretched a little on each axis so a whole number of blocks fits the
+    // art exactly. A block that only partly fits has its dot outside the art,
+    // so it drew nothing - a strip along the right or bottom edge.
+    const round = value => Math.round(value * 100) / 100;
+    const across = art.w / Math.max(1, Math.round(art.w / art.pixelate));
+    const down = art.h / Math.max(1, Math.round(art.h / art.pixelate));
+
+    return `
+        <svg class="queueify-fx" width="0" height="0" aria-hidden="true" style="position:absolute">
+            <filter id="queueify-pixelate" x="0" y="0" width="1" height="1">
+                <feFlood x="${round(across / 2)}" y="${round(down / 2)}" width="1" height="1"/>
+                <feComposite width="${round(across)}" height="${round(down)}"/>
+                <feTile result="dots"/>
+                <feComposite in="SourceGraphic" in2="dots" operator="in"/>
+                <feMorphology operator="dilate" radius="${round(across / 2)} ${round(down / 2)}"/>
+            </filter>
+        </svg>`;
+}
+
+/**
+ * The label elements. The text as it was written goes in data-text too, so
+ * app.js can fill in {requester} again for every song rather than only once.
+ */
+function labelMarkup(labels) {
+    return labels.map(label => `
+        <div class="qlabel qlabel-${label.id}" data-text="${escapeHtml(label.text)}">
+            <span class="qlabel-text">${escapeHtml(label.text)}</span>
+        </div>`).join('');
+}
+
+/** The Up next row, if the theme shows it. app.js fills in the songs. */
+function nextMarkup(next) {
+    if (!next || next.hidden) return '';
+
+    const caption = next.label ? `
+            <span class="next-label">${escapeHtml(next.label)}</span>` : '';
+
+    return `
+        <div class="next-wrapper" data-source="${next.source}" data-count="${next.count}" data-thumbs="${next.thumbs ? 1 : 0}" data-requester="${next.requester ? 1 : 0}">${caption}
+            <div class="next-list"></div>
+        </div>`;
+}
+
+/**
+ * Everything a theme's page carries beyond the fixed parts, cards and icons -
+ * and only what it uses, so a theme that uses none of it is the page it
+ * always was. The editor puts the same markup in its preview.
+ */
+function extraMarkup(model) {
+    const art = moduleOf(model, 'art');
+    const progress = moduleOf(model, 'progress');
+
+    return labelMarkup(model.labels || []) +
+        (art.blur && !art.hidden ? `
+        <div class="art-blur"></div>` : '') +
+        nextMarkup(moduleOf(model, 'next')) +
+        (progress.knob ? `
+        <div class="progress-knob"></div>` : '') +
+        fxMarkup(art);
+}
+
+/**
  * What goes inside the progress bar.
  *
  * A plain bar needs nothing: app.js widens `.progress` and that is the bar. A
@@ -1052,7 +1623,45 @@ function waveHeights(count, seed) {
  * with the track's however far along the song is - a percentage would squash
  * them together as the clip narrowed.
  */
+/**
+ * What the played part of the bar is painted with.
+ *
+ * A gradient is sized to the whole bar rather than to the played part, so the
+ * colors belong to positions along it: the far end only turns the second
+ * color once the song gets there, instead of the whole gradient squeezing
+ * into the first few seconds.
+ */
+function fillRules(progress) {
+    if (progress.fillMode !== 'gradient') return `background: ${progress.fillColor};`;
+    return `background: linear-gradient(90deg, ${progress.fillColor}, ${progress.fillTo});
+    background-size: ${progress.w}px 100%;`;
+}
+
+/**
+ * One wave of the squiggle, as an SVG to mask the played part with.
+ *
+ * A quadratic curve up and its mirror down, starting and ending on the
+ * midline with the same slope, so the tiles join without a seam. The control
+ * point sits past the edge of the box so the *stroke* - not the line through
+ * its middle - just touches the top and bottom.
+ */
+function squiggleMask(progress) {
+    const length = progress.waveLength;
+    const height = Math.max(progress.h, progress.lineWidth);
+    const line = progress.lineWidth;
+    const middle = height / 2;
+    const peak = line - middle;
+
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${length}" height="${height}" ` +
+        `viewBox="0 0 ${length} ${height}"><path d="M0 ${middle} Q ${length / 4} ${peak} ${length / 2} ${middle} ` +
+        `T ${length} ${middle}" fill="none" stroke="#000" stroke-width="${line}"/></svg>`;
+
+    return `url("data:image/svg+xml,${encodeURIComponent(svg)}")`;
+}
+
 function progressRules(progress) {
+    if (progress.style === 'squiggle') return squiggleRules(progress);
+
     const container = `.progress-container {
     position: absolute;
 ${box(progress)}
@@ -1069,7 +1678,7 @@ ${box(progress)}
 .progress {
     width: 0%;
     height: 100%;
-    background: ${progress.fillColor};
+    ${fillRules(progress)}
     border-radius: inherit;
     transition: width .25s linear;
 }`;
@@ -1082,6 +1691,15 @@ ${box(progress)}
     const bands = heights.map((height, at) =>
         `.wave > i:nth-child(${at + 1}) { height: ${Math.round(height * 100)}%; }`
     ).join('\n');
+
+    // A gradient runs across the whole waveform, not down each bar: every bar
+    // shows the slice of it that sits where the bar does.
+    const width = (progress.w - progress.barGap * (progress.bars - 1)) / progress.bars;
+    const slices = progress.fillMode === 'gradient'
+        ? '\n\n' + heights.map((height, at) =>
+            `.wave.fill > i:nth-child(${at + 1}) { background-position: -${Math.round(at * (width + progress.barGap) * 100) / 100}px 0; }`
+        ).join('\n')
+        : '';
 
     return `${container}
 
@@ -1117,13 +1735,293 @@ ${box(progress)}
 }
 
 .wave.track > i { background: ${progress.trackColor}; }
-.wave.fill > i { background: ${progress.fillColor}; }
+.wave.fill > i { ${fillRules(progress)} }
 
-${bands}`;
+${bands}${slices}`;
+}
+
+/**
+ * The squiggle: a wavy line for the part already played, and a plain one for
+ * the rest of the song.
+ *
+ * The wave is a mask on the played part, so it takes any fill - a gradient
+ * included - and it drifts along while the song plays. The plain line starts
+ * where the played part ends, read from the same --progress the knob uses, so
+ * the two never overlap.
+ */
+function squiggleRules(progress) {
+    const line = progress.lineWidth;
+    const mask = squiggleMask(progress);
+    const height = Math.max(progress.h, line);
+    const seconds = Math.round(Math.max(0.6, progress.waveLength / 20) * 100) / 100;
+
+    return `.progress-container {
+    position: absolute;
+${box(progress)}
+    z-index: 2;
+    ${progress.hidden ? 'display: none;' : ''}
+}
+
+.progress-container::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    right: 0;
+    left: calc(var(--progress, 0) * 100%);
+    height: ${line}px;
+    margin-top: -${line / 2}px;
+    border-radius: ${line}px;
+    background: ${progress.trackColor};
+    transition: left .25s linear;
+}
+
+.progress {
+    position: relative;
+    width: 0%;
+    height: 100%;
+    ${fillRules(progress)}
+    -webkit-mask: ${mask} 0 50% / ${progress.waveLength}px ${height}px repeat-x;
+    mask: ${mask} 0 50% / ${progress.waveLength}px ${height}px repeat-x;
+    animation: queueify-squiggle ${seconds}s linear infinite;
+    transition: width .25s linear;
+}
+
+.widget.paused .progress {
+    animation-play-state: paused;
+}
+
+@keyframes queueify-squiggle {
+    to {
+        -webkit-mask-position: ${progress.waveLength}px 50%;
+        mask-position: ${progress.waveLength}px 50%;
+    }
+}`;
+}
+
+/**
+ * A dot riding the playhead.
+ *
+ * Its own element rather than part of the bar, because the bar clips what is
+ * inside it and a knob is usually bigger than the bar is tall. app.js puts
+ * how far through the song it is into --progress, 0 to 1, and this turns it
+ * into a position along the bar.
+ */
+function knobRules(progress) {
+    if (!progress.knob) return '';
+
+    const size = progress.knob;
+
+    return `
+
+/* Progress knob */
+
+.progress-knob {
+    position: absolute;
+    left: calc(${progress.x - size / 2}px + ${progress.w}px * var(--progress, 0));
+    top: ${Math.round((progress.y + progress.h / 2 - size / 2) * 100) / 100}px;
+    width: ${size}px;
+    height: ${size}px;
+    z-index: 3;
+    border-radius: ${progress.knobShape === 'square' ? Math.round(size / 6) + 'px' : '50%'};
+    background: ${progress.knobColor};
+    box-shadow: 0 1px ${Math.max(2, Math.round(size / 3))}px rgba(0, 0, 0, .45);
+    transition: left .25s linear;
+    pointer-events: none;
+    ${progress.hidden ? 'display: none;' : ''}
+}
+`;
+}
+
+/**
+ * The Up next row: a caption, then a chip per queued song.
+ *
+ * The chips are written by app.js, and only while Queueify has something
+ * queued - the widget carries `has-next` then, and the row fades and slides
+ * in. With nothing queued it fades back out, so a design can leave room for
+ * it without that room ever looking empty for long.
+ */
+function nextRules(next) {
+    if (next.hidden) return '';
+
+    const radius = next.chipRadius;
+    const stagger = Array.from({ length: NEXT_LIMIT - 1 }, (_, at) =>
+        `.next-item:nth-child(${at + 2}) { animation-delay: ${(at + 1) * 0.08}s; }`).join('\n');
+
+    return `
+
+/* Up next */
+
+${textRules('.next-wrapper', next)}
+
+.next-wrapper {
+    gap: 8px;
+    opacity: 0;
+    transform: translateY(6px);
+    transition: opacity .5s ease, transform .5s ease;
+}
+
+.widget.has-next .next-wrapper {
+    opacity: 1;
+    transform: none;
+}
+
+.next-label {
+    flex: none;
+    color: ${next.labelColor};
+}
+
+.next-list {
+    display: flex;
+    gap: 6px;
+    min-width: 0;
+    overflow: hidden;
+    -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 24px), transparent);
+    mask-image: linear-gradient(to right, #000 calc(100% - 24px), transparent);
+}
+
+.next-item {
+    display: inline-flex;
+    align-items: center;
+    gap: .45em;
+    flex: none;
+    padding: .25em .8em;
+    border-radius: ${radius}px;
+    background: ${next.chipColor};
+    animation: queueify-next-in .45s ease both;
+}
+
+.next-item.has-thumb {
+    padding-left: .25em;
+}
+
+.next-thumb {
+    width: 1.6em;
+    height: 1.6em;
+    flex: none;
+    border-radius: ${radius}px;
+    object-fit: cover;
+}
+
+.next-by {
+    opacity: .6;
+}
+
+${stagger}
+
+@keyframes queueify-next-in {
+    from { opacity: 0; transform: translateX(-10px); }
+}
+`;
+}
+
+/**
+ * Labels: text of your own, styled like any other text part.
+ *
+ * One that asks for {requester} is emptied by app.js when nobody requested
+ * the song, and fades out rather than leaving "Requested by" hanging.
+ */
+function labelRules(labels) {
+    if (!labels.length) return '';
+
+    return `
+
+/* Labels */
+
+.qlabel {
+    transition: opacity .4s ease;
+}
+
+.qlabel.is-empty {
+    opacity: 0;
+}
+
+${labels.map(label => textRules('.qlabel-' + label.id, label)).join('\n\n')}
+`;
+}
+
+/**
+ * The album art's extras: a gradient ring, pixel blocks and a slow spin.
+ *
+ * The ring is a transparent border with a gradient behind it. An <img> only
+ * paints its picture inside the border, so the gradient shows exactly where
+ * the border is and nowhere else - no second element needed.
+ *
+ * Pixelation is an SVG filter (see fxMarkup), because it has to work on the
+ * Canvas video as well as the cover, and CSS has nothing that does that.
+ */
+function artExtras(art) {
+    const lines = [];
+
+    if (art.borderWidth && art.borderMode === 'gradient') {
+        lines.push(`    background: linear-gradient(135deg, ${art.borderColor}, ${art.borderTo}) border-box;`);
+    }
+    if (art.pixelate) lines.push('    filter: url(#queueify-pixelate);');
+    if (art.spin) lines.push(`    animation: queueify-spin ${art.spin}s linear infinite;`);
+
+    return lines.length ? '\n' + lines.join('\n') : '';
+}
+
+/**
+ * The art's blur: a layer over the art that blurs what is under it, rather
+ * than a blur on the art itself.
+ *
+ * A blur on the art samples past its edges, where there is nothing, so a
+ * blurred cover fades out into a soft-edged smudge. A backdrop-filter blurs
+ * what is already painted inside its own box and keeps the edges - the same
+ * reason the canvas blur is one (see veilRules()). The layer is set in by the
+ * border, so a border or ring stays sharp around the blurred picture.
+ *
+ * It sits just over the art: in the page after it at the same z-index, and in
+ * a rearranged stack one step up (see stackRules()). It is square to the page,
+ * so on spinning art it only lines up when the art is round - which spinning
+ * art nearly always is.
+ */
+function artBlurRules(art) {
+    if (!art.blur || art.hidden) return '';
+
+    const border = art.borderWidth;
+    const inner = { x: art.x + border, y: art.y + border, w: Math.max(0, art.w - border * 2), h: Math.max(0, art.h - border * 2) };
+    const radius = art.corners
+        ? art.corners.map(corner => Math.max(0, corner - border) + 'px').join(' ')
+        : Math.max(0, art.radius - border) + 'px';
+
+    return `
+
+/* Album art blur */
+
+.art-blur {
+    position: absolute;
+${box(inner)}
+    z-index: 0;
+    border-radius: ${radius};
+    -webkit-backdrop-filter: blur(${art.blur}px);
+    backdrop-filter: blur(${art.blur}px);
+    pointer-events: none;
+}
+`;
+}
+
+function spinRules(art) {
+    if (!art.spin) return '';
+
+    return `
+
+/* A record going round. It stops when the music does. */
+
+.widget.paused .cover,
+.widget.paused .canvas {
+    animation-play-state: paused;
+}
+
+@keyframes queueify-spin {
+    to { transform: rotate(360deg); }
+}
+`;
 }
 
 function generateCss(model) {
     const { canvas } = model;
+    const inset = (canvas.inset || []).some(Boolean);
     const art = moduleOf(model, 'art');
     const title = moduleOf(model, 'title');
     const artist = moduleOf(model, 'artist');
@@ -1141,9 +2039,9 @@ function generateCss(model) {
     height: ${canvas.height}px;
     padding: ${canvas.padding}px;
 
-    background: ${canvas.hidden ? 'transparent' : canvasBackground(canvas)};
-    border: ${canvas.hidden ? 0 : canvas.borderWidth}px solid ${canvas.borderColor};
-    border-radius: ${radiusCss(canvas)};
+    background: ${canvas.hidden || inset ? 'transparent' : canvasBackground(canvas)};
+    border: ${canvas.hidden || inset ? 0 : canvas.borderWidth}px solid ${canvas.borderColor};
+    border-radius: ${inset ? '0px' : radiusCss(canvas)};
 
     overflow: hidden;
     font-family: ${FONTS.system.stack};
@@ -1159,7 +2057,7 @@ function generateCss(model) {
     transform: translateY(20px);
     pointer-events: none;
 }
-
+${panelRules(canvas)}
 ${veilRules(canvas)}
 /* Album art / Canvas video */
 
@@ -1170,7 +2068,9 @@ ${box(art)}
     z-index: 0;
     object-fit: ${art.fit};
     border-radius: ${radiusCss(art)};
-    box-shadow: 0 ${Math.round(art.shadow / 2)}px ${art.shadow}px rgba(0, 0, 0, .38);
+    box-shadow: 0 ${Math.round(art.shadow / 2)}px ${art.shadow}px rgba(0, 0, 0, .38);${art.borderWidth ? `
+    box-sizing: border-box;
+    border: ${art.borderWidth}px solid ${art.borderMode === 'gradient' ? 'transparent' : art.borderColor};` : ''}${artExtras(art)}
     ${art.hidden ? 'display: none !important;' : ''}
 }
 
@@ -1261,7 +2161,200 @@ ${textRules('.duration-wrapper', duration)}
     50%, 80% { transform: translateX(calc(-1 * var(--artist-distance, 0px))); }
     100% { transform: translateX(0); }
 }
-${fadeRules(model)}${iconRules(model.icons || [])}`;
+${fadeRules(model)}${iconRules(model.icons || [])}${cardRules(model.cards || [])}${labelRules(model.labels || [])}${nextRules(moduleOf(model, 'next') || defaultModule('next'))}${knobRules(progress)}${spinRules(art)}${artBlurRules(art)}${transitionRules(model)}${stackRules(model)}`;
+}
+
+/**
+ * How the song changes over: the art, the title, and the artist go out, the
+ * new song goes in.
+ *
+ * app.js drives it with three classes on the widget: `song-out`, then - once
+ * that has played and the new song is in place - `song-in`, and `dir-prev`
+ * throughout when the skip was back to the song before. Each style is a pair
+ * of keyframes; `--qf-dir` turns the direction round, so a skip back runs the
+ * other way without a second set.
+ *
+ * Out is short and speeds up, in is longer and settles: leaving should get
+ * out of the way, arriving is the part worth watching. Only transforms,
+ * opacity, and clip-path move, which the browser composites without redrawing
+ * the page, so it stays smooth in an OBS source. Filters are left alone: a
+ * glow or pixelation is a filter already, and a list of different filters
+ * does not animate from one to the other - it jumps.
+ *
+ * The art keeps its spin, first in its list, so a record does not stop to
+ * change songs. Timings here and in app.js move together: OUT is the longest
+ * out plus its stagger, IN the same for the way in.
+ */
+function transitionRules(model) {
+    const style = model.properties.transition;
+    if (!style || style === 'none') return '';
+
+    const art = moduleOf(model, 'art');
+    const spin = art.spin ? `queueify-spin ${art.spin}s linear infinite, ` : '';
+    const out = '.18s cubic-bezier(.4, 0, 1, 1)';
+    const inn = style === 'pop' ? '.5s cubic-bezier(.34, 1.56, .64, 1)' : '.46s cubic-bezier(.16, 1, .3, 1)';
+
+    // Each style's out and in, for the art and for the text.
+    const frames = {
+        slide: {
+            art: ['to { opacity: 0; translate: calc(var(--qf-dir, 1) * -28px) 0; }',
+                'from { opacity: 0; translate: calc(var(--qf-dir, 1) * 36px) 0; }'],
+            text: ['to { opacity: 0; translate: calc(var(--qf-dir, 1) * -20px) 0; }',
+                'from { opacity: 0; translate: calc(var(--qf-dir, 1) * 28px) 0; }']
+        },
+        fade: {
+            art: ['to { opacity: 0; scale: .96; }', 'from { opacity: 0; scale: 1.04; }'],
+            text: ['to { opacity: 0; }', 'from { opacity: 0; translate: 0 4px; }']
+        },
+        flip: {
+            art: ['to { rotate: y calc(var(--qf-dir, 1) * 90deg); }',
+                'from { rotate: y calc(var(--qf-dir, 1) * -90deg); }'],
+            text: ['to { opacity: 0; translate: 0 -12px; }', 'from { opacity: 0; translate: 0 14px; }']
+        },
+        pop: {
+            art: ['to { opacity: 0; scale: .86; }', 'from { opacity: 0; scale: .78; }'],
+            text: ['to { opacity: 0; scale: .94; }', 'from { opacity: 0; scale: .9; }']
+        },
+        // Clipped a little outside the box, so a shadow is not cut off.
+        wipe: {
+            art: ['from { clip-path: inset(-40px); } to { clip-path: inset(-40px -40px -40px 100%); }',
+                'from { clip-path: inset(-40px 100% -40px -40px); } to { clip-path: inset(-40px); }'],
+            text: ['from { clip-path: inset(-40px); } to { clip-path: inset(-40px -40px -40px 100%); }',
+                'from { clip-path: inset(-40px 100% -40px -40px); } to { clip-path: inset(-40px); }']
+        }
+    }[style];
+
+    // A wipe cannot be turned round with a sign, so a skip back gets its own pair.
+    const back = style === 'wipe' ? `
+@keyframes qf-art-out-back { from { clip-path: inset(-40px); } to { clip-path: inset(-40px 100% -40px -40px); } }
+@keyframes qf-art-in-back { from { clip-path: inset(-40px -40px -40px 100%); } to { clip-path: inset(-40px); } }
+@keyframes qf-text-out-back { from { clip-path: inset(-40px); } to { clip-path: inset(-40px 100% -40px -40px); } }
+@keyframes qf-text-in-back { from { clip-path: inset(-40px -40px -40px 100%); } to { clip-path: inset(-40px); } }
+
+.widget.dir-prev.song-out .cover,
+.widget.dir-prev.song-out .canvas { animation: ${spin}qf-art-out-back ${out} both; }
+.widget.dir-prev.song-out .title-wrapper { animation: qf-text-out-back ${out} .02s both; }
+.widget.dir-prev.song-out .artist-wrapper { animation: qf-text-out-back ${out} .04s both; }
+.widget.dir-prev.song-in .cover,
+.widget.dir-prev.song-in .canvas { animation: ${spin}qf-art-in-back ${inn} both; }
+.widget.dir-prev.song-in .title-wrapper { animation: qf-text-in-back ${inn} .05s both; }
+.widget.dir-prev.song-in .artist-wrapper { animation: qf-text-in-back ${inn} .1s both; }
+` : '';
+
+    // The album colors blend into the new song's instead of jumping: they
+    // are registered as colors, which is what lets a custom property animate.
+    // The widget's own fade is repeated here because this list replaces its.
+    const album = [['vibrant', '#1DB954'], ['dark', '#141419'], ['light', '#ffffff'], ['muted', 'rgba(255, 255, 255, .7)']];
+    const colors = album.map(([name, initial]) =>
+        `@property --album-${name} { syntax: '<color>'; inherits: true; initial-value: ${initial}; }`).join('\n');
+    const blend = album.map(([name]) => `--album-${name} .5s ease`).join(', ');
+
+    return `
+
+/* Changing songs: ${style} */
+
+${colors}
+
+.widget { transition: opacity .4s ease, transform .4s ease, ${blend}; }
+
+.widget.dir-prev { --qf-dir: -1; }${style === 'flip' ? `
+.widget.song-out,
+.widget.song-in { perspective: 900px; }` : ''}
+
+@keyframes qf-art-out { ${frames.art[0]} }
+@keyframes qf-art-in { ${frames.art[1]} }
+@keyframes qf-text-out { ${frames.text[0]} }
+@keyframes qf-text-in { ${frames.text[1]} }
+
+.widget.song-out .cover,
+.widget.song-out .canvas { animation: ${spin}qf-art-out ${out} both; }
+.widget.song-out .title-wrapper { animation: qf-text-out ${out} .02s both; }
+.widget.song-out .artist-wrapper { animation: qf-text-out ${out} .04s both; }
+
+.widget.song-in .cover,
+.widget.song-in .canvas { animation: ${spin}qf-art-in ${inn} both; }
+.widget.song-in .title-wrapper { animation: qf-text-in ${inn} .05s both; }
+.widget.song-in .artist-wrapper { animation: qf-text-in ${inn} .1s both; }
+${back}`;
+}
+
+/**
+ * The panel, when it is drawn in from the edge of the canvas.
+ *
+ * Normally the panel is the widget's own box, and the widget clips to it, so
+ * nothing can reach past its edge. Inset, the widget turns into a clear box
+ * the size of the canvas - still clipping there, at the edge of the OBS source
+ * - and the panel is a layer inside it. The space between the two is where a
+ * part sticks out over the panel's edge, like a record out of its sleeve.
+ *
+ * The layer is ::before, so it is first in the widget and under every part:
+ * the art and the cards behind it share its z-index of 0 and come later.
+ */
+function panelRules(canvas) {
+    if (!(canvas.inset || []).some(Boolean) || canvas.hidden) return '';
+
+    return `
+/* The panel, drawn in from the edge so parts can stick out over it */
+
+.widget::before {
+    content: '';
+    position: absolute;
+    inset: ${canvas.inset.map(side => side + 'px').join(' ')};
+    z-index: 0;
+    box-sizing: border-box;
+    background: ${canvasBackground(canvas)};
+    border: ${canvas.borderWidth}px solid ${canvas.borderColor};
+    border-radius: ${radiusCss(canvas)};
+    pointer-events: none;
+}
+`;
+}
+
+// What each part is drawn as, for stackRules().
+const STACK_SELECTORS = {
+    art: '.cover, .canvas',
+    title: '.title-wrapper',
+    artist: '.artist-wrapper',
+    progress: '.progress-container',
+    elapsed: '.elapsed-wrapper',
+    duration: '.duration-wrapper',
+    next: '.next-wrapper'
+};
+
+function stackSelector(key) {
+    if (key.startsWith('card:')) return '.card-' + key.slice(5);
+    if (key.startsWith('icon:')) return '.icon-' + key.slice(5);
+    if (key.startsWith('label:')) return '.qlabel-' + key.slice(6);
+    return STACK_SELECTORS[key];
+}
+
+/**
+ * The stacking, once the parts have been rearranged.
+ *
+ * Every rule above gives its part the z-index it has always had, which draws
+ * defaultStack(). A theme still in that order gets nothing here. One that has
+ * been rearranged gets a z-index for every part, last in the sheet so it wins,
+ * in steps of two: the canvas blur and dim then sit just over the art wherever
+ * it has gone, and the knob just over its bar.
+ */
+function stackRules(model) {
+    const order = stackOf(model);
+    if (order.join() === defaultStack(model).join()) return '';
+
+    const z = new Map(order.map((key, at) => [key, (at + 1) * 2]));
+    const rules = order.map(key => `${stackSelector(key)} { z-index: ${z.get(key)}; }`);
+
+    if (model.canvas.blur || model.canvas.dim) rules.push(`.widget::after { z-index: ${z.get('art') + 1}; }`);
+    if (moduleOf(model, 'progress').knob) rules.push(`.progress-knob { z-index: ${z.get('progress') + 1}; }`);
+    const art = moduleOf(model, 'art');
+    if (art.blur && !art.hidden) rules.push(`.art-blur { z-index: ${z.get('art') + 1}; }`);
+
+    return `
+
+/* Stacking, as arranged in the editor */
+
+${rules.join('\n')}
+`;
 }
 
 /**
@@ -1290,7 +2383,7 @@ function generateHtml(name, model) {
 </head>
 
 <body>
-    <div class="widget">
+    <div class="widget">${cardMarkup(model ? model.cards || [] : [])}
         <img class="cover">
         <video class="canvas" autoplay muted loop playsinline></video>
 
@@ -1314,7 +2407,7 @@ function generateHtml(name, model) {
 
         <div class="duration-wrapper">
             <div class="duration"></div>
-        </div>${iconMarkup(model ? model.icons || [] : [])}
+        </div>${iconMarkup(model ? model.icons || [] : [])}${model ? extraMarkup(model) : ''}
     </div>
 
     <script src="/app.js"></script>
@@ -1325,109 +2418,109 @@ function generateHtml(name, model) {
 }
 
 /**
- * Somewhere to start. A blank canvas is the least helpful thing to hand
- * someone, so "New" offers finished layouts to pull apart instead.
+ * A theme's page with its stylesheet written in and no script: something to
+ * draw a still preview of, as the premade gallery does. The song is filled in
+ * by whoever shows it.
  */
-const PRESETS = {
-    // The same design as the built-in default theme, which is generated from
-    // this (scripts/build-default-theme.js) so the two cannot drift apart.
-    default: {
-        label: 'Default',
-        description: 'Square art flush to the left edge, title and artist beside it, on an album-colored gradient.',
-        build: () => {
-            const model = defaultModel('Default');
+function previewHtml(model) {
+    const page = generateHtml('preview', model);
+    return page
+        .replace('<link id="theme" rel="stylesheet" href="/themes/preview/style.css">',
+            '<style>html, body { margin: 0; background: transparent; overflow: hidden; }\n' + generateCss(model) + '</style>')
+        .replace('\n    <script src="/app.js"></script>\n', '\n');
+}
 
-            Object.assign(model.canvas, { height: 160, borderWidth: 0, backgroundMode: 'gradient' });
+/* ----------------------------------------------------------- premades */
 
-            // Rounded only on the outside, so the art reads as the canvas's
-            // own left edge rather than a tile sitting on it.
-            Object.assign(moduleOf(model, 'art'), { x: 0, y: 0, w: 160, h: 160, corners: [24, 0, 0, 24], shadow: 44 });
-            Object.assign(moduleOf(model, 'title'), {
-                x: 200, y: 17, w: 448, h: 52, font: 'righteous', fontSize: 37, fontWeight: 400
-            });
-            Object.assign(moduleOf(model, 'artist'), { x: 201, y: 82, w: 448, fontSize: 21, fontWeight: 600 });
-            Object.assign(moduleOf(model, 'progress'), { x: 266, y: 131, w: 317, h: 15, trackColor: 'var(--album-light)' });
+/**
+ * The premade themes: finished designs to start from, because a blank canvas
+ * is the least helpful thing to hand someone.
+ *
+ * Each is a JSON file - a label, a description, a few tags, where it sorts,
+ * and a model - rather than code, so a premade is edited the same way a theme
+ * is, in the editor. They are read on every call rather than once at start,
+ * like everything else a person can change while Queueify runs.
+ *
+ * Every model goes through normalizeModel on the way out, so a premade can
+ * never hand the editor something a saved theme could not be.
+ */
+const PRESETS_DIR = process.env.QUEUEIFY_PRESETS_DIR || path.join(__dirname, 'presets');
 
-            // Elapsed flush with the text above, the length with the bar's far
-            // side. Both boxes fit 00:00, and past ten minutes elapsed is
-            // padded to match (clock() in widget/public/app.js), so the two
-            // gaps to the bar stay even.
-            const time = { y: 126, w: 58, h: 20, fontSize: 20 };
-            Object.assign(moduleOf(model, 'elapsed'), { ...time, x: 201, align: 'left' });
-            Object.assign(moduleOf(model, 'duration'), { ...time, x: 590, align: 'right' });
+function readPreset(id) {
+    const raw = JSON.parse(fs.readFileSync(path.join(PRESETS_DIR, id + '.json'), 'utf8'));
 
-            return model;
-        }
-    },
-
-    spiffy: {
-        label: 'Spiffy',
-        description: 'One slim row - title, waveform, artist, and a pill bar - on an album-colored gradient.',
-        build: () => {
-            const model = defaultModel('Spiffy');
-
-            Object.assign(model.canvas, {
-                width: 700, height: 73, radius: 28, borderWidth: 0, dim: 0.2,
-                backgroundMode: 'gradient', gradientAngle: 80,
-                backgroundTo: 'var(--album-muted)'
-            });
-
-            const mono = { font: 'share-tech-mono', fontSize: 27, fontWeight: 400, align: 'center' };
-
-            // Art and the clocks are there, just switched off - one click in
-            // the parts list brings them back without having to place them.
-            Object.assign(moduleOf(model, 'art'), { hidden: true, x: 10, y: 10, w: 53, h: 53, radius: 8, shadow: 8 });
-            Object.assign(moduleOf(model, 'title'), {
-                ...mono, x: 22, y: 20, w: 210, h: 32, color: 'var(--album-light)', letterSpacing: 0.5
-            });
-            Object.assign(moduleOf(model, 'artist'), { ...mono, x: 322, y: 20, w: 172, h: 32, opacity: 1 });
-            Object.assign(moduleOf(model, 'progress'), {
-                x: 556, y: 30, w: 122, h: 12,
-                trackColor: 'var(--album-muted)', fillColor: 'var(--album-light)'
-            });
-            Object.assign(moduleOf(model, 'elapsed'), { hidden: true, x: 86, y: 46, w: 32, h: 18, fontSize: 11 });
-            Object.assign(moduleOf(model, 'duration'), { hidden: true, x: 514, y: 46, w: 32, h: 18, fontSize: 11 });
-
-            const icon = (name, x) => Object.assign(defaultIcon(name), { x, y: 20, color: 'var(--album-muted)' });
-            model.icons = [icon('audio-lines', 261), icon('ellipsis-vertical', 509)];
-
-            return model;
-        }
-    },
-
-    stacked: {
-        label: 'Stacked',
-        description: 'Art on top, centered text underneath - good for a corner.',
-        build: () => {
-            const model = defaultModel('Stacked');
-
-            Object.assign(model.canvas, { width: 300, height: 400, radius: 20 });
-
-            Object.assign(moduleOf(model, 'art'), { x: 30, y: 26, w: 240, h: 240, radius: 16, shadow: 26 });
-            Object.assign(moduleOf(model, 'title'), {
-                x: 20, y: 288, w: 260, h: 32, fontSize: 21, align: 'center'
-            });
-            Object.assign(moduleOf(model, 'artist'), {
-                x: 20, y: 322, w: 260, h: 24, fontSize: 15, align: 'center', opacity: 0.8
-            });
-            Object.assign(moduleOf(model, 'progress'), { x: 40, y: 358, w: 220, h: 6 });
-            // 300px across is too narrow to flank a bar and still read, so
-            // these tuck under its ends instead.
-            Object.assign(moduleOf(model, 'elapsed'), { x: 40, y: 368, w: 46, h: 18, fontSize: 12, align: 'left' });
-            Object.assign(moduleOf(model, 'duration'), { x: 214, y: 368, w: 46, h: 18, fontSize: 12, align: 'right' });
-
-            return model;
-        }
-    }
-};
+    return {
+        id,
+        label: plainText(raw.label, id, 40) || id,
+        description: plainText(raw.description, '', 200),
+        tags: Array.isArray(raw.tags) ? raw.tags.map(tag => plainText(tag, '', 20)).filter(Boolean).slice(0, 4) : [],
+        order: number(raw.order, 1000, -1e6, 1e6),
+        model: normalizeModel(raw.model, { label: raw.label })
+    };
+}
 
 function listPresets() {
-    return Object.entries(PRESETS).map(([id, preset]) => ({
-        id,
-        label: preset.label,
-        description: preset.description,
-        model: normalizeModel(preset.build())
-    }));
+    let files = [];
+    try {
+        files = fs.readdirSync(PRESETS_DIR);
+    } catch {
+        return [];
+    }
+
+    const presets = [];
+
+    for (const file of files) {
+        const id = file.replace(/\.json$/, '');
+        if (id === file || !NAME_PATTERN.test(id)) continue;
+
+        try {
+            presets.push(readPreset(id));
+        } catch (err) {
+            // One broken file costs that premade, not the whole gallery.
+            console.error(`Premade theme ${file} could not be read:`, err.message);
+        }
+    }
+
+    return presets.sort((a, b) => a.order - b.order || a.label.localeCompare(b.label));
+}
+
+/** One premade's model, or an error naming it. */
+function presetModel(id) {
+    if (typeof id !== 'string' || !NAME_PATTERN.test(id)) {
+        throw new ThemeError(`There is no premade theme called "${id}".`, 'not_found');
+    }
+
+    try {
+        return readPreset(id).model;
+    } catch {
+        throw new ThemeError(`There is no premade theme called "${id}".`, 'not_found');
+    }
+}
+
+/**
+ * Writes a premade's model, keeping its label, description, tags and place.
+ *
+ * TEMPORARY - for polishing the premades in the editor. Only an existing
+ * premade can be written, never a new file, and the model goes through
+ * normalizeModel like any saved theme.
+ */
+async function savePreset(id, model) {
+    if (typeof id !== 'string' || !NAME_PATTERN.test(id)) {
+        throw new ThemeError(`There is no premade theme called "${id}".`, 'not_found');
+    }
+
+    const file = path.join(PRESETS_DIR, id + '.json');
+    let raw;
+    try {
+        raw = JSON.parse(await fsPromises.readFile(file, 'utf8'));
+    } catch {
+        throw new ThemeError(`There is no premade theme called "${id}".`, 'not_found');
+    }
+
+    const next = { ...raw, model: normalizeModel(model, { label: raw.label }) };
+    await fsPromises.writeFile(file, JSON.stringify(next, null, 2) + '\n');
+
+    return readPreset(id);
 }
 
 /* -------------------------------------------------------------- storage */
@@ -1567,6 +2660,51 @@ async function saveTheme(name, model) {
     return { name, model: normalized };
 }
 
+/**
+ * The saved themes with viewer rewards, or milestones, switched off. Themes
+ * made before rewards existed have both off, so a streamer with several
+ * would otherwise open each one in the editor. Built-in themes have them on.
+ */
+async function themesWithRewardsOff() {
+    const off = [];
+
+    for (const theme of await listThemes()) {
+        if (!theme.editable) continue;
+        let props;
+        try {
+            props = (await readModel(theme.name)).properties;
+        } catch {
+            // A damaged model cannot be switched on either; leave it be.
+            continue;
+        }
+        if (!props.perks || !props.milestone.enabled) {
+            off.push({ name: theme.name, label: theme.label, effects: props.perks, milestones: props.milestone.enabled });
+        }
+    }
+
+    return off;
+}
+
+/** Switches reward effects and milestones on in every saved theme. */
+async function turnOnRewardsEverywhere() {
+    const changed = [];
+    const failed = [];
+
+    for (const theme of await themesWithRewardsOff()) {
+        try {
+            const model = await readModel(theme.name);
+            model.properties.perks = true;
+            model.properties.milestone.enabled = true;
+            await saveTheme(theme.name, model);
+            changed.push(theme.name);
+        } catch (err) {
+            failed.push({ name: theme.name, error: err.message });
+        }
+    }
+
+    return { changed, failed };
+}
+
 async function deleteTheme(name) {
     assertName(name);
 
@@ -1586,27 +2724,41 @@ async function deleteTheme(name) {
 module.exports = {
     THEMES_DIR,
     canvasSizeOf,
-    PRESETS,
+    PRESETS_DIR,
     listPresets,
+    presetModel,
+    savePreset,
     MODULE_TYPES,
     TIME_TYPES,
     TEXT_TYPES,
     MODEL_VERSION,
+    CARD_LIMIT,
+    TRANSITIONS,
+    AMBIENCES,
+    LABEL_LIMIT,
+    NEXT_LIMIT,
+    LABEL_TOKENS,
     FONTS,
     FONT_CATEGORIES,
     googleFonts,
     googleFontsHref,
     ThemeError,
     defaultModel,
+    defaultStack,
+    stackOf,
     normalizeModel,
     generateCss,
     generateHtml,
+    extraMarkup,
+    previewHtml,
     iconCatalog,
     iconBody,
     listThemes,
     readModel,
     saveTheme,
     deleteTheme,
+    themesWithRewardsOff,
+    turnOnRewardsEverywhere,
     isEditable,
     exists
 };

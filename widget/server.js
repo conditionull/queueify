@@ -7,6 +7,11 @@ const app = express();
 const { getCurrentTrack } = require("../spotify");
 
 let widgetConfig = {};
+
+// Where the Up next row and the requester come from - services/upNext.js,
+// handed in by index.js. Left unset, the widget simply has no queue to show,
+// which is also what keeps a test of this server away from the real one.
+let queueSource = null;
 let widgetConfigLoaded = false;
 const MAX_THEME_CLIENTS = 50;
 const themeClients = [];
@@ -277,57 +282,33 @@ const widgetSongCache = {
     pending: null
 };
 
+/**
+ * What is playing, for the widget.
+ *
+ * `?queue=1` adds the queue: what plays next, who requested the song
+ * playing, and the perk their song plays as it starts. Only a theme that
+ * shows one of those asks for it (app.js decides from the page), because
+ * reading Spotify's queue is a request of its own and a theme without Up
+ * next, a {requester} label, or perks has no use for it.
+ */
 app.get("/api/widget/song", async (req, res) => {
     try {
-        const now = Date.now();
-        if (widgetSongCache.expiresAt > now && widgetSongCache.value) {
-            return res.json(widgetSongCache.value);
+        const song = await currentSong();
+        if (req.query.queue !== "1" || !song.isPlaying) return res.json(song);
+
+        let queue = { requester: null, upNext: [] };
+        try {
+            if (queueSource) queue = (await queueSource({ id: song.trackId })) || queue;
+        } catch (err) {
+            console.error("Up next could not be read:", err.message);
         }
 
-        if (widgetSongCache.pending) {
-            const cached = await widgetSongCache.pending;
-            return res.json(cached);
-        }
-
-        widgetSongCache.pending = (async () => {
-            try {
-                const track = await getCurrentTrack();
-
-                let payload;
-                if (!track || !track.isPlaying) {
-                    payload = {
-                        title: null,
-                        artist: null,
-                        cover: null,
-                        durationMs: 0,
-                        progressMs: 0,
-                        isPlaying: false,
-                        fetchedAt: Date.now()
-                    };
-                } else {
-                    payload = {
-                        title: track.name,
-                        artist: track.artists,
-                        cover: track.cover,
-                        media: track.media,
-                        durationMs: track.durationMs,
-                        progressMs: track.progressMs,
-                        isPlaying: track.isPlaying,
-                        fetchedAt: track.fetchedAt,
-                        palette: track.palette
-                    };
-                }
-
-                widgetSongCache.value = payload;
-                widgetSongCache.expiresAt = Date.now() + 2000;
-                return payload;
-            } finally {
-                widgetSongCache.pending = null;
-            }
-        })();
-
-        const data = await widgetSongCache.pending;
-        res.json(data);
+        res.json({
+            ...song,
+            requester: queue.requester || null,
+            perk: queue.perk || null,
+            upNext: Array.isArray(queue.upNext) ? queue.upNext : []
+        });
     } catch (err) {
         console.error("Widget API failed:", err);
 
@@ -337,8 +318,57 @@ app.get("/api/widget/song", async (req, res) => {
     }
 });
 
+async function currentSong() {
+    const now = Date.now();
+    if (widgetSongCache.expiresAt > now && widgetSongCache.value) return widgetSongCache.value;
+    if (widgetSongCache.pending) return widgetSongCache.pending;
 
-function startWidgetServer() {
+    widgetSongCache.pending = (async () => {
+        try {
+            const track = await getCurrentTrack();
+
+            let payload;
+            if (!track || !track.isPlaying) {
+                payload = {
+                    title: null,
+                    artist: null,
+                    cover: null,
+                    durationMs: 0,
+                    progressMs: 0,
+                    isPlaying: false,
+                    fetchedAt: Date.now()
+                };
+            } else {
+                payload = {
+                    // What the queue is read against. Not drawn.
+                    trackId: track.id,
+                    title: track.name,
+                    artist: track.artists,
+                    cover: track.cover,
+                    media: track.media,
+                    durationMs: track.durationMs,
+                    progressMs: track.progressMs,
+                    isPlaying: track.isPlaying,
+                    fetchedAt: track.fetchedAt,
+                    palette: track.palette
+                };
+            }
+
+            widgetSongCache.value = payload;
+            widgetSongCache.expiresAt = Date.now() + 2000;
+            return payload;
+        } finally {
+            widgetSongCache.pending = null;
+        }
+    })();
+
+    return widgetSongCache.pending;
+}
+
+
+function startWidgetServer({ queue } = {}) {
+    queueSource = typeof queue === 'function' ? queue : null;
+
     // Overridable so a test never binds the port a running Queueify is using -
     // on Windows a second bind succeeds and the two fight over requests. Note
     // that 0 is a real answer (pick a free port), so `||` will not do here.

@@ -3,6 +3,7 @@ const syncQueue = require("./syncQueue.js")
 const { sayMessage } = require('./messages');
 const refundRedeem = require('./refundRedeem');
 const history = require('./history');
+const perks = require('./perks');
 
 const activeQueueRequests = new Set();
 
@@ -195,7 +196,8 @@ async function queueSongInternal({
 
     setTimeout(async () => {
         if (status === "ok") {
-            state.addPendingTrack(result.track, username);
+            // Counted before it is logged, so the count and the log agree.
+            state.addPendingTrack(result.track, username, perks.accept(requester, username));
             state.rememberRecentRequest(username, result.track.id);
             sayMessage(client, channel, 'queue.added', {
                 username,

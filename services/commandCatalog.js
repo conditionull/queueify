@@ -64,6 +64,16 @@ const HELP = {
             ['<name>', 'Switch to that theme']
         ]
     },
+    fx: {
+        group: 'Widget',
+        summary: 'The effect a sub\'s songs play when they start on stream.',
+        forms: [
+            ['', 'Link to a page that previews the effects'],
+            ['<effect>', 'Use that effect (subs only)'],
+            ['<effect> <colors>', 'In those colors, such as gold or rainbow (subs only)'],
+            ['off', 'Back to the default effect']
+        ]
+    },
 
     deny: { group: 'Moderation', summary: 'Stop a viewer from queueing songs.', forms: [['<username>', '']] },
     allow: { group: 'Moderation', summary: 'Let a blocked viewer queue songs again.', forms: [['<username>', '']] },

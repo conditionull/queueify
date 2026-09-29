@@ -73,6 +73,16 @@ const defaultMessages = {
         availableThemes: 'Current theme: {{current}} | Available themes: {{themes}}', unknownTheme: 'Unknown theme "{{theme}}". Available: {{themes}}',
         themeAlreadySet: 'Widget theme is already set to {{theme}}', themeChanged: 'Widget theme changed to {{theme}}',
         position: 'Position: X={{x}}, Y={{y}}'
+    },
+    perks: {
+        link: '@{{username}} subs can pick an effect for when their songs start: {{url}}',
+        set: '@{{username}} your songs now start with {{effect}} DinoDance',
+        cleared: '@{{username}} your songs are back to the default effect',
+        notSub: '@{{username}} picking an effect is a sub perk. Have a look at them here: {{url}}',
+        unknown: '@{{username}} there is no effect called "{{effect}}". Pick one here: {{url}}',
+        unknownColor: '@{{username}} there are no colors called "{{colors}}". Try one of: {{list}}',
+        needsTier: '@{{username}} {{effect}} is for Tier {{tier}} subs and up. Pick another here: {{url}}',
+        disabled: '@{{username}} song effects are turned off on this channel'
     }
 };
 

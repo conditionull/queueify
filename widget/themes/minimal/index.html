@@ -2,32 +2,46 @@
 <html>
 
 <head>
-    <link rel="stylesheet" href="/themes/minimal/style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@600&display=swap">
+    <link id="theme" rel="stylesheet" href="/themes/minimal/style.css">
 </head>
 
 <body>
     <div class="widget">
-        <div class="info">
-            <img class="play-icon" src="/themes/minimal/play.svg">
+        <img class="cover">
+        <video class="canvas" autoplay muted loop playsinline></video>
 
-            <div class="title-wrapper">
-                <div class="title-container">
-                    <div class="title"></div>
-                </div>
-            </div>
-
-            <img class="dot" src="/themes/minimal/dot.svg">
-            
-            <div class="artist-wrapper">
-                <div class="artist"></div>
-            </div>
-
-            <div class="progress-container">
-                <div class="progress"></div>
+        <div class="title-wrapper">
+            <div class="title-container">
+                <div class="title"></div>
             </div>
         </div>
 
+        <div class="artist-wrapper">
+            <div class="artist"></div>
+        </div>
+
+        <div class="progress-container">
+            <div class="progress"></div>
+        </div>
+
+        <div class="elapsed-wrapper">
+            <div class="elapsed"></div>
+        </div>
+
+        <div class="duration-wrapper">
+            <div class="duration"></div>
+        </div>
+        <div class="icon icon-i0">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M2 10v3" /> <path d="M6 6v11" /> <path d="M10 3v18" /> <path d="M14 8v7" /> <path d="M18 5v13" /> <path d="M22 10v3" /></svg>
+        </div>
+        <div class="icon icon-i1">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1" /> <circle cx="12" cy="5" r="1" /> <circle cx="12" cy="19" r="1" /></svg>
+        </div>
     </div>
+
     <script src="/app.js"></script>
 </body>
 

@@ -1,6 +1,7 @@
 const queueSong = require("../services/queueSong");
 const syncQueue = require("../services/syncQueue");
 const { sayMessage, message } = require('../services/messages');
+const { subTierOf } = require('../services/perks');
 
 function cleanArg(arg) {
     return arg.replace(/[\u034F\u061C\u115F\u1160\u17B4\u17B5\u180E\u200B-\u200F\u202A-\u202E\u2060-\u206F\uFEFF]/g, '');
@@ -74,6 +75,7 @@ module.exports = {
                 userLogin: tags?.username ?? username,
                 userName: tags?.['display-name'] ?? username,
                 sub: Boolean(tags?.subscriber),
+                subTier: subTierOf(tags),
                 mod: Boolean(tags?.mod)
             }
         });

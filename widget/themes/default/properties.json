@@ -9,5 +9,17 @@
         "enabled": true,
         "speed": 70,
         "pauseDuration": 7
+    },
+    "transition": "none",
+    "perks": true,
+    "milestone": {
+        "enabled": true,
+        "seconds": 4
+    },
+    "ambience": {
+        "style": "none",
+        "amount": 1,
+        "speed": 1,
+        "colors": "album"
     }
 }

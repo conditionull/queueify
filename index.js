@@ -7,11 +7,13 @@ const state = require('./core/state');
 
 const startEventSub = require("./eventsub");
 const startWidgetServer = require("./widget/server");
+const { createUpNext } = require('./services/upNext');
 
 const obs = require("./services/obs");
 const { sayMessage } = require('./services/messages');
 const aliases = require('./services/aliases');
 const history = require('./services/history');
+const perks = require('./services/perks');
 const commandCooldowns = require('./services/commandCooldowns');
 const userSettings = require('./config/userSettings');
 const { getVerifiedAccessToken } = require('./services/twitchAuth');
@@ -211,7 +213,9 @@ async function main() {
   const startedDashboard = await ensureSetup();
 
   try {
-    await startWidgetServer();
+    await startWidgetServer({
+      queue: createUpNext({ state, syncWithQueue: require('./services/syncQueue').syncWithQueue })
+    });
   } catch (err) {
     if (reportBusyPort(err, 'the widget')) process.exit(1);
     throw err;
@@ -307,6 +311,10 @@ async function handleMessage(client, channel, tags, message, self) {
   if (self) return;
 
   message = sanitizeChatMessage(message);
+
+  // Every message, not only commands: a channel point redeem does not say
+  // whether somebody subscribes, so this is how their perk knows.
+  perks.noteChatter(tags);
 
   const broadcaster = process.env.TWITCH_BROADCASTER_USERNAME?.toLowerCase();
   const username = tags.username.toLowerCase();

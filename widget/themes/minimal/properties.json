@@ -2,16 +2,24 @@
     "media": {
         "mode": "canvas"
     },
-
     "showProgress": true,
     "updateInterval": 5000,
-    "widgetWidth": "400px",
-    
     "hideAfter": 5,
-    
     "scroll": {
         "enabled": true,
         "speed": 30,
         "pauseDuration": 7
+    },
+    "transition": "slide",
+    "perks": true,
+    "milestone": {
+        "enabled": true,
+        "seconds": 4
+    },
+    "ambience": {
+        "style": "none",
+        "amount": 1,
+        "speed": 1,
+        "colors": "album"
     }
 }

@@ -105,6 +105,188 @@ let currentSong = null;
 // Whether the first answer about what is playing has come back yet.
 let ready = false;
 
+// Changing songs. The track on screen and the ones before it, so a skip back
+// can run the other way: Spotify says what is playing, not how it got there.
+let shownTrack = null;
+const trackHistory = [];
+let changingSong = false;
+
+// How long the theme's out and in animations take, stagger included. These
+// move together with transitionRules() in services/themeStore.js.
+const SONG_OUT_MS = 240;
+const SONG_IN_MS = 640;
+
+const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
+
+// Viewer rewards: the effect a viewer's song starts with, and the milestone
+// takeover. The server says what (services/perks.js); effects.js draws it,
+// and a theme's ambience too. That file is only fetched for a theme that
+// uses one or the other.
+let effectsLoading = null;
+// The request the reward was last played for - or, on the first answer, the
+// one already playing, since a page reloaded mid-song must not play it again.
+let perkPlayedFor;
+
+/**
+ * Which request this is: the song, and whose request of it. The same song
+ * requested again - by somebody else, or later by the same viewer - is a new
+ * one, with a reward of its own.
+ */
+function requestKey(song) {
+    const perk = song.perk;
+    return (song.trackId || "") + (perk ? "|" + perk.name + "#" + perk.number : "");
+}
+// The theme's ambience, while it runs.
+let ambienceRunning = null;
+
+function loadEffects() {
+    if (window.QueueifyFx) return Promise.resolve(true);
+
+    if (!effectsLoading) {
+        effectsLoading = new Promise(resolve => {
+            const script = document.createElement("script");
+            script.src = "/effects.js";
+            script.onload = () => resolve(true);
+            script.onerror = () => {
+                effectsLoading = null;
+                resolve(false);
+            };
+            document.head.appendChild(script);
+        });
+    }
+
+    return effectsLoading;
+}
+
+/** The album colors as the page has them now, for effects.js. */
+function albumColors() {
+    const root = getComputedStyle(document.documentElement);
+    return {
+        vibrant: root.getPropertyValue("--album-vibrant").trim(),
+        light: root.getPropertyValue("--album-light").trim(),
+        dark: root.getPropertyValue("--album-dark").trim()
+    };
+}
+
+/**
+ * Plays the song's reward, once, as it starts.
+ *
+ * Only for a song this page saw begin, and only near its start: a reward is
+ * for the moment somebody's song comes on, and a reload - a scene switch -
+ * is not that moment.
+ */
+function maybePlayPerk(song, delayMs) {
+    const milestones = Boolean((themeProperties.milestone || {}).enabled);
+    if (!themeProperties.perks && !milestones) return;
+
+    if (perkPlayedFor === undefined) {
+        perkPlayedFor = song.isPlaying && song.trackId ? requestKey(song) : null;
+        return;
+    }
+
+    if (!song.isPlaying || !song.trackId) return;
+
+    const key = requestKey(song);
+    if (!song.perk || perkPlayedFor === key || song.progressMs > 20000) return;
+    perkPlayedFor = key;
+
+    // The theme can have one half without the other.
+    const perk = {
+        ...song.perk,
+        effect: themeProperties.perks ? song.perk.effect : null,
+        milestone: milestones ? song.perk.milestone : null
+    };
+    if (!perk.effect && !perk.milestone) return;
+
+    loadEffects().then(ok => {
+        if (!ok) return;
+        setTimeout(() => playPerk(perk), delayMs);
+    });
+}
+
+function playPerk(perk) {
+    const colors = albumColors();
+    const widget = document.querySelector(".widget");
+    const play = from => perk.effect && QueueifyFx.play(perk.effect, {
+        from, target: widget, colors, power: perk.power, style: perk.style || {}, scale: RENDER_SCALE
+    });
+
+    if (!perk.milestone) {
+        play(null);
+        return;
+    }
+
+    // A milestone takes the widget over for a few seconds. The effect bursts
+    // out of its number - or, if it moves the widget's own parts, waits for
+    // the widget to be back.
+    const title = document.querySelector(".title");
+    const shown = QueueifyFx.milestone({ number: perk.milestone, name: perk.name }, {
+        target: widget,
+        colors,
+        font: title ? getComputedStyle(title).fontFamily : "",
+        seconds: (themeProperties.milestone || {}).seconds
+    });
+
+    if (QueueifyFx.groupOf(perk.effect) === "widget") shown.done.then(() => play(null));
+    else setTimeout(() => play(shown.origin), 160);
+}
+
+/**
+ * The theme's ambience runs while music plays, and only then: it stops
+ * when the song does, so it costs nothing in between.
+ */
+function syncAmbience(playing) {
+    const settings = themeProperties.ambience || {};
+    const wanted = playing && settings.style && settings.style !== "none";
+
+    if (!wanted) {
+        if (ambienceRunning) ambienceRunning.stop();
+        ambienceRunning = null;
+        return;
+    }
+
+    if (ambienceRunning) {
+        ambienceRunning.colors(albumColors());
+        return;
+    }
+
+    loadEffects().then(ok => {
+        if (!ok || ambienceRunning || !isPlaying) return;
+        ambienceRunning = QueueifyFx.ambience(settings.style, {
+            target: document.querySelector(".widget"),
+            colors: albumColors(),
+            palette: settings.colors,
+            amount: settings.amount,
+            speed: settings.speed,
+            scale: RENDER_SCALE
+        });
+    });
+}
+
+/**
+ * The new cover, fetched and decoded while the old one goes out, so it is
+ * ready the moment it is needed. A slow one is not waited for past half a
+ * second - better the art arrives a beat late than the whole change stalls.
+ */
+function preloadCover(song) {
+    if (!song.cover) return Promise.resolve();
+    const img = new Image();
+    img.src = song.cover;
+    return Promise.race([img.decode().catch(() => {}), wait(500)]);
+}
+
+/** Back, if the new song is the one that was on before this one; otherwise on. */
+function songDirection(trackId) {
+    if (trackHistory.length > 1 && trackHistory[trackHistory.length - 2] === trackId) {
+        trackHistory.pop();
+        return "prev";
+    }
+
+    trackHistory.push(trackId);
+    if (trackHistory.length > 20) trackHistory.shift();
+    return "next";
+}
+
 /**
  * Nothing is drawn until there is something to draw.
  *
@@ -192,7 +374,7 @@ async function updateSong() {
     let song;
 
     try {
-        const res = await fetch("/api/widget/song");
+        const res = await fetch(wantsQueue() ? "/api/widget/song?queue=1" : "/api/widget/song");
         song = await res.json();
     } catch (err) {
         // Queueify restarting, or Spotify not answering. The interval tries
@@ -203,6 +385,32 @@ async function updateSong() {
     }
 
     console.log("SONG:", song);
+
+    const widget = document.querySelector(".widget");
+
+    // A new song on a widget already showing one: the old one goes out first,
+    // and nothing about the new one - its colors included - is drawn until it
+    // has. A theme without an animation just changes, as it always did.
+    const changed = Boolean(song.isPlaying && song.trackId && shownTrack && song.trackId !== shownTrack);
+    const direction = changed ? songDirection(song.trackId) : "next";
+    const animate = changed && !changingSong && isPlaying && ready &&
+        (themeProperties.transition || "none") !== "none" && !widget.classList.contains("hidden");
+
+    if (animate) {
+        changingSong = true;
+        widget.classList.remove("song-in");
+        widget.classList.toggle("dir-prev", direction === "prev");
+        widget.classList.add("song-out");
+        await Promise.all([wait(SONG_OUT_MS), preloadCover(song)]);
+    }
+
+    if (song.isPlaying && song.trackId) {
+        if (!shownTrack) trackHistory.push(song.trackId);
+        shownTrack = song.trackId;
+    }
+
+    // After the song change has landed, so the burst comes out of the new art.
+    maybePlayPerk(song, animate ? SONG_IN_MS - 200 : 0);
 
     currentSong = song;
 
@@ -232,6 +440,9 @@ async function updateSong() {
 
     }
 
+    // The spin on the art and the drift of a squiggle bar stop with the music.
+    widget.classList.toggle("paused", !song.isPlaying);
+
     if (!song.isPlaying) {
         if (isPlaying) {
             isPlaying = false;
@@ -243,6 +454,7 @@ async function updateSong() {
         // page cannot flash an empty panel while it waits for one.
         if (!ready && themeProperties.hideAfter === -1) showWidget();
 
+        syncAmbience(false);
         ready = true;
         return;
     }
@@ -253,6 +465,7 @@ async function updateSong() {
     }
 
     ready = true;
+    syncAmbience(true);
 
 
     if (!themeProperties.showProgress) {
@@ -261,6 +474,9 @@ async function updateSong() {
 
     const title = document.querySelector(".title");
     const titleContainer = document.querySelector(".title-container");
+
+    renderLabels(song);
+    renderUpNext(song);
 
     title.textContent = song.title;
 
@@ -277,7 +493,9 @@ async function updateSong() {
 
     if (useCanvas) {
         if (canvas) {
-            canvas.src = song.media.url;
+            // Only a new clip: setting the same source again restarts it, and
+            // this runs every few seconds.
+            if (canvas.getAttribute("src") !== song.media.url) canvas.src = song.media.url;
             canvas.style.display = "block";
         }
 
@@ -293,6 +511,18 @@ async function updateSong() {
         if (canvas) {
             canvas.style.display = "none";
         }
+    }
+
+    if (animate) {
+        widget.classList.remove("song-out");
+        // A layout between the two, or the browser folds them into one change
+        // and the way in never plays.
+        void widget.offsetWidth;
+        widget.classList.add("song-in");
+        setTimeout(() => {
+            widget.classList.remove("song-in", "dir-prev");
+            changingSong = false;
+        }, SONG_IN_MS);
     }
 
     requestAnimationFrame(() => {
@@ -427,9 +657,110 @@ async function updateSong() {
 
 
 
+/**
+ * Whether this theme shows anything from the queue - an Up next row, a label
+ * naming the requester, or perks. Reading the queue costs a Spotify request,
+ * so a theme that shows none of them never asks for it.
+ */
+function wantsQueue() {
+    if (themeProperties && (themeProperties.perks || (themeProperties.milestone || {}).enabled)) return true;
+    if (document.querySelector(".next-wrapper")) return true;
+    return [...document.querySelectorAll(".qlabel")].some(label => (label.dataset.text || "").includes("{requester}"));
+}
+
+/**
+ * Labels: text the theme wrote, with {requester} filled in for this song.
+ *
+ * The text as written lives in data-text, so every song starts from it again.
+ * A label that asks for the requester fades out when nobody requested the
+ * song, rather than saying "Requested by" and then nothing.
+ */
+function renderLabels(song) {
+    for (const label of document.querySelectorAll(".qlabel")) {
+        const template = label.dataset.text || "";
+        const wantsRequester = template.includes("{requester}");
+        const value = template.replace(/\{requester\}/g, song.requester || "");
+
+        const text = label.querySelector(".qlabel-text");
+        if (text && text.textContent !== value) text.textContent = value;
+
+        label.classList.toggle("is-empty", wantsRequester && !song.requester);
+    }
+}
+
+// What the Up next row is showing, so a poll that brings the same queue back
+// does not rebuild it - rebuilding would replay the chips' entrance.
+let nextShown = "";
+
+/**
+ * The Up next row: a chip per queued request, and only while there are some.
+ *
+ * `has-next` on the widget is what fades the row in and out (see the theme's
+ * stylesheet). Emptying the list waits for that fade, so the chips go out
+ * with it instead of vanishing first and leaving an empty row to fade.
+ */
+function renderUpNext(song) {
+    const wrapper = document.querySelector(".next-wrapper");
+    if (!wrapper) return;
+
+    const list = wrapper.querySelector(".next-list");
+    const count = Number(wrapper.dataset.count) || 2;
+    // Everything queued in Spotify, or only what chat asked for.
+    const items = (Array.isArray(song.upNext) ? song.upNext : [])
+        .filter(item => wrapper.dataset.source !== "requests" || item.requester)
+        .slice(0, count);
+
+    document.querySelector(".widget").classList.toggle("has-next", items.length > 0);
+
+    const key = JSON.stringify(items);
+    if (key === nextShown) return;
+    nextShown = key;
+
+    if (!items.length) {
+        setTimeout(() => {
+            if (nextShown === key) list.replaceChildren();
+        }, 600);
+        return;
+    }
+
+    list.replaceChildren(...items.map(item => nextChip(item, wrapper.dataset)));
+}
+
+function nextChip(item, options) {
+    const chip = document.createElement("span");
+    chip.className = "next-item";
+
+    if (options.thumbs === "1" && item.cover) {
+        const thumb = document.createElement("img");
+        thumb.className = "next-thumb";
+        thumb.alt = "";
+        thumb.src = item.cover;
+        chip.classList.add("has-thumb");
+        chip.append(thumb);
+    }
+
+    const text = document.createElement("span");
+    text.className = "next-text";
+    text.textContent = item.artist ? `${item.title} · ${item.artist}` : item.title;
+    chip.append(text);
+
+    if (options.requester === "1" && item.requester) {
+        const by = document.createElement("span");
+        by.className = "next-by";
+        by.textContent = item.requester;
+        chip.append(by);
+    }
+
+    return chip;
+}
+
 async function init() {
     await refreshThemeFromServer();
     themeProperties = await loadThemeProperties();
+    // Fetched now rather than when the first perk plays, so that one is on time.
+    const ambience = themeProperties.ambience || {};
+    const milestones = (themeProperties.milestone || {}).enabled;
+    if (themeProperties.perks || milestones || (ambience.style && ambience.style !== "none")) loadEffects();
 
     updateSong();
 
@@ -519,11 +850,20 @@ function updateProgress() {
     setText(".duration", clock(currentSong.durationMs));
 
     if (!themeProperties.showProgress) {
+        const knob = document.querySelector(".progress-knob");
+        if (knob) knob.style.display = "none";
         return;
     }
 
     const percent =
         (progressMs / currentSong.durationMs) * 100;
+
+    // How far through, 0 to 1, for the parts that are placed along the bar
+    // rather than inside it: the knob, and the plain line after a squiggle.
+    document.querySelector(".widget").style.setProperty(
+        "--progress",
+        String(Math.min(percent, 100) / 100)
+    );
 
 
     document.querySelector(".progress").style.width =

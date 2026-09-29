@@ -437,7 +437,8 @@ test('an imported file is clamped like anything else', () => {
 
         assert.ok(model.label.length <= 60);
         assert.strictEqual(model.canvas.width, 1920);
-        assert.strictEqual(model.canvas.height, 40);
+        // 30 at the least: the built-in minimal pill, recreated as a premade, is 36.
+        assert.strictEqual(model.canvas.height, 30);
         assert.strictEqual(model.canvas.backgroundMode, 'solid');
         assert.strictEqual(model.canvas.gradientAngle, 360);
 
@@ -589,6 +590,48 @@ test('the fade works the same over a flat color, a gradient, or no panel at all'
             // No colored overlay to disagree with the background.
             assert.ok(!css.includes('.title-wrapper::before'), `${name} should not paint over the panel`);
         }
+    } finally {
+        cleanup(dir);
+    }
+});
+
+test('rewards can be switched on in every saved theme at once', async () => {
+    const { store, dir } = freshStore();
+
+    try {
+        const old = store.defaultModel('Old one');
+        old.properties.perks = false;
+        old.properties.milestone.enabled = false;
+        await store.saveTheme('old-one', old);
+
+        const slim = store.defaultModel('Slim');
+        slim.properties.milestone.enabled = false;
+        slim.properties.milestone.seconds = 6;
+        await store.saveTheme('slim', slim);
+
+        await store.saveTheme('fine', store.defaultModel('Fine'));
+        writeBuiltIn(dir, 'handmade');
+        // A damaged model is left alone, not a reason to fail.
+        fs.mkdirSync(path.join(dir, 'broken'));
+        fs.writeFileSync(path.join(dir, 'broken', 'index.html'), '<div class="widget"></div>');
+        fs.writeFileSync(path.join(dir, 'broken', 'theme.json'), '{ nope');
+
+        const off = await store.themesWithRewardsOff();
+        assert.deepStrictEqual(off.map(theme => [theme.name, theme.effects, theme.milestones]),
+            [['old-one', false, false], ['slim', true, false]]);
+
+        const result = await store.turnOnRewardsEverywhere();
+        assert.deepStrictEqual(result, { changed: ['old-one', 'slim'], failed: [] });
+        assert.deepStrictEqual(await store.themesWithRewardsOff(), []);
+
+        const saved = await store.readModel('slim');
+        assert.strictEqual(saved.properties.perks, true);
+        assert.deepStrictEqual(saved.properties.milestone, { enabled: true, seconds: 6 });
+        const props = JSON.parse(fs.readFileSync(path.join(dir, 'old-one', 'properties.json'), 'utf8'));
+        assert.strictEqual(props.perks, true);
+        assert.strictEqual(props.milestone.enabled, true);
+        // The hand-written theme is untouched.
+        assert.strictEqual(fs.readFileSync(path.join(dir, 'handmade', 'properties.json'), 'utf8'), '{}');
     } finally {
         cleanup(dir);
     }

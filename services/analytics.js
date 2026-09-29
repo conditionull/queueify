@@ -615,5 +615,8 @@ module.exports = {
     getLeaderboards,
     getSessions,
     clearCache,
+    // For perks (services/perks.js), which counts people the same way.
+    buildLoginIndex,
+    identityKey,
     SESSION_GAP_MS
 };

@@ -281,10 +281,100 @@
   .card > header { padding-inline: var(--d-gutter); background: color-mix(in srgb, var(--ui-bg-elevated) 35%, transparent); }
   .card .body { padding-inline: var(--d-gutter); }
 
+  /* ---------------------------------------------------- viewer rewards */
+
+  .fx-stage { position: relative; height: 150px; margin: 14px 0 4px; }
+  .fx-stage .fx-widget {
+    position: absolute; inset: 0; border-radius: 14px; overflow: hidden;
+    background: linear-gradient(135deg, #1c2150, #0e1024); color: #fff;
+  }
+  .fx-widget .fx-art {
+    position: absolute; left: 14px; top: 14px; bottom: 14px; aspect-ratio: 1; border-radius: 10px;
+    background: linear-gradient(135deg, #8c9bff, #3b5bdb); box-shadow: 0 6px 18px rgba(0, 0, 0, .35);
+  }
+  .fx-widget .fx-title { position: absolute; left: 150px; top: 38px; font-size: 20px; font-weight: 700; }
+  .fx-widget .fx-artist { position: absolute; left: 150px; top: 68px; font-size: 14px; color: rgba(255, 255, 255, .65); }
+  .fx-widget .fx-bar {
+    position: absolute; left: 150px; right: 24px; bottom: 30px; height: 6px; border-radius: 3px;
+    background: linear-gradient(90deg, #7b8cff 45%, rgba(255, 255, 255, .15) 45%);
+  }
+  .fx-groups, .fx-allowed { display: grid; gap: 10px; padding: 12px 0 8px; }
+  .fx-group { display: grid; grid-template-columns: 130px 1fr; gap: 10px; align-items: start; }
+  .fx-group-label { padding-top: 6px; font-size: 12px; font-weight: 600; color: var(--faint); text-transform: uppercase; letter-spacing: .06em; }
+  .fx-group-label.style-group { margin: 14px 0 2px; padding: 0; }
+  .fx-buttons { display: flex; flex-wrap: wrap; gap: 6px; }
+  @media (max-width: 640px) { .fx-group { grid-template-columns: 1fr; gap: 4px; } }
+  .fx-pick {
+    display: inline-flex; align-items: center; gap: 6px; padding: 5px 11px;
+    border: 1px solid var(--line); border-radius: 999px; background: var(--surface-2);
+    color: var(--text); font: inherit; font-size: 13px; cursor: pointer;
+  }
+  .fx-pick:hover { border-color: var(--ui-border-accented); color: var(--ui-text-highlighted); }
+  .fx-pick[aria-pressed="true"] {
+    border-color: var(--accent); color: var(--ui-text-highlighted);
+    background: color-mix(in srgb, var(--accent) 16%, transparent);
+  }
+  .fx-pick.fx-milestone { border-color: color-mix(in srgb, var(--accent) 55%, transparent); }
+  details.card.fold > summary {
+    display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; cursor: pointer; list-style: none;
+    padding: 16px var(--d-gutter, 18px); background: color-mix(in srgb, var(--ui-bg-elevated) 35%, transparent);
+  }
+  details.card.fold > summary::-webkit-details-marker { display: none; }
+  details.card.fold > summary::before { content: '›'; color: var(--faint); transition: rotate .15s; display: inline-block; }
+  details.card.fold[open] > summary::before { rotate: 90deg; }
+  details.card.fold > summary h2 { margin: 0; font-size: 16px; font-weight: 600; color: var(--ui-text-highlighted); }
+  details.card.fold > summary .sub { color: var(--faint); font-size: 13px; }
+  .sub-defaults { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+  .sub-default { display: grid; gap: 6px; }
+  .sub-tier { font-size: 12.5px; font-weight: 600; color: var(--muted); }
+  .sub-default-controls { display: flex; gap: 6px; }
+  .sub-default-controls select { flex: 1; min-width: 0; }
+  @media (max-width: 760px) { .sub-defaults { grid-template-columns: 1fr; } }
+  .access-tools { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin: 10px 0 2px; }
+  .access-tally { margin: 0; font-size: 12.5px; }
+  .access-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 8px; }
+  .access-item {
+    display: flex; align-items: center; gap: 8px; padding: 6px 6px 6px 12px;
+    border: 1px solid var(--line); border-left: 3px solid var(--accent); border-radius: 8px; background: var(--surface-2);
+  }
+  /* The left edge says who can pick it at a glance: green for every sub,
+     amber for a higher tier, grey for nobody. */
+  .access-item[data-level="2"], .access-item[data-level="3"] { border-left-color: var(--ui-warning, #f59e0b); }
+  .access-item[data-level="0"] { border-left-color: var(--line); opacity: .7; }
+  .access-name { flex: 1; min-width: 0; padding: 0; border: 0; background: none; color: var(--ui-text-highlighted); font: inherit; font-size: 13.5px; text-align: left; cursor: pointer; }
+  .access-name:hover { color: var(--accent); }
+  .access-item select { width: auto; padding-top: 5px; padding-bottom: 5px; font-size: 12.5px; }
+  .fold-subhead { margin: 22px 0 4px; font-size: 14px; font-weight: 600; color: var(--ui-text-highlighted); }
+  .style-row {
+    display: grid; grid-template-columns: 96px 110px repeat(3, minmax(90px, 1fr)) auto auto; gap: 10px; align-items: center;
+    padding: 10px 0; border-bottom: 1px solid var(--line-soft);
+  }
+  .style-row:last-child { border-bottom: 0; }
+  .style-row .style-name { font-size: 14px; font-weight: 500; color: var(--ui-text-highlighted); }
+  .style-row .remove { background: none; border: 0; color: var(--faint); font-size: 16px; cursor: pointer; padding: 0 4px; }
+  .style-row .remove:hover { color: var(--ui-text-highlighted); }
+  .style-knob { display: grid; gap: 2px; font-size: 11.5px; color: var(--faint); font-variant-numeric: tabular-nums; }
+  .style-knob input { width: 100%; accent-color: var(--accent); }
+  @media (max-width: 900px) {
+    .style-row { grid-template-columns: 1fr 1fr; }
+  }
+  .tier-row {
+    display: grid; grid-template-columns: minmax(90px, 1fr) auto auto auto auto; gap: 8px; align-items: center;
+    padding: 12px 0; border-bottom: 1px solid var(--line-soft);
+  }
+  .tier-row .unit { color: var(--faint); font-size: 12.5px; }
+  .tier-row .remove { background: none; border: 0; color: var(--faint); font-size: 18px; cursor: pointer; padding: 0 4px; }
+  .tier-row .remove:hover { color: var(--red); }
+  @media (max-width: 640px) {
+    .tier-row { grid-template-columns: 1fr auto; }
+  }
+
 </style>
 <!-- Loaded before the page script: number fields are built during the
      first render, and they ask for holdRepeat as they are made. -->
 <script src="stepper.js"></script>
+<!-- The widget's own effects, for the Viewer rewards tab's previews. -->
+<script src="effects.js"></script>
 </head>
 <body>
 
@@ -302,6 +392,7 @@
           <button class="active" data-view="settings">Settings</button>
           <button data-view="aliases">Commands</button>
           <button data-view="messages">Chat messages</button>
+          <button data-view="perks">Viewer rewards</button>
         </nav>
       </div>
 
@@ -411,6 +502,8 @@ function row(name, why, control) {
   const holder = document.createElement('div');
   holder.className = 'control';
   holder.append(...(Array.isArray(control) ? control : [control]));
+  // A switch shows no text of its own; the row's name is what it turns on.
+  for (const each of holder.querySelectorAll('[role="switch"]:not([aria-label])')) each.setAttribute('aria-label', name);
 
   element.append(label, holder);
   return element;
@@ -865,6 +958,18 @@ async function saveAliases() {
 
 /* ------------------------------------------------------------ messages */
 
+// What each group of messages is called here. The keys are the ones in
+// config/messages.json, and never change.
+const MESSAGE_GROUPS = {
+  general: 'General',
+  queue: 'Queue',
+  moderation: 'Moderation',
+  settings: 'Settings',
+  playback: 'Playback',
+  widget: 'Widget',
+  perks: 'Viewer rewards'
+};
+
 async function renderMessages() {
   const data = await api('/api/admin/messages');
   state.loaded.messages = data;
@@ -885,7 +990,7 @@ async function renderMessages() {
 
   for (const group of data.groups) {
     state.draft.messages[group.category] = {};
-    const section = card(group.category, group.messages.length + ' messages');
+    const section = card(MESSAGE_GROUPS[group.category] || group.category, group.messages.length + ' messages');
 
     for (const entry of group.messages) {
       state.draft.messages[group.category][entry.key] = entry.text;
@@ -971,6 +1076,640 @@ async function saveMessages() {
   toast('Saved. The bot is already using the new wording.');
 }
 
+/* ------------------------------------------------------ viewer rewards */
+
+const SAMPLE_COLORS = { vibrant: '#7b8cff', light: '#dfe3ff', dark: '#1c2150' };
+let fxStage = null;
+
+function paletteLabel(name) {
+  const known = window.QueueifyFx && QueueifyFx.PALETTES.find(palette => palette.name === name);
+  return known ? known.label : name[0].toUpperCase() + name.slice(1);
+}
+
+function effectLabel(name) {
+  if (name === 'none') return 'None';
+  const known = window.QueueifyFx && QueueifyFx.EFFECTS.find(effect => effect.name === name);
+  return known ? known.label : name[0].toUpperCase() + name.slice(1);
+}
+
+/** The effects, in the groups people pick them from. */
+/**
+ * Each theme has its own two switches, and themes made before rewards existed
+ * have them off. When any do, a row names them, with one button to switch
+ * them all on. Nothing shows once every theme has them.
+ */
+async function themesWithRewardsOff(holder) {
+  let off;
+  try {
+    off = (await api('/api/admin/perks/themes')).off;
+  } catch {
+    return;
+  }
+  if (!off.length || !holder.isConnected) return;
+
+  const names = off.map(theme => theme.label);
+  const list = names.length === 1 ? names[0]
+    : names.length === 2 ? names.join(' and ')
+      : names.length <= 4 ? names.slice(0, -1).join(', ') + ', and ' + names[names.length - 1]
+        : names.slice(0, 3).join(', ') + ', and ' + (names.length - 3) + ' more';
+
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.className = 'btn ghost small';
+  button.textContent = 'Turn on in every theme';
+
+  const line = row(off.length === 1 ? '1 theme has them off' : off.length + ' themes have them off',
+    list + '. Each theme has its own switches too, in the theme editor.', button);
+  button.addEventListener('click', async () => {
+    button.disabled = true;
+    try {
+      const result = await api('/api/admin/perks/themes', { method: 'POST' });
+      if (result.failed.length) {
+        toast('Could not change ' + result.failed.map(each => each.name).join(', ') + ': ' + result.failed[0].error, true);
+        button.disabled = false;
+        return;
+      }
+      toast(result.changed.length === 1 ? 'Rewards are on in 1 more theme.' : 'Rewards are on in ' + result.changed.length + ' more themes.');
+      line.remove();
+    } catch (err) {
+      toast(err.message, true);
+      button.disabled = false;
+    }
+  });
+  holder.appendChild(line);
+}
+
+function effectGroups(names) {
+  const fx = window.QueueifyFx;
+  if (!fx) return [{ label: '', names }];
+  return fx.GROUPS
+    .map(group => ({ label: group.label, names: names.filter(name => fx.groupOf(name) === group.name) }))
+    .filter(group => group.names.length);
+}
+
+/**
+ * Plays an effect on the sample widget at the top of the page, in the style
+ * set for it further down - including changes not saved yet.
+ */
+function tryEffect(effect, { power = 2, milestone = null } = {}) {
+  if (!window.QueueifyFx || !fxStage) return;
+  QueueifyFx.stop();
+
+  const widget = fxStage.querySelector('.fx-widget');
+  const style = (state.draft.perks && state.draft.perks.styles[effect]) || {};
+  const play = from => {
+    if (effect && effect !== 'none') {
+      QueueifyFx.play(effect, { host: fxStage, from, target: widget, colors: SAMPLE_COLORS, power, style });
+    }
+  };
+
+  if (milestone) {
+    const shown = QueueifyFx.milestone({ number: milestone, name: 'viewer' }, {
+      host: fxStage, target: widget, colors: SAMPLE_COLORS, seconds: 3.5
+    });
+    if (QueueifyFx.groupOf(effect) === 'widget') shown.done.then(() => play(null));
+    else setTimeout(() => play(shown.origin), 160);
+  } else {
+    play(null);
+  }
+
+  // A button far down the page would otherwise play it out of sight.
+  const box = fxStage.getBoundingClientRect();
+  if (box.bottom < 0 || box.top > innerHeight) fxStage.scrollIntoView({ block: 'center', behavior: 'smooth' });
+}
+
+function effectSelect(value, onChange, { none = false } = {}) {
+  const select = document.createElement('select');
+
+  if (none) {
+    const option = document.createElement('option');
+    option.value = 'none';
+    option.textContent = 'None';
+    select.appendChild(option);
+  }
+
+  for (const group of effectGroups(state.loaded.perks.effects)) {
+    const holder = group.label ? document.createElement('optgroup') : select;
+    if (group.label) holder.label = group.label;
+    for (const name of group.names) {
+      const option = document.createElement('option');
+      option.value = name;
+      option.textContent = effectLabel(name);
+      holder.appendChild(option);
+    }
+    if (holder !== select) select.appendChild(holder);
+  }
+
+  select.value = value;
+  select.addEventListener('change', () => onChange(select.value));
+  return select;
+}
+
+/** A whole number with - and + beside it, held down to repeat. */
+function countStepper(value, max, onChange) {
+  const wrap = document.createElement('div');
+  wrap.className = 'stepper';
+
+  const input = document.createElement('input');
+  input.type = 'number';
+  input.min = 1;
+  input.max = max;
+  input.value = value;
+
+  const set = next => {
+    const clamped = Math.max(1, Math.min(max, Math.round(next)));
+    if (!Number.isFinite(clamped)) return;
+    input.value = clamped;
+    onChange(clamped);
+  };
+
+  input.addEventListener('input', () => {
+    if (input.value !== '' && Number.isFinite(Number(input.value))) onChange(Math.round(Number(input.value)));
+  });
+  // Whatever was typed is pulled back inside the limits once they leave it.
+  input.addEventListener('change', () => set(Number(input.value)));
+
+  const nudge = (label, delta) => {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.textContent = label;
+    button.tabIndex = -1;
+    holdRepeat(button, steps => set(Number(input.value) + delta * steps));
+    return button;
+  };
+
+  wrap.append(nudge('−', -1), input, nudge('+', 1));
+  return wrap;
+}
+
+function playButton(title, perk) {
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.className = 'btn ghost small';
+  button.textContent = 'Play';
+  button.title = title;
+  button.addEventListener('click', () => {
+    const next = perk();
+    tryEffect(next.effect, next);
+  });
+  return button;
+}
+
+/** A card that starts folded, for the settings most people never need. */
+function foldedCard(title, sub) {
+  const element = document.createElement('details');
+  element.className = 'card fold';
+  const summary = document.createElement('summary');
+  summary.innerHTML = '<h2>' + escapeHtml(title) + '</h2>' + (sub ? '<span class="sub">' + escapeHtml(sub) + '</span>' : '');
+  const body = document.createElement('div');
+  body.className = 'body';
+  element.append(summary, body);
+  element.body = body;
+  return element;
+}
+
+/**
+ * The Viewer rewards tab.
+ *
+ * It works as it comes, so the first things on the page are the few people
+ * change - the switch, the tiers, what subs get - and everything else waits,
+ * folded, under More settings.
+ */
+async function renderPerks() {
+  const data = await api('/api/admin/perks');
+  state.loaded.perks = data;
+  state.draft.perks = structuredClone(data.perks);
+  const draft = state.draft.perks;
+
+  const view = $('view');
+  view.innerHTML = '';
+  view.appendChild(pageHead('Viewer rewards',
+    'When a song a viewer requested starts, the widget celebrates them. The more songs they\'ve requested, the bigger it gets. ' +
+    'Subs pick their own, and milestones like a 100th song take the whole widget over for a moment. It works as it comes: change only what you want.'));
+
+  // --- on or off ---------------------------------------------------------
+  // Two switches: the effects, and the milestone takeover, each on or off on
+  // its own, for every theme.
+  const general = card('Viewer rewards');
+  general.body.appendChild(row('Reward effects', 'The effect a viewer\'s requested song starts with: for their song count, or a sub\'s own pick.',
+    toggle(draft.enabled, value => { draft.enabled = value; markChanged(); })));
+  general.body.appendChild(row('Milestones', 'On a viewer\'s 10th song, their 100th, and so on, the widget steps aside for a few seconds to celebrate them.',
+    toggle(draft.milestonesEnabled, value => { draft.milestonesEnabled = value; markChanged(); })));
+  view.appendChild(general);
+  themesWithRewardsOff(general.body);
+
+  // --- a sample widget to watch them on ---------------------------------
+  const watch = card('Try them', 'On a sample widget');
+  fxStage = document.createElement('div');
+  fxStage.className = 'fx-stage';
+  fxStage.innerHTML = '<div class="fx-widget"><div class="fx-art"></div><b class="fx-title title-wrapper">A Beautiful Word</b>' +
+    '<span class="fx-artist">Evan Call</span><i class="fx-bar"></i></div>';
+
+  const picks = document.createElement('div');
+  picks.className = 'fx-groups';
+  for (const group of effectGroups(data.effects)) {
+    const line = document.createElement('div');
+    line.className = 'fx-group';
+    const label = document.createElement('span');
+    label.className = 'fx-group-label';
+    label.textContent = group.label;
+    const buttons = document.createElement('div');
+    buttons.className = 'fx-buttons';
+    for (const name of group.names) {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'fx-pick';
+      button.textContent = effectLabel(name);
+      button.addEventListener('click', () => tryEffect(name));
+      buttons.appendChild(button);
+    }
+    line.append(label, buttons);
+    picks.appendChild(line);
+  }
+
+  const milestoneLine = document.createElement('div');
+  milestoneLine.className = 'fx-group';
+  const milestoneLabel = document.createElement('span');
+  milestoneLabel.className = 'fx-group-label';
+  milestoneLabel.textContent = 'Milestones';
+  const milestoneButtons = document.createElement('div');
+  milestoneButtons.className = 'fx-buttons';
+  const milestoneButton = document.createElement('button');
+  milestoneButton.type = 'button';
+  milestoneButton.className = 'fx-pick fx-milestone';
+  milestoneButton.textContent = 'A 100th song';
+  milestoneButton.title = 'The widget steps aside for the milestone, with the top tier\'s effect';
+  milestoneButton.addEventListener('click', () => {
+    const top = draft.tiers[draft.tiers.length - 1];
+    tryEffect(top ? top.effect : null, { power: 3, milestone: 100 });
+  });
+  milestoneButtons.appendChild(milestoneButton);
+  milestoneLine.append(milestoneLabel, milestoneButtons);
+  picks.appendChild(milestoneLine);
+
+  watch.body.append(fxStage, picks);
+  view.appendChild(watch);
+
+  // --- tiers -------------------------------------------------------------
+  const tiers = card('Tiers', 'The effect a viewer gets once they\'ve requested this many songs');
+  const tierList = document.createElement('div');
+  const addTier = document.createElement('button');
+  addTier.type = 'button';
+  addTier.className = 'btn ghost small';
+  addTier.textContent = 'Add a tier';
+  addTier.style.marginTop = '12px';
+
+  const drawTiers = () => {
+    tierList.innerHTML = '';
+
+    draft.tiers.forEach((tier, index) => {
+      const line = document.createElement('div');
+      line.className = 'tier-row';
+
+      const name = document.createElement('input');
+      name.type = 'text';
+      name.value = tier.name;
+      name.maxLength = 24;
+      name.placeholder = 'Tier name';
+      name.addEventListener('input', () => { tier.name = name.value; markChanged(); });
+
+      const from = document.createElement('div');
+      from.style.display = 'flex';
+      from.style.alignItems = 'center';
+      from.style.gap = '8px';
+      const unit = document.createElement('span');
+      unit.className = 'unit';
+      unit.textContent = 'songs';
+      from.append(countStepper(tier.at, 1000000, value => { tier.at = value; markChanged(); }), unit);
+
+      const remove = document.createElement('button');
+      remove.type = 'button';
+      remove.className = 'remove';
+      remove.textContent = '×';
+      remove.title = 'Remove this tier';
+      remove.addEventListener('click', () => {
+        draft.tiers.splice(index, 1);
+        drawTiers();
+        markChanged();
+      });
+
+      line.append(
+        name,
+        from,
+        effectSelect(tier.effect, value => { tier.effect = value; markChanged(); }, { none: true }),
+        // Ranked by where they start, as the server does: the third and up
+        // get the biggest version of their effect.
+        playButton('Watch this tier\'s effect', () => ({ effect: tier.effect, power: Math.min(3, index + 1) })),
+        remove
+      );
+      tierList.appendChild(line);
+    });
+
+    if (!draft.tiers.length) {
+      const empty = document.createElement('p');
+      empty.className = 'muted';
+      empty.textContent = 'No tiers. Only subs and milestones get anything.';
+      tierList.appendChild(empty);
+    }
+
+    addTier.disabled = draft.tiers.length >= 6;
+  };
+
+  addTier.addEventListener('click', () => {
+    const last = draft.tiers[draft.tiers.length - 1];
+    draft.tiers.push({ name: 'New tier', at: last ? last.at * 2 : 10, effect: 'sparkles' });
+    drawTiers();
+    markChanged();
+  });
+
+  drawTiers();
+  tiers.body.append(tierList, addTier);
+  view.appendChild(tiers);
+
+  // --- subs --------------------------------------------------------------
+  const subs = card('Subscribers', 'They pick their own effect in chat with !fx, from what their sub tier opens up');
+  const defaults = document.createElement('div');
+  defaults.className = 'sub-defaults';
+  for (const tier of [1, 2, 3]) {
+    const cell = document.createElement('div');
+    cell.className = 'sub-default';
+    const label = document.createElement('span');
+    label.className = 'sub-tier';
+    label.textContent = tier === 1 ? 'Tier 1 and Prime' : 'Tier ' + tier;
+    const controls = document.createElement('div');
+    controls.className = 'sub-default-controls';
+    controls.append(
+      effectSelect(draft.subDefaults[tier], value => { draft.subDefaults[tier] = value; markChanged(); }, { none: true }),
+      playButton('Watch it', () => ({ effect: draft.subDefaults[tier], power: tier === 3 ? 3 : 2 }))
+    );
+    cell.append(label, controls);
+    defaults.appendChild(cell);
+  }
+  subs.body.appendChild(row('Before they pick one', 'What a sub\'s songs start with until they choose. None gives them the effect for how many songs they\'ve requested instead.', []));
+  const defaultsRow = document.createElement('div');
+  defaultsRow.className = 'row';
+  defaultsRow.style.gridTemplateColumns = '1fr';
+  defaultsRow.appendChild(defaults);
+  subs.body.appendChild(defaultsRow);
+  view.appendChild(subs);
+
+  // --- everything else, folded -------------------------------------------
+  const more = foldedCard('More settings', 'Milestones, which effects subs can pick, and how each effect looks');
+
+  // Milestones.
+  const chips = document.createElement('div');
+  chips.className = 'chips';
+
+  const drawMilestones = () => {
+    chips.innerHTML = '';
+    draft.milestones.sort((a, b) => a - b);
+
+    if (!draft.milestones.length) {
+      const empty = document.createElement('span');
+      empty.className = 'muted';
+      empty.textContent = 'No milestones.';
+      chips.appendChild(empty);
+    }
+
+    for (const number of draft.milestones) {
+      const chip = document.createElement('span');
+      chip.className = 'chip';
+      chip.textContent = number;
+
+      const remove = document.createElement('button');
+      remove.textContent = '×';
+      remove.title = 'Remove ' + number;
+      remove.addEventListener('click', () => {
+        draft.milestones = draft.milestones.filter(value => value !== number);
+        drawMilestones();
+        markChanged();
+      });
+
+      chip.appendChild(remove);
+      chips.appendChild(chip);
+    }
+  };
+
+  const addMilestone = document.createElement('input');
+  addMilestone.type = 'number';
+  addMilestone.min = 1;
+  addMilestone.placeholder = 'e.g. 75';
+  addMilestone.style.borderRadius = '6px';
+  addMilestone.style.border = '1px solid var(--ui-border-accented)';
+  addMilestone.addEventListener('keydown', event => {
+    if (event.key !== 'Enter') return;
+    const number = Math.round(Number(addMilestone.value));
+    if (Number.isFinite(number) && number > 0 && !draft.milestones.includes(number)) {
+      draft.milestones.push(number);
+      drawMilestones();
+      markChanged();
+    }
+    addMilestone.value = '';
+  });
+
+  drawMilestones();
+  const subhead = text => {
+    const element = document.createElement('h3');
+    element.className = 'fold-subhead';
+    element.textContent = text;
+    return element;
+  };
+  more.body.appendChild(subhead('Milestones'));
+  more.body.appendChild(row('Add a milestone', 'The song counts that take the widget over. Press Enter to add.', addMilestone));
+  const chipRow = document.createElement('div');
+  chipRow.className = 'row';
+  chipRow.style.gridTemplateColumns = '1fr';
+  chipRow.appendChild(chips);
+  more.body.appendChild(chipRow);
+
+  // Which sub tier each effect needs, and the page they pick from.
+  more.body.appendChild(subhead('What subs can pick'));
+  const WHO = [[1, 'Every sub'], [2, 'Tier 2 and up'], [3, 'Tier 3 only'], [0, 'Nobody']];
+  const tally = document.createElement('p');
+  tally.className = 'muted access-tally';
+  const drawTally = () => {
+    const count = level => data.effects.filter(effect => draft.subAccess[effect] === level).length;
+    tally.textContent = WHO.map(([level, label]) => `${label}: ${count(level)}`).join(' · ');
+  };
+
+  const access = document.createElement('div');
+  access.className = 'fx-access';
+  const selects = [];
+  for (const group of effectGroups(data.effects)) {
+    const label = document.createElement('p');
+    label.className = 'fx-group-label style-group';
+    label.textContent = group.label;
+    const grid = document.createElement('div');
+    grid.className = 'access-grid';
+    for (const name of group.names) {
+      const item = document.createElement('div');
+      item.className = 'access-item';
+      const watch = document.createElement('button');
+      watch.type = 'button';
+      watch.className = 'access-name';
+      watch.textContent = effectLabel(name);
+      watch.title = 'Watch it';
+      watch.addEventListener('click', () => tryEffect(name));
+      const select = document.createElement('select');
+      for (const [level, text] of WHO) {
+        const option = document.createElement('option');
+        option.value = level;
+        option.textContent = text;
+        select.appendChild(option);
+      }
+      const paint = () => { select.value = draft.subAccess[name]; item.dataset.level = draft.subAccess[name]; };
+      paint();
+      select.addEventListener('change', () => {
+        draft.subAccess[name] = Number(select.value);
+        paint();
+        drawTally();
+        markChanged();
+      });
+      selects.push(paint);
+      item.append(watch, select);
+      grid.appendChild(item);
+    }
+    access.append(label, grid);
+  }
+
+  const everyone = document.createElement('button');
+  everyone.type = 'button';
+  everyone.className = 'btn ghost small';
+  everyone.textContent = 'Open them all to every sub';
+  everyone.addEventListener('click', () => {
+    for (const effect of data.effects) draft.subAccess[effect] = 1;
+    selects.forEach(paint => paint());
+    drawTally();
+    markChanged();
+  });
+
+  drawTally();
+  const accessRow = document.createElement('div');
+  accessRow.className = 'row';
+  accessRow.style.gridTemplateColumns = '1fr';
+  const accessNote = document.createElement('p');
+  accessNote.className = 'muted';
+  accessNote.style.margin = '0';
+  accessNote.textContent = 'Which sub tier each effect needs. Only these show on the picker page, marked with the tier they need, and only these work in chat. Effects added in an update start open to every sub.';
+  const accessTools = document.createElement('div');
+  accessTools.className = 'access-tools';
+  accessTools.append(tally, everyone);
+  accessRow.append(accessNote, accessTools, access);
+  more.body.appendChild(accessRow);
+
+  const url = document.createElement('input');
+  url.type = 'text';
+  url.value = draft.pickerUrl;
+  url.spellcheck = false;
+  url.addEventListener('input', () => { draft.pickerUrl = url.value.trim(); markChanged(); });
+
+  const open = document.createElement('a');
+  open.className = 'btn ghost small';
+  open.textContent = 'Open';
+  open.target = '_blank';
+  open.rel = 'noopener';
+  open.title = 'The page a viewer gets from !fx';
+  open.style.textDecoration = 'none';
+  open.addEventListener('click', event => {
+    // Built the way !fx builds it (services/perks.js, pickerLink).
+    try {
+      const link = new URL(draft.pickerUrl || data.defaults.pickerUrl);
+      link.searchParams.set('c', 'fx');
+      const needing = level => data.effects.filter(effect => draft.subAccess[effect] === level).join(',');
+      link.searchParams.set('allow', needing(1));
+      if (needing(2)) link.searchParams.set('t2', needing(2));
+      if (needing(3)) link.searchParams.set('t3', needing(3));
+      open.href = link.toString().replace(/%2C/g, ',');
+    } catch {
+      event.preventDefault();
+      toast('That is not a web address.', true);
+    }
+  });
+  more.body.appendChild(row('Picker page', 'Where !fx sends viewers. Tapping an effect there copies the command to paste in chat.', [url, open]));
+
+  // How each effect looks.
+  more.body.appendChild(subhead('How each effect looks'));
+  const lookNote = document.createElement('p');
+  lookNote.className = 'muted';
+  lookNote.style.margin = '0 0 4px';
+  lookNote.style.fontSize = '13px';
+  lookNote.textContent = 'Album colors follow the song playing. A sub who picks colors with their effect, like !fx hearts gold, gets theirs instead.';
+  more.body.appendChild(lookNote);
+
+  for (const group of effectGroups(data.effects)) {
+    const groupLabel = document.createElement('p');
+    groupLabel.className = 'fx-group-label style-group';
+    groupLabel.textContent = group.label;
+    more.body.appendChild(groupLabel);
+
+    for (const name of group.names) {
+      const style = draft.styles[name];
+      const line = document.createElement('div');
+      line.className = 'style-row';
+
+      const title = document.createElement('span');
+      title.className = 'style-name';
+      title.textContent = effectLabel(name);
+
+      const colors = document.createElement('select');
+      for (const palette of data.palettes) {
+        const option = document.createElement('option');
+        option.value = palette;
+        option.textContent = paletteLabel(palette);
+        colors.appendChild(option);
+      }
+      colors.value = style.colors;
+      colors.title = 'Colors';
+      colors.addEventListener('change', () => { style.colors = colors.value; markChanged(); tryEffect(name); });
+
+      const knob = (key, label) => {
+        const [min, max] = data.limits[key];
+        const wrap = document.createElement('label');
+        wrap.className = 'style-knob';
+        wrap.title = label + ': how many times the usual';
+        const text = document.createElement('span');
+        const range = document.createElement('input');
+        range.type = 'range';
+        range.min = min;
+        range.max = max;
+        range.step = 0.05;
+        range.value = style[key];
+        const show = () => { text.textContent = label + ' ' + Number(style[key]).toFixed(2).replace(/\.?0+$/, '') + '×'; };
+        show();
+        range.addEventListener('input', () => { style[key] = Number(range.value); show(); markChanged(); });
+        range.addEventListener('change', () => tryEffect(name));
+        wrap.append(text, range);
+        wrap.sync = () => { range.value = style[key]; show(); };
+        return wrap;
+      };
+      const knobs = [knob('amount', 'Amount'), knob('size', 'Size'), knob('speed', 'Speed')];
+
+      const reset = document.createElement('button');
+      reset.type = 'button';
+      reset.className = 'remove';
+      reset.textContent = '↺';
+      reset.title = 'Back to how it came';
+      reset.addEventListener('click', () => {
+        Object.assign(style, data.defaults.styles[name]);
+        colors.value = style.colors;
+        for (const each of knobs) each.sync();
+        markChanged();
+      });
+
+      line.append(title, colors, ...knobs, playButton('Watch it in this style', () => ({ effect: name, power: 2 })), reset);
+      more.body.appendChild(line);
+    }
+  }
+
+  view.appendChild(more);
+  markLoaded();
+}
+
+async function savePerks() {
+  await api('/api/admin/perks', { method: 'PUT', body: JSON.stringify({ perks: state.draft.perks }) });
+  toast('Saved. The next song to start plays with these.');
+}
+
 /* --------------------------------------------------------------- shell */
 
 const sortedNames = list => [...new Set(list.map(name => String(name).trim().toLowerCase().replace(/^@/, '')))]
@@ -999,6 +1738,29 @@ const views = {
       cooldowns: Object.fromEntries(Object.entries(state.draft.cooldowns).map(([name, pair]) =>
         [name, { global: Math.round(Number(pair?.global) || 0), user: Math.round(Number(pair?.user) || 0) }]))
     })
+  },
+  perks: {
+    render: renderPerks,
+    save: savePerks,
+    snapshot: () => {
+      const { enabled, milestonesEnabled, milestones, tiers, subDefaults, subAccess, pickerUrl, styles } = state.draft.perks;
+      return {
+        enabled,
+        milestonesEnabled,
+        milestones: [...new Set(milestones)].sort((a, b) => a - b),
+        tiers: [...tiers].map(tier => ({ name: String(tier.name).trim(), at: Math.round(tier.at), effect: tier.effect }))
+          .sort((a, b) => a.at - b.at),
+        subDefaults: { 1: subDefaults[1], 2: subDefaults[2], 3: subDefaults[3] },
+        subAccess: Object.fromEntries(Object.keys(subAccess).sort().map(effect => [effect, Number(subAccess[effect])])),
+        pickerUrl: String(pickerUrl).trim(),
+        styles: Object.fromEntries(Object.entries(styles).map(([name, style]) => [name, {
+          colors: style.colors,
+          amount: Math.round(style.amount * 100) / 100,
+          size: Math.round(style.size * 100) / 100,
+          speed: Math.round(style.speed * 100) / 100
+        }]))
+      };
+    }
   },
   messages: {
     render: renderMessages,
@@ -1065,7 +1827,8 @@ window.addEventListener('beforeunload', event => {
   event.returnValue = '';
 });
 
-show('settings');
+// The editor's Viewer rewards section links straight to this tab.
+show(location.hash === '#perks' ? 'perks' : 'settings');
 </script>
 <script src="dialogs.js"></script>
 <script src="tooltips.js"></script>

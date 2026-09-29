@@ -77,6 +77,22 @@
             // empty one has to take the tooltip with it.
             if (text) element.setAttribute('data-tip', text);
             else element.removeAttribute('data-tip');
+
+            // A button that is only an icon was named by its title alone, so
+            // it keeps the text as its label for screen readers. Only a label
+            // this file gave it follows the title; one of the page's own stays.
+            const given = element.hasAttribute('data-tip-label');
+            const iconOnly = element.matches('button, a, [role="button"], [role="switch"]') &&
+                !element.hasAttribute('aria-label') && !element.textContent.trim();
+            if (given || iconOnly) {
+                if (text) {
+                    element.setAttribute('aria-label', text);
+                    element.setAttribute('data-tip-label', '');
+                } else if (given) {
+                    element.removeAttribute('aria-label');
+                    element.removeAttribute('data-tip-label');
+                }
+            }
         }
     }
 

@@ -14,7 +14,7 @@ npm run screenshot   # capture the widget from a running instance
 **Tests must never touch real data.** Every persisted path is overridable:
 `QUEUEIFY_THEMES_DIR`, `QUEUEIFY_WIDGET_CONFIG_FILE`, `QUEUEIFY_SETTINGS_FILE`,
 `QUEUEIFY_DATA_DIR`, `QUEUEIFY_ENV_FILE`, `QUEUEIFY_SCENE_THEMES_FILE`,
-`QUEUEIFY_HISTORY_FILE`, `QUEUEIFY_WIDGET_URL`. **Set them before requiring the
+`QUEUEIFY_HISTORY_FILE`, `QUEUEIFY_PRESETS_DIR`, `QUEUEIFY_VIEWER_EFFECTS_FILE`, `QUEUEIFY_WIDGET_URL`. **Set them before requiring the
 module** — `themeStore`, `widgetLayout`, `core/state`, `services/history` and
 `widget/server` all read them at load time, so
 a `require` above the assignment writes to the real project. Bust

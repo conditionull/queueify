@@ -133,6 +133,42 @@ async function setRedeemsEnabled(enabled) {
     state.saveSettings();
 }
 
+/* ---------------------------------------------------------------- perks */
+
+function readPerks() {
+    const perks = require('./perks');
+    return {
+        perks: state.perks,
+        effects: perks.EFFECTS,
+        palettes: perks.PALETTES,
+        limits: perks.STYLE_LIMITS,
+        defaults: perks.DEFAULT_SETTINGS
+    };
+}
+
+/**
+ * Saves the perk settings. What cannot be made sense of is refused rather
+ * than quietly replaced: two tiers from the same count would leave one of
+ * them never playing, with nothing on the page saying why.
+ */
+function writePerks(input = {}) {
+    const perks = require('./perks');
+    const next = perks.normalizeSettings({ ...state.perks, ...input });
+
+    const counts = next.tiers.map(tier => tier.at);
+    if (new Set(counts).size !== counts.length) {
+        throw new ConfigError('Two tiers start at the same number of songs. Give each its own.');
+    }
+
+    if (typeof input.pickerUrl === 'string' && input.pickerUrl.trim() && next.pickerUrl !== input.pickerUrl.trim()) {
+        throw new ConfigError('The picker page has to be a web address, starting with https://');
+    }
+
+    state.perks = next;
+    state.saveSettings();
+    return next;
+}
+
 /* ------------------------------------------------------------ whitelist */
 
 function cleanNames(users, what) {
@@ -374,5 +410,7 @@ module.exports = {
     writeAliases,
     writeCommandCooldowns,
     readMessages,
-    writeMessages
+    writeMessages,
+    readPerks,
+    writePerks
 };

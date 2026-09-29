@@ -1,6 +1,7 @@
 const fs = require('fs');
 const fsPromises = require('fs/promises');
 const path = require('path');
+const { normalizeSettings: normalizePerks } = require('../services/perks');
 
 // QUEUEIFY_DATA_DIR lets tests (and the setup sandbox) point the persisted
 // state at a throwaway directory instead of the real project files.
@@ -20,7 +21,9 @@ const DEFAULT_MAX_SONG_LENGTH = 360;
 // Anything absent here has no wait at all, and a command the user has set is
 // kept exactly as they set it - including a deliberate 0.
 const DEFAULT_COMMAND_COOLDOWNS = {
-    active: { global: 3, user: 20 }
+    active: { global: 3, user: 20 },
+    // Every answer is a link in chat, so one person repeating it is noise.
+    fx: { global: 0, user: 10 }
 };
 const PROGRESS_RESET_GRACE_MS = 5000;
 // How near the start the playhead has to land for a jump backwards to mean the
@@ -90,8 +93,18 @@ function normalizePendingItem(item) {
         name: item.name,
         artists: item.artists,
         durationMs: item.durationMs,
+        // For the widget's Up next row. Requests saved before it have none,
+        // and the row just leaves their picture out.
+        cover: item.thumb || item.cover || null,
         queuedBy: item.queuedBy,
-        queuedAt: item.queuedAt || new Date().toISOString()
+        queuedAt: item.queuedAt || new Date().toISOString(),
+        // For perks (services/perks.js): which of this viewer's requests it
+        // is, counted when it went in. Requests saved before perks have none,
+        // and play without an effect.
+        requestNumber: item.requestNumber ?? null,
+        requesterId: item.requesterId ?? null,
+        requesterSub: item.requesterSub ?? null,
+        requesterSubTier: item.requesterSubTier ?? null
     };
 }
 
@@ -158,6 +171,8 @@ const state = {
     // got there - a !tr / !bc preset, or somebody dragging it. Presets say
     // where a theme belongs; this remembers where it actually was.
     widgetPositions: settings.widgetPositions ?? {},
+    // What the widget plays when a viewer's song starts. See services/perks.js.
+    perks: normalizePerks(settings.perks),
 
     saveBlacklist() {
         saveJSON(BLACKLIST_FILE, {
@@ -185,7 +200,8 @@ const state = {
             previousSpotifyRewardId: this.previousSpotifyRewardId,
             activeWidgetPosition: this.activeWidgetPosition,
             widgetPresets: this.widgetPresets,
-            widgetPositions: this.widgetPositions
+            widgetPositions: this.widgetPositions,
+            perks: this.perks
         });
     },
 
@@ -233,11 +249,12 @@ const state = {
         saveJSON(RECENT_REQUESTS_FILE, this.recentRequests);
     },
 
-    addPendingTrack(track, queuedBy) {
+    addPendingTrack(track, queuedBy, perk = {}) {
         if (!track?.id) return;
 
         this.pendingQueue.push(normalizePendingItem({
             ...track,
+            ...perk,
             queuedBy,
             queuedAt: new Date().toISOString()
         }));
