@@ -885,64 +885,6 @@ function createApp() {
         }
     });
 
-    // TEMPORARY - queues songs as though a viewer had requested them in chat,
-    // for testing Up next and {requester} without typing in chat. It skips the
-    // request rules (cooldowns, blocklists, the queue being closed) on purpose:
-    // it is for you, not for viewers. Remove once testing is done.
-    app.post('/api/dev/queue', async (req, res) => {
-        const { addToQueue } = require('../spotify');
-        const requester = String(req.body?.requester || '').trim().slice(0, 40) || 'test_viewer';
-        const links = String(req.body?.links || '').split(/\s+/).filter(Boolean).slice(0, 10);
-
-        if (!links.length) {
-            res.status(400).json({ error: 'Paste a Spotify track link.' });
-            return;
-        }
-
-        const reasons = {
-            invalid: 'is not a Spotify track link',
-            noinput: 'is empty',
-            failed: 'could not be queued - is Spotify playing on a device?',
-            explicit: 'is explicit, and explicit songs are turned off',
-            toolong: 'is longer than the longest song allowed'
-        };
-
-        const results = [];
-        for (const link of links) {
-            const result = await addToQueue(link, state.maxSongLength, state.allowExplicit);
-            const status = typeof result === 'string' ? result : result.status;
-
-            if (status === 'ok') {
-                state.addPendingTrack(result.track, requester);
-                results.push({ ok: true, title: result.track.name, artist: result.track.artists });
-            } else {
-                results.push({ ok: false, link, reason: reasons[status] || 'could not be queued' });
-            }
-        }
-
-        res.json({ requester, results });
-    });
-
-    // TEMPORARY - writes the theme open in the editor over a premade, for
-    // polishing the premades without handing JSON around. Remove once they
-    // are done. The Default and Minimal premades are also built-in themes, so
-    // those are rebuilt from them in the same go.
-    app.put('/api/presets/:id', async (req, res) => {
-        try {
-            const preset = await themeStore.savePreset(req.params.id, req.body?.model);
-
-            const { GENERATED, writeBuiltInTheme } = require('../scripts/build-default-theme');
-            if (GENERATED.includes(preset.id)) {
-                const dir = path.join(themeStore.THEMES_DIR, preset.id);
-                if (fs.existsSync(dir) && !themeStore.isEditable(preset.id)) writeBuiltInTheme(preset.id, themeStore.THEMES_DIR);
-            }
-
-            res.json({ id: preset.id, label: preset.label });
-        } catch (err) {
-            themeError(res, err);
-        }
-    });
-
     // The editor previews against the real song when the widget server is up,
     // and against a sample track when it is not, so it always shows something.
     app.get('/api/themes-preview/song', async (req, res) => {

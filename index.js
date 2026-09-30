@@ -55,6 +55,9 @@ buildCommandMap();
 
 const cooldowns = new Map();
 
+// Set once chat is connected. See services/fxReminder.js.
+let fxReminder = null;
+
 // Built after ensureSetup(), since setup may be what writes these env values.
 function createClient() {
   return new tmi.Client({
@@ -277,6 +280,7 @@ async function main() {
   client.on('message', (channel, tags, message, self) => handleMessage(client, channel, tags, message, self));
 
   await client.connect();
+  fxReminder = require('./services/fxReminder').start(client);
   const eventSub = startEventSub(client);
 
   const dashboard = await openDashboard(startedDashboard);
@@ -315,6 +319,8 @@ async function handleMessage(client, channel, tags, message, self) {
   // Every message, not only commands: a channel point redeem does not say
   // whether somebody subscribes, so this is how their perk knows.
   perks.noteChatter(tags);
+  // The !fx reminder waits for chat to be talking before it says anything.
+  fxReminder?.noteChat();
 
   const broadcaster = process.env.TWITCH_BROADCASTER_USERNAME?.toLowerCase();
   const username = tags.username.toLowerCase();

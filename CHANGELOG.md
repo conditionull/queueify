@@ -5,6 +5,25 @@ What has changed in Queueify. The dashboard shows the same list under **What's n
 
 Newest version at the top.
 
+## 44.1.0
+
+### New
+
+- **Chat reminder for `!fx`.** The bot can tell chat every so often that subs can pick their own
+  song effect. Turn it on under **Admin Panel → Viewer rewards → Chat reminder**
+  - Pick how often, from 5 to 240 minutes
+  - Write your own message. `{{url}}` becomes the link to the effect picker
+  - Set how many chat messages there have to be since the last one before it posts again.
+    The bot's own messages don't count
+  - It's off until you turn it on
+
+### Fixed
+
+- **Open** next to **Picker page** in Viewer rewards now opens the same short link `!fx` gives
+  viewers
+- Removed two testing tools that were left in the theme editor by mistake: **Save over premade**
+  and **Queue as viewer**
+
 ## 44.0.0
 
 ### New

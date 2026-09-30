@@ -119,52 +119,13 @@ test('a broken premade file costs that premade, not the gallery', () => {
     }
 });
 
-test('saving over a premade keeps its blurb and place, and normalizes the model', async () => {
-    const dir = sandboxCopy();
-    try {
-        const store = freshStore(dir);
-        const before = JSON.parse(fs.readFileSync(path.join(dir, 'arcade.json'), 'utf8'));
-
-        const model = store.presetModel('arcade');
-        model.canvas.width = 700;
-        model.labels = [{ text: '<b>hi</b>', color: 'not a color' }];
-        await store.savePreset('arcade', model);
-
-        const after = JSON.parse(fs.readFileSync(path.join(dir, 'arcade.json'), 'utf8'));
-        assert.strictEqual(after.label, before.label);
-        assert.strictEqual(after.description, before.description);
-        assert.deepStrictEqual(after.tags, before.tags);
-        assert.strictEqual(after.order, before.order);
-        assert.strictEqual(after.model.canvas.width, 700);
-        assert.strictEqual(after.model.labels[0].color, '#ffffff', 'checked like any saved theme');
-    } finally {
-        fs.rmSync(dir, { recursive: true, force: true });
-    }
-});
-
-test('only an existing premade can be saved over', async () => {
-    const dir = sandboxCopy();
-    try {
-        const store = freshStore(dir);
-
-        await assert.rejects(store.savePreset('brand-new', store.defaultModel()), { code: 'not_found' });
-        await assert.rejects(store.savePreset('../../etc/passwd', store.defaultModel()), { code: 'not_found' });
-        assert.ok(!fs.existsSync(path.join(dir, 'brand-new.json')));
-    } finally {
-        fs.rmSync(dir, { recursive: true, force: true });
-    }
-});
-
 /* ---------------------------------------------------------------- the API */
 
 async function withServer(run) {
     const sandbox = fs.mkdtempSync(path.join(os.tmpdir(), 'queueify-premades-api-'));
     const themesDir = path.join(sandbox, 'themes');
     const presetsDir = sandboxCopy();
-    fs.mkdirSync(path.join(themesDir, 'default'), { recursive: true });
-    for (const file of ['index.html', 'style.css', 'properties.json']) {
-        fs.writeFileSync(path.join(themesDir, 'default', file), 'stale');
-    }
+    fs.mkdirSync(themesDir, { recursive: true });
 
     process.env.QUEUEIFY_WIDGET_URL = 'http://127.0.0.1:9';
     process.env.QUEUEIFY_THEMES_DIR = themesDir;
@@ -204,22 +165,15 @@ test('the gallery gets every premade as a page it can draw, with no script in it
     });
 });
 
-test('saving over a premade writes the sandbox, and Default rebuilds the default theme', async () => {
-    await withServer(async ({ base, themesDir, presetsDir }) => {
-        const put = (id, model) => fetch(`${base}/api/presets/${id}`, {
-            method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ model })
+test('the premade and queue dev tools are gone from the dashboard', async () => {
+    await withServer(async ({ base, presetsDir }) => {
+        const before = fs.readFileSync(path.join(presetsDir, 'default.json'), 'utf8');
+        const send = (method, route, body) => fetch(`${base}${route}`, {
+            method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body)
         });
 
-        const { presets } = await (await fetch(`${base}/api/presets`)).json();
-        const model = presets.find(preset => preset.id === 'default').model;
-        model.canvas.width = 700;
-
-        const response = await put('default', model);
-        assert.strictEqual(response.status, 200);
-
-        assert.strictEqual(JSON.parse(fs.readFileSync(path.join(presetsDir, 'default.json'), 'utf8')).model.canvas.width, 700);
-        assert.match(fs.readFileSync(path.join(themesDir, 'default', 'style.css'), 'utf8'), /width: 700px;/);
-
-        assert.strictEqual((await put('nope', model)).status, 404);
+        assert.strictEqual((await send('PUT', '/api/presets/default', { model: {} })).status, 404);
+        assert.strictEqual((await send('POST', '/api/dev/queue', { links: 'https://open.spotify.com/track/x' })).status, 404);
+        assert.strictEqual(fs.readFileSync(path.join(presetsDir, 'default.json'), 'utf8'), before, 'the premade is untouched');
     });
 });

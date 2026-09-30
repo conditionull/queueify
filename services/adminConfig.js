@@ -142,6 +142,9 @@ function readPerks() {
         effects: perks.EFFECTS,
         palettes: perks.PALETTES,
         limits: perks.STYLE_LIMITS,
+        minutes: perks.REMINDER_MINUTES,
+        chatLines: perks.REMINDER_CHAT_LINES,
+        maxLength: perks.REMINDER_MAX_LENGTH,
         defaults: perks.DEFAULT_SETTINGS
     };
 }

@@ -2497,32 +2497,6 @@ function presetModel(id) {
     }
 }
 
-/**
- * Writes a premade's model, keeping its label, description, tags and place.
- *
- * TEMPORARY - for polishing the premades in the editor. Only an existing
- * premade can be written, never a new file, and the model goes through
- * normalizeModel like any saved theme.
- */
-async function savePreset(id, model) {
-    if (typeof id !== 'string' || !NAME_PATTERN.test(id)) {
-        throw new ThemeError(`There is no premade theme called "${id}".`, 'not_found');
-    }
-
-    const file = path.join(PRESETS_DIR, id + '.json');
-    let raw;
-    try {
-        raw = JSON.parse(await fsPromises.readFile(file, 'utf8'));
-    } catch {
-        throw new ThemeError(`There is no premade theme called "${id}".`, 'not_found');
-    }
-
-    const next = { ...raw, model: normalizeModel(model, { label: raw.label }) };
-    await fsPromises.writeFile(file, JSON.stringify(next, null, 2) + '\n');
-
-    return readPreset(id);
-}
-
 /* -------------------------------------------------------------- storage */
 
 /**
@@ -2727,7 +2701,6 @@ module.exports = {
     PRESETS_DIR,
     listPresets,
     presetModel,
-    savePreset,
     MODULE_TYPES,
     TIME_TYPES,
     TEXT_TYPES,

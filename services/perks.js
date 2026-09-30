@@ -86,10 +86,27 @@ const DEFAULT_SETTINGS = {
     styles: Object.fromEntries(EFFECTS.map(effect => [effect, defaultStyle(effect)])),
     // Viewers cannot reach the streamer's machine, so the page they pick from
     // lives on the public docs site. See the /fx page in queueify-site.
-    pickerUrl: 'https://queueify-docs.vercel.app/fx'
+    pickerUrl: 'https://queueify-docs.vercel.app/fx',
+    // A line the bot says in chat every so often, so viewers find out !fx
+    // exists. Off until the streamer turns it on: an update should never start
+    // talking in somebody's chat. See services/fxReminder.js.
+    reminder: {
+        enabled: false,
+        minutes: 20,
+        // Chat messages since the last one, before it says it again.
+        chatLines: 5,
+        message: 'Subs: pick the effect your requested songs start with! Choose one here and paste it in chat: {{url}}'
+    }
 };
 
 const MAX_MILESTONE = 1000000;
+
+// Often enough to be seen, never so often it is all chat reads.
+const REMINDER_MINUTES = [5, 240];
+const REMINDER_CHAT_LINES = [1, 500];
+// Twitch drops a message over 500 characters unsent, and the link {{url}}
+// becomes is around 70 of them.
+const REMINDER_MAX_LENGTH = 400;
 const MAX_TIERS = 6;
 
 // Settings file overrides cover the settings; this one covers the picks.
@@ -170,6 +187,21 @@ function normalizeSettings(input) {
 
     const pickerUrl = isWebAddress(raw.pickerUrl) ? String(raw.pickerUrl).trim() : DEFAULT_SETTINGS.pickerUrl;
 
+    const reminderIn = raw.reminder && typeof raw.reminder === 'object' ? raw.reminder : {};
+    const minutes = Math.round(Number(reminderIn.minutes));
+    const [fewest, most] = REMINDER_MINUTES;
+    const chatLines = Math.round(Number(reminderIn.chatLines));
+    const [fewestLines, mostLines] = REMINDER_CHAT_LINES;
+    const reminder = {
+        enabled: reminderIn.enabled === true,
+        minutes: Number.isFinite(minutes) ? Math.min(most, Math.max(fewest, minutes)) : DEFAULT_SETTINGS.reminder.minutes,
+        chatLines: Number.isFinite(chatLines)
+            ? Math.min(mostLines, Math.max(fewestLines, chatLines))
+            : DEFAULT_SETTINGS.reminder.chatLines,
+        message: String(reminderIn.message ?? '').replace(/\s+/g, ' ').trim().slice(0, REMINDER_MAX_LENGTH) ||
+            DEFAULT_SETTINGS.reminder.message
+    };
+
     return {
         enabled: raw.enabled !== false,
         // Before milestones had a switch of their own, `enabled` was the one
@@ -180,7 +212,8 @@ function normalizeSettings(input) {
         subDefaults,
         subAccess,
         styles,
-        pickerUrl
+        pickerUrl,
+        reminder
     };
 }
 
@@ -497,6 +530,9 @@ const CODE = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
  * Who may pick each effect, packed short: the sub tier each one needs, in
  * EFFECTS order - 1 every sub, 2 Tier 2 and up, 3 Tier 3, 0 nobody - three
  * effects to a character. 48 effects make 16 characters, however they are set.
+ *
+ * setup/public/admin.html packs it again for its Open button, from settings
+ * not yet saved - a change here has to go there too.
  */
 function accessCode(perkSettings = settings()) {
     const access = perkSettings.subAccess || {};
@@ -526,6 +562,9 @@ module.exports = {
     SUB_TIERS,
     PALETTES,
     STYLE_LIMITS,
+    REMINDER_MINUTES,
+    REMINDER_CHAT_LINES,
+    REMINDER_MAX_LENGTH,
     defaultStyle,
     DEFAULT_SETTINGS,
     normalizeSettings,

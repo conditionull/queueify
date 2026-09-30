@@ -923,17 +923,6 @@
     .picker-foot p { display: none; }
   }
 
-  /* TEMPORARY - see #dev-preset. */
-  .dev-preset {
-    display: inline-flex; align-items: center; gap: 6px; padding: 3px 4px 3px 8px;
-    border: 1px dashed color-mix(in srgb, var(--ui-warning) 70%, transparent); border-radius: 8px;
-  }
-  .dev-tag { font-size: 10.5px; font-weight: 800; letter-spacing: .08em; color: var(--ui-warning); }
-  .dev-preset select { width: auto; min-height: 30px; padding: 4px 26px 4px 8px; font-size: 12.5px; }
-  .dev-queue input { min-height: 30px; padding: 4px 8px; font-size: 12.5px; }
-  #dev-queue-links { width: 260px; }
-  #dev-queue-as { width: 110px; }
-
   /* --------------------------------------------------------- drawer */
 
   /*
@@ -1229,19 +1218,6 @@
         <button type="button" class="ghost" id="btn-scenes"
                 title="Pick which OBS scenes switch to this theme on their own - on the dashboard">Assign to OBS scenes&hellip;</button>
         <div class="theme-actions-rule"></div>
-        <!-- TEMPORARY: writes this design over a premade, for polishing them. -->
-        <div class="dev-preset" id="dev-preset" title="Development only - remove once the premades are done">
-          <span class="dev-tag">DEV</span>
-          <select id="dev-preset-target" aria-label="Premade to overwrite"></select>
-          <button type="button" class="ghost" id="btn-dev-preset">Save over premade</button>
-        </div>
-        <!-- TEMPORARY: queues songs as a viewer would, for testing without chat. -->
-        <form class="dev-preset dev-queue" id="dev-queue" title="Development only - queues straight into Spotify as a chat request">
-          <span class="dev-tag">DEV</span>
-          <input id="dev-queue-links" type="text" placeholder="Spotify track link(s)" aria-label="Spotify track links to queue" autocomplete="off" />
-          <input id="dev-queue-as" type="text" value="test_viewer" aria-label="Viewer the request is from" autocomplete="off" />
-          <button type="submit" class="ghost" id="btn-dev-queue">Queue as viewer</button>
-        </form>
         <button type="button" class="danger" id="btn-delete">Delete</button>
       </div>
     </section>
@@ -6256,7 +6232,6 @@ async function loadThemes(selectName) {
   state.fonts = data.fonts;
   state.fontCategories = data.fontCategories || {};
   state.presets = data.presets || [];
-  fillDevPresets();
   loadMenuFonts();
 
   const picker = $('theme-open');
@@ -6305,7 +6280,6 @@ function openBuiltIn(name) {
   renderAll();
   $('theme-open').value = 'builtin:' + name;
   $('btn-delete').disabled = $('btn-duplicate').disabled = true;
-  fillDevPresets();
   note('<b>' + escapeHtml(name) + '</b> is built in, so it is read-only. Change anything you like, then give it ' +
     'a new name and save it as a theme of your own.', 'good');
 }
@@ -6407,7 +6381,6 @@ async function showPresets() {
     return;
   }
 
-  fillDevPresets();
   drawList(state.presetId);
   $('preset-list').querySelector('[aria-selected="true"]')?.focus({ preventScroll: true });
 }
@@ -6783,92 +6756,8 @@ function usePreset(preset) {
   closePresets();
   select('canvas');
   renderAll();
-  fillDevPresets();
   note('Started from <b>' + escapeHtml(preset.label) + '</b>. Give it a name and save when you like it.', 'good');
 }
-
-/* ------------------------------------------------ premade dev tool */
-
-/**
- * TEMPORARY - the premade to write this design over, defaulting to the one
- * it was started from. Remove with #dev-preset once the premades are done.
- */
-function fillDevPresets() {
-  const target = $('dev-preset-target');
-  if (!target) return;
-
-  target.replaceChildren(...(state.presets || []).map(preset => {
-    const option = document.createElement('option');
-    option.value = preset.id;
-    option.textContent = preset.label;
-    return option;
-  }));
-  if (state.presetId) target.value = state.presetId;
-}
-
-/**
- * TEMPORARY - queues songs as though a viewer requested them in chat, then
- * pulls the song again so the preview's Up next row and {requester} labels
- * pick them up. Remove with #dev-queue once testing is done.
- */
-$('dev-queue').addEventListener('submit', async event => {
-  event.preventDefault();
-  const links = $('dev-queue-links').value.trim();
-  if (!links) return;
-
-  $('btn-dev-queue').disabled = true;
-  try {
-    const { requester, results } = await api('/api/dev/queue', {
-      method: 'POST',
-      body: JSON.stringify({ links, requester: $('dev-queue-as').value })
-    });
-
-    const queued = results.filter(result => result.ok);
-    const failed = results.filter(result => !result.ok);
-
-    if (queued.length) $('dev-queue-links').value = '';
-    note(
-      (queued.length
-        ? 'Queued ' + queued.map(result => '<b>' + escapeHtml(result.title) + '</b>').join(', ') +
-          ' as <b>' + escapeHtml(requester) + '</b>. '
-        : '') +
-      failed.map(result => escapeHtml(result.link) + ' ' + escapeHtml(result.reason) + '.').join(' '),
-      failed.length && !queued.length ? 'bad' : 'good'
-    );
-
-    // Spotify takes a moment to list a new song in its queue.
-    setTimeout(loadSong, 1500);
-  } catch (err) {
-    note(err.message, 'bad');
-  } finally {
-    $('btn-dev-queue').disabled = false;
-  }
-});
-
-$('btn-dev-preset').addEventListener('click', async () => {
-  const id = $('dev-preset-target').value;
-  const preset = (state.presets || []).find(entry => entry.id === id);
-  if (!preset) return;
-
-  const ok = await askConfirm(
-    'The premade "' + preset.label + '" will be replaced with the design open now. ' +
-    'Everyone who picks it from the gallery gets this version.',
-    { title: 'Save over "' + preset.label + '"?', confirm: 'Save over it', cancel: 'Cancel', danger: true }
-  );
-  if (!ok) return;
-
-  try {
-    await api('/api/presets/' + encodeURIComponent(id), {
-      method: 'PUT',
-      body: JSON.stringify({ model: state.model })
-    });
-    state.presets = (await api('/api/presets')).presets;
-    note('Saved over the premade <b>' + escapeHtml(preset.label) + '</b>.' +
-      (id === 'default' ? ' The built-in default theme was rebuilt from it too.' : ''), 'good');
-  } catch (err) {
-    note(err.message, 'bad');
-  }
-});
 
 async function openPresets() {
   if (state.dirty && !await askDiscard('Open the premade themes')) return;

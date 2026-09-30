@@ -1206,18 +1206,18 @@ function effectSelect(value, onChange, { none = false } = {}) {
 }
 
 /** A whole number with - and + beside it, held down to repeat. */
-function countStepper(value, max, onChange) {
+function countStepper(value, max, onChange, min = 1) {
   const wrap = document.createElement('div');
   wrap.className = 'stepper';
 
   const input = document.createElement('input');
   input.type = 'number';
-  input.min = 1;
+  input.min = min;
   input.max = max;
   input.value = value;
 
   const set = next => {
-    const clamped = Math.max(1, Math.min(max, Math.round(next)));
+    const clamped = Math.max(min, Math.min(max, Math.round(next)));
     if (!Number.isFinite(clamped)) return;
     input.value = clamped;
     onChange(clamped);
@@ -1453,6 +1453,53 @@ async function renderPerks() {
   subs.body.appendChild(defaultsRow);
   view.appendChild(subs);
 
+  // --- telling chat about !fx -------------------------------------------
+  // Nothing else says !fx exists, so a sub would never know to type it.
+  const remind = card('Chat reminder', 'The bot tells chat about !fx every so often');
+  const reminder = draft.reminder;
+  const [fewest, most] = data.minutes;
+
+  remind.body.appendChild(row('Remind chat', 'Never while reward effects are off.',
+    toggle(reminder.enabled, value => { reminder.enabled = value; markChanged(); })));
+
+  const unit = document.createElement('span');
+  unit.className = 'unit';
+  unit.textContent = 'minutes';
+  remind.body.appendChild(row('Every', `${fewest}-${most} minutes`,
+    [countStepper(reminder.minutes, most, value => { reminder.minutes = value; markChanged(); }, fewest), unit]));
+
+  // A quiet chat, or one with the stream off, would be nothing but reminders.
+  const [fewestLines, mostLines] = data.chatLines;
+  const linesUnit = document.createElement('span');
+  linesUnit.className = 'unit';
+  linesUnit.textContent = 'messages';
+  remind.body.appendChild(row('Only after', 'How much chat has to say since the last reminder before it goes out again. The bot\'s own messages don\'t count.',
+    [countStepper(reminder.chatLines, mostLines, value => { reminder.chatLines = value; markChanged(); }, fewestLines), linesUnit]));
+
+  const wording = document.createElement('textarea');
+  wording.value = reminder.message;
+  wording.rows = 3;
+  wording.maxLength = data.maxLength;
+  wording.addEventListener('input', () => { reminder.message = wording.value; markChanged(); });
+
+  const resetWording = document.createElement('button');
+  resetWording.type = 'button';
+  resetWording.className = 'btn ghost small';
+  resetWording.textContent = 'Reset';
+  resetWording.title = 'Back to the original wording';
+  resetWording.addEventListener('click', () => {
+    wording.value = reminder.message = data.defaults.reminder.message;
+    markChanged();
+  });
+
+  // The whole width, label above: a sentence and a link need the room.
+  const wordingRow = row('Message', 'What the bot says. {{url}} becomes the link to the picker page.', [wording, resetWording]);
+  wordingRow.style.gridTemplateColumns = '1fr';
+  wordingRow.querySelector('.control').style.alignItems = 'flex-start';
+  wording.style.flex = '1 1 auto';
+  remind.body.appendChild(wordingRow);
+  view.appendChild(remind);
+
   // --- everything else, folded -------------------------------------------
   const more = foldedCard('More settings', 'Milestones, which effects subs can pick, and how each effect looks');
 
@@ -1611,15 +1658,19 @@ async function renderPerks() {
   open.title = 'The page a viewer gets from !fx';
   open.style.textDecoration = 'none';
   open.addEventListener('click', event => {
-    // Built the way !fx builds it (services/perks.js, pickerLink).
+    // Built the way !fx builds it (services/perks.js, pickerLink and
+    // accessCode), from what is on this page rather than what is saved: the
+    // tier each effect needs, in the server's EFFECTS order, three to a
+    // character.
     try {
       const link = new URL(draft.pickerUrl || data.defaults.pickerUrl);
+      const CODE = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
+      const tiers = data.effects.map(effect => ([1, 2, 3].includes(draft.subAccess[effect]) ? draft.subAccess[effect] : 0));
+      let code = '';
+      for (let i = 0; i < tiers.length; i += 3) code += CODE[(tiers[i] << 4) | ((tiers[i + 1] || 0) << 2) | (tiers[i + 2] || 0)];
       link.searchParams.set('c', 'fx');
-      const needing = level => data.effects.filter(effect => draft.subAccess[effect] === level).join(',');
-      link.searchParams.set('allow', needing(1));
-      if (needing(2)) link.searchParams.set('t2', needing(2));
-      if (needing(3)) link.searchParams.set('t3', needing(3));
-      open.href = link.toString().replace(/%2C/g, ',');
+      link.searchParams.set('a', code);
+      open.href = link.toString();
     } catch {
       event.preventDefault();
       toast('That is not a web address.', true);
@@ -1743,7 +1794,7 @@ const views = {
     render: renderPerks,
     save: savePerks,
     snapshot: () => {
-      const { enabled, milestonesEnabled, milestones, tiers, subDefaults, subAccess, pickerUrl, styles } = state.draft.perks;
+      const { enabled, milestonesEnabled, milestones, tiers, subDefaults, subAccess, pickerUrl, styles, reminder } = state.draft.perks;
       return {
         enabled,
         milestonesEnabled,
@@ -1753,6 +1804,12 @@ const views = {
         subDefaults: { 1: subDefaults[1], 2: subDefaults[2], 3: subDefaults[3] },
         subAccess: Object.fromEntries(Object.keys(subAccess).sort().map(effect => [effect, Number(subAccess[effect])])),
         pickerUrl: String(pickerUrl).trim(),
+        reminder: {
+          enabled: reminder.enabled,
+          minutes: Math.round(reminder.minutes),
+          chatLines: Math.round(reminder.chatLines),
+          message: String(reminder.message).trim()
+        },
         styles: Object.fromEntries(Object.entries(styles).map(([name, style]) => [name, {
           colors: style.colors,
           amount: Math.round(style.amount * 100) / 100,
