@@ -27,7 +27,8 @@ for (const module of stubbed) delete require.cache[module];
 const spotify = {
     getTrackId: url => (String(url).includes('spotify.com/track/') ? 'TRACKID0000000000000A' : null),
     getTrack: async () => spotify.nextTrack,
-    addToQueue: async () => spotify.nextAddResult,
+    addToQueue: async () => { spotify.addCalls += 1; return spotify.nextAddResult; },
+    addCalls: 0,
     nextTrack: null,
     nextAddResult: { status: 'ok', track: { id: 'TRACKID0000000000000A' } }
 };
@@ -36,7 +37,15 @@ const said = [];
 let refundResult = true;
 
 require.cache[spotifyPath] = { id: spotifyPath, filename: spotifyPath, loaded: true, exports: spotify };
-require.cache[syncQueuePath] = { id: syncQueuePath, filename: syncQueuePath, loaded: true, exports: async () => syncResult };
+require.cache[syncQueuePath] = {
+    id: syncQueuePath, filename: syncQueuePath, loaded: true,
+    exports: {
+        syncWithQueue: async () => (syncResult ? { queue: [] } : false),
+        placeRequest: async () => ({ copiesAhead: 0 }),
+        // turnQueue: Spotify's queue as read just before a request goes in.
+        takeTurn: async () => ({ placed: () => {}, before: { queue: turnQueue } })
+    }
+};
 require.cache[messagesPath] = {
     id: messagesPath, filename: messagesPath, loaded: true,
     exports: { sayMessage: (client, channel, key) => said.push(key), message: key => key }
@@ -47,6 +56,7 @@ require.cache[refundPath] = {
 };
 
 let syncResult = true;
+let turnQueue = [];
 
 const history = require('../services/history');
 const queueSong = require('../services/queueSong');
@@ -173,6 +183,30 @@ test('every rejection branch records its own outcome', async () => {
         const events = await run(args, state);
         assert.strictEqual(events.length, 1, `${expected} should log exactly one event`);
         assert.strictEqual(events[0].outcome, expected);
+    }
+});
+
+test('a song already in the Spotify queue is turned away, unless that is switched off', async () => {
+    spotify.addCalls = 0;
+
+    try {
+        turnQueue = [{ id: 'OTHER' }, { id: 'TRACKID0000000000000A', ids: ['TRACKID0000000000000A'] }];
+
+        let events = await run();
+        assert.deepStrictEqual(said, ['queue.alreadyQueued']);
+        assert.strictEqual(events[0].outcome, 'alreadyQueued');
+        assert.strictEqual(spotify.addCalls, 0, 'it never reaches Spotify');
+
+        // A local copy Spotify plays in place of the link counts too.
+        turnQueue = [{ id: 'LOCALCOPY', ids: ['LOCALCOPY', 'TRACKID0000000000000A'] }];
+        events = await run();
+        assert.strictEqual(events[0].outcome, 'alreadyQueued');
+
+        events = await run({}, freshState({ blockQueuedSongs: false }));
+        assert.strictEqual(events[0].outcome, 'ok', 'switched off, the copy is let in');
+        assert.strictEqual(spotify.addCalls, 1);
+    } finally {
+        turnQueue = [];
     }
 });
 

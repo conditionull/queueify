@@ -2,6 +2,7 @@ const state = require('./core/state');
 const WebSocket = require('ws');
 const queueSong = require('./services/queueSong');
 const refundRedeem = require('./services/refundRedeem');
+const perks = require('./services/perks');
 const { fetchTwitch } = require('./services/twitchAuth');
 
 const USERNAME = process.env.TWITCH_BROADCASTER_USERNAME;
@@ -168,7 +169,7 @@ module.exports = function startEventSub(client) {
         await createSubscription(sessionId, broadcasterId, reward.id);
     }
 
-    function handleNotification(msg) {
+    async function handleNotification(msg) {
         const event = msg.payload.event;
         if (msg.metadata.subscription_type !== 'channel.channel_points_custom_reward_redemption.add') return;
         console.log('Redemption:', event.user_name, event.user_input);
@@ -178,6 +179,8 @@ module.exports = function startEventSub(client) {
                 console.log('Redeem ignored (currently disabled)');
                 return refundRedeem(event.id, state.broadcasterId, state.spotifyRewardId);
             }
+            // A redeem says nothing of their sub, so their effect needs asking.
+            const subTier = await perks.redeemerSubTier(event.user_id);
             return queueSong({
                 client,
                 channel: USERNAME,
@@ -193,7 +196,8 @@ module.exports = function startEventSub(client) {
                 requester: {
                     userId: event.user_id ?? null,
                     userLogin: event.user_login ?? event.user_name,
-                    userName: event.user_name
+                    userName: event.user_name,
+                    ...(subTier === null ? {} : { sub: subTier > 0, subTier })
                 }
             });
         }

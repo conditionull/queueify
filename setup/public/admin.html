@@ -554,7 +554,7 @@ async function renderSettings() {
     const draft = state.draft.settings.queue;
 
     if (field.type === 'boolean') {
-      queue.body.appendChild(row(field.label, '', toggle(draft[key], value => {
+      queue.body.appendChild(row(field.label, field.hint || '', toggle(draft[key], value => {
         draft[key] = value;
         markChanged();
       })));

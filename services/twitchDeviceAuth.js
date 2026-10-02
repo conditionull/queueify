@@ -14,6 +14,15 @@ const REQUIRED_SCOPES = [
     'user:read:chat'
 ];
 
+// Asked for as well, but not needed: a login from before these were asked for
+// keeps working, it just misses what they add. Never move one into
+// REQUIRED_SCOPES - setup health clears a login that lacks a required one.
+//   channel:read:subscriptions - each sub's real tier (services/subTiers.js)
+const OPTIONAL_SCOPES = ['channel:read:subscriptions'];
+
+// Everything a new login asks Twitch for.
+const REQUESTED_SCOPES = [...REQUIRED_SCOPES, ...OPTIONAL_SCOPES];
+
 const DEFAULT_POLL_INTERVAL_SECONDS = 5;
 const DEFAULT_EXPIRES_IN_SECONDS = 1800;
 const MIN_POLL_INTERVAL_MS = 1000;
@@ -88,7 +97,7 @@ function resolveClientId(clientId) {
  * Step 1: ask Twitch for a device code. Returns the details to show the user
  * (short code + the page they open to approve it).
  */
-async function requestDeviceCode({ clientId, scopes = REQUIRED_SCOPES, signal } = {}) {
+async function requestDeviceCode({ clientId, scopes = REQUESTED_SCOPES, signal } = {}) {
     const resolvedClientId = resolveClientId(clientId);
 
     let response;
@@ -162,7 +171,7 @@ async function pollForDeviceToken(prompt, { signal, onPending, slowDownStepMs = 
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                 body: new URLSearchParams({
                     client_id: prompt.clientId,
-                    scopes: (prompt.scopes || REQUIRED_SCOPES).join(' '),
+                    scopes: (prompt.scopes || REQUESTED_SCOPES).join(' '),
                     device_code: prompt.deviceCode,
                     grant_type: 'urn:ietf:params:oauth:grant-type:device_code'
                 }),
@@ -204,7 +213,7 @@ async function pollForDeviceToken(prompt, { signal, onPending, slowDownStepMs = 
 
 function persistDeviceToken(data, prompt) {
     const granted = Array.isArray(data.scope) ? data.scope : String(data.scope || '').split(' ').filter(Boolean);
-    const missingScopes = (prompt.scopes || REQUIRED_SCOPES).filter(scope => !granted.includes(scope));
+    const missingScopes = (prompt.scopes || REQUESTED_SCOPES).filter(scope => !granted.includes(scope));
 
     if (!data.refresh_token) {
         console.warn('Twitch did not return a refresh token; the access token cannot be renewed automatically.');
@@ -254,7 +263,7 @@ async function getTokenIdentity(accessToken, clientId) {
  * Convenience wrapper: run the whole flow, handing the prompt to `onPrompt`
  * so the caller can display the code/link while polling runs.
  */
-async function authorizeDevice({ clientId, scopes = REQUIRED_SCOPES, signal, onPrompt, onPending } = {}) {
+async function authorizeDevice({ clientId, scopes = REQUESTED_SCOPES, signal, onPrompt, onPending } = {}) {
     const prompt = await requestDeviceCode({ clientId, scopes, signal });
     onPrompt?.(prompt);
 
@@ -266,6 +275,8 @@ async function authorizeDevice({ clientId, scopes = REQUIRED_SCOPES, signal, onP
 
 module.exports = {
     REQUIRED_SCOPES,
+    OPTIONAL_SCOPES,
+    REQUESTED_SCOPES,
     TwitchDeviceAuthError,
     requestDeviceCode,
     pollForDeviceToken,

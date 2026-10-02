@@ -27,6 +27,7 @@ const defaultMessages = {
         added: '@{{username}} song added to queue!! DinoDance ({{count}} in queue)',
         tooLong: '@{{username}} song is too long, max {{maxSeconds}}s{{refundSuffix}}',
         explicit: '@{{username}} no explicit songs allowed{{refundSuffix}}',
+        alreadyQueued: '@{{username}} that song is already in the queue{{refundSuffix}}',
         addFailed: '@{{username}} couldn\'t add that song to the queue right now.'
     },
     moderation: {

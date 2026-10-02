@@ -1,7 +1,7 @@
 require('./helpers/ensureDependencies')();
 require('dotenv').config({ quiet: true });
 
-const { authorizeDevice, REQUIRED_SCOPES } = require('./services/twitchDeviceAuth');
+const { authorizeDevice, REQUESTED_SCOPES } = require('./services/twitchDeviceAuth');
 const { TOKEN_FILE } = require('./twitch-token-store');
 const openBrowser = require('./helpers/openBrowser');
 
@@ -14,7 +14,7 @@ const BROADCASTER = process.env.TWITCH_BROADCASTER_USERNAME;
 
     try {
         const result = await authorizeDevice({
-            scopes: REQUIRED_SCOPES,
+            scopes: REQUESTED_SCOPES,
             signal: controller.signal,
             onPrompt: prompt => {
                 console.log('');

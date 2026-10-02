@@ -215,9 +215,11 @@ function reportBusyPort(err, what) {
 async function main() {
   const startedDashboard = await ensureSetup();
 
+  const { syncWithQueue } = require('./services/syncQueue');
+
   try {
     await startWidgetServer({
-      queue: createUpNext({ state, syncWithQueue: require('./services/syncQueue').syncWithQueue })
+      queue: createUpNext({ state, syncWithQueue })
     });
   } catch (err) {
     if (reportBusyPort(err, 'the widget')) process.exit(1);
@@ -276,6 +278,14 @@ async function main() {
   // race it. Knocks only while OBS is closed.
   obs.keepConnected();
 
+  // Who queued the song playing is worked out as songs change, not when
+  // somebody asks - see services/playbackWatcher.js.
+  const playbackWatcher = require('./services/playbackWatcher').start({
+    state,
+    getCurrentTrack: require('./spotify').getCurrentTrack,
+    syncWithQueue
+  });
+
   const client = createClient();
   client.on('message', (channel, tags, message, self) => handleMessage(client, channel, tags, message, self));
 
@@ -289,6 +299,7 @@ async function main() {
   const shutdown = async () => {
     console.log('Shutting down...');
     eventSub.stop();
+    playbackWatcher.stop();
     if (dashboard.close) await dashboard.close().catch(() => {});
     await client.disconnect().catch(() => {});
     // Request-log appends are handed over without being waited for, so the

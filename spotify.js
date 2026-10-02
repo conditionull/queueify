@@ -17,8 +17,14 @@ const currentTrackCache = {
 const SPOTIFY_PATTERN = /https:\/\/open\.spotify\.com\/(?:intl-[^/]+\/)?track\/[a-zA-Z0-9]{22}(?:\?si=[a-zA-Z0-9]+)?/;
 
 function formatTrack(track) {
+  const id = track.id || `local-${track.name}-${track.duration_ms}`;
+
   return {
-    id: track.id || `local-${track.name}-${track.duration_ms}`,
+    id,
+    // Every id this song goes by - see core/sameTrack.js. Asked for with
+    // market=from_token, Spotify plays a copy available in the streamer's
+    // country and names the one that was asked for in linked_from.
+    ids: [...new Set([id, track.linked_from?.id].filter(Boolean))],
     name: track.name,
     artists: track.artists?.map(artist => artist.name).join(', ') || 'Local Track',
     durationMs: track.duration_ms,
@@ -318,7 +324,10 @@ async function getTrack(url) {
     const trackId = getTrackId(url);
     if (!trackId) return 'invalid';
 
-    const trackRes = await fetchWithToken(`https://api.spotify.com/v1/tracks/${trackId}`);
+    // from_token: the copy that will actually play here, with the id that was
+    // asked for in linked_from, so the request can be recognized whichever id
+    // Spotify reports once it starts.
+    const trackRes = await fetchWithToken(`https://api.spotify.com/v1/tracks/${trackId}?market=from_token`);
 
     if (!trackRes.ok) return null;
 
@@ -359,65 +368,91 @@ async function addTrackToQueue(url, maxSongLengthSeconds, allowExplicit = true, 
   }
 }
 
-async function getCurrentTrack() {
-  const now = Date.now();
-  if (currentTrackCache.expiresAt > now && currentTrackCache.value) {
-    return currentTrackCache.value;
+/**
+ * What is playing, or `{ isPlaying: false }` when nothing is, or false when
+ * Spotify could not be asked.
+ *
+ * Answers are shared for two seconds, because the widget asks constantly.
+ * `fresh` skips that: the queue bookkeeping in services/syncQueue.js reads
+ * this next to the queue, and a two-second-old answer next to a new queue is
+ * what used to hand a request's credit to nobody at the moment a song changed.
+ * `quiet` keeps a failure out of the console, for the background watcher that
+ * would otherwise repeat it every few seconds.
+ */
+async function getCurrentTrack({ fresh = false, quiet = false } = {}) {
+  if (!fresh) {
+    const now = Date.now();
+    if (currentTrackCache.expiresAt > now && currentTrackCache.value) {
+      return currentTrackCache.value;
+    }
+
+    if (currentTrackCache.pending) {
+      return currentTrackCache.pending;
+    }
   }
 
-  if (currentTrackCache.pending) {
+  const lookup = fetchCurrentTrack(quiet);
+  if (!fresh) {
+    currentTrackCache.pending = lookup.finally(() => {
+      currentTrackCache.pending = null;
+    });
     return currentTrackCache.pending;
   }
 
-  currentTrackCache.pending = (async () => {
-    try {
-      const response = await fetchWithToken(
-        "https://api.spotify.com/v1/me/player"
-      );
+  return lookup;
+}
 
-      if (response.status === 204) {
-        return {
-          isPlaying: false
-        };
-      }
+async function fetchCurrentTrack(quiet) {
+  try {
+    // from_token adds linked_from to a relinked track - see formatTrack.
+    const response = await fetchWithToken(
+      "https://api.spotify.com/v1/me/player?market=from_token"
+    );
 
-      if (!response.ok) {
-        throw new SpotifyApiError(response.status, await getApiError(response));
-      }
-
-      const data = await response.json();
-
-      if (!data.item || data.currently_playing_type !== "track") {
-        return {
-          isPlaying: false
-        };
-      }
-
-      const track = formatTrack(data.item);
-      const media = await getMedia(track);
-
-      const result = {
-        ...track,
-        media,
-        progressMs: data.progress_ms,
-        durationMs: data.item.duration_ms,
-        isPlaying: data.is_playing,
-        fetchedAt: Date.now(),
-        palette: await getPalette(track.id, track.cover)
+    if (response.status === 204) {
+      return {
+        isPlaying: false
       };
-
-      currentTrackCache.value = result;
-      currentTrackCache.expiresAt = Date.now() + 2000;
-      return result;
-    } catch (err) {
-      console.error("Spotify active lookup failed:", err.message, err.status ? `(HTTP ${err.status})` : '');
-      return false;
-    } finally {
-      currentTrackCache.pending = null;
     }
-  })();
 
-  return currentTrackCache.pending;
+    if (!response.ok) {
+      throw new SpotifyApiError(response.status, await getApiError(response));
+    }
+
+    const data = await response.json();
+    // When the playhead was read - taken now, before the cover art and its
+    // colors are fetched, which can take a moment the first time a song is
+    // seen. core/state.js times how far a song can have got by this.
+    const fetchedAt = Date.now();
+
+    if (!data.item || data.currently_playing_type !== "track") {
+      return {
+        isPlaying: false
+      };
+    }
+
+    const track = formatTrack(data.item);
+    const media = await getMedia(track);
+
+    const result = {
+      ...track,
+      media,
+      progressMs: data.progress_ms,
+      durationMs: data.item.duration_ms,
+      isPlaying: data.is_playing,
+      fetchedAt,
+      palette: await getPalette(track.id, track.cover)
+    };
+
+    currentTrackCache.value = result;
+    currentTrackCache.expiresAt = Date.now() + 2000;
+    return result;
+  } catch (err) {
+    if (!quiet) {
+      console.error("Spotify active lookup failed:", err.message, err.status ? `(HTTP ${err.status})` : '');
+    }
+    return false;
+  }
 }
 
 async function getUserQueue() {

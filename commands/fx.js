@@ -42,7 +42,7 @@ module.exports = {
         // The broadcaster cannot subscribe to their own channel, and should
         // still be able to try everything out, so they count as Tier 3.
         const broadcaster = process.env.TWITCH_BROADCASTER_USERNAME?.toLowerCase();
-        const subTier = username === broadcaster ? 3 : perks.subTierOf(tags);
+        const subTier = username === broadcaster ? 3 : await perks.subTierFrom(tags);
         const id = tags?.['user-id'];
 
         if (!subTier || !id) {

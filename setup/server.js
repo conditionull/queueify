@@ -9,7 +9,7 @@ const {
     requestDeviceCode,
     pollForDeviceToken,
     getTokenIdentity,
-    REQUIRED_SCOPES
+    REQUESTED_SCOPES
 } = require('../services/twitchDeviceAuth');
 const { startSpotifyAuth } = require('../services/spotifyAuthFlow');
 const { ensureSpotifyReward } = require('../services/createReward');
@@ -282,7 +282,7 @@ function createApp() {
         twitchFlow = flow;
 
         try {
-            const prompt = await requestDeviceCode({ scopes: REQUIRED_SCOPES, signal: controller.signal });
+            const prompt = await requestDeviceCode({ scopes: REQUESTED_SCOPES, signal: controller.signal });
             flow.prompt = prompt;
 
             // Poll in the background; the browser watches /api/twitch/status.
@@ -292,6 +292,8 @@ function createApp() {
                     flow.identity = await getTokenIdentity(result.accessToken, prompt.clientId);
                     flow.missingScopes = result.missingScopes;
                     flow.canRefresh = Boolean(result.refreshToken);
+                    // A fresh login has every scope, so the reminder to reconnect is done.
+                    healthIssues = healthIssues.filter(issue => issue.code !== 'twitch_sub_tiers_missing');
                     flow.state = 'complete';
                     notifyIfComplete();
                 })

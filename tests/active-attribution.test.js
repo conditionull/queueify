@@ -140,27 +140,29 @@ test('scrubbing back inside a song keeps the credit and is not a second play', (
     const state = require('../core/state');
 
     try {
-        state.pendingQueue = [{ id: 'T1', name: 'Clocks', queuedBy: 'nyxthecat' }];
-        const at = progressMs => ({ id: 'T1', progressMs });
+        state.pendingQueue = [{ id: 'T1', name: 'Clocks', durationMs: 240000, queuedBy: 'nyxthecat' }];
+        // Read as Spotify would be: the playhead, and the moment it was read.
+        const t0 = 1_000_000;
+        const at = (progressMs, t) => [{ id: 'T1', progressMs, durationMs: 240000 }, null, t0 + t];
 
-        const started = state.updateActiveTrack(at(1000));
+        const started = state.updateActiveTrack(...at(1000, 0));
         assert.strictEqual(started?.queuedBy, 'nyxthecat');
         const startedAt = started.startedAt;
 
-        assert.strictEqual(state.updateActiveTrack(at(120000))?.queuedBy, 'nyxthecat');
+        assert.strictEqual(state.updateActiveTrack(...at(120000, 119000))?.queuedBy, 'nyxthecat');
 
         // A small nudge, inside the grace.
-        assert.strictEqual(state.updateActiveTrack(at(117000))?.queuedBy, 'nyxthecat');
+        assert.strictEqual(state.updateActiveTrack(...at(117000, 120000))?.queuedBy, 'nyxthecat');
 
         // A real drag backwards, but landing in the middle of the song rather
         // than at its start: the same play, so the same person keeps it.
-        const scrubbed = state.updateActiveTrack(at(45000));
+        const scrubbed = state.updateActiveTrack(...at(45000, 121000));
         assert.strictEqual(scrubbed?.queuedBy, 'nyxthecat',
             'scrubbing back should not cost the requester their credit');
         assert.strictEqual(scrubbed.startedAt, startedAt,
             'and startedAt must not move, or it is logged as a second play');
 
-        assert.strictEqual(state.updateActiveTrack(at(60000))?.queuedBy, 'nyxthecat',
+        assert.strictEqual(state.updateActiveTrack(...at(60000, 136000))?.queuedBy, 'nyxthecat',
             'still the same play afterwards');
     } finally {
         delete process.env.QUEUEIFY_SETTINGS_FILE;
@@ -178,18 +180,19 @@ test('the same song queued twice credits the second person when it comes round',
     try {
         // Two people asked for the same track, so it is in the queue twice.
         state.pendingQueue = [
-            { id: 'T1', name: 'Clocks', queuedBy: 'nyxthecat' },
-            { id: 'T1', name: 'Clocks', queuedBy: 'kip' }
+            { id: 'T1', name: 'Clocks', durationMs: 210000, queuedBy: 'nyxthecat' },
+            { id: 'T1', name: 'Clocks', durationMs: 210000, queuedBy: 'kip' }
         ];
-        const at = progressMs => ({ id: 'T1', progressMs });
+        const t0 = 1_000_000;
+        const at = (progressMs, t) => [{ id: 'T1', progressMs, durationMs: 210000 }, null, t0 + t];
 
-        assert.strictEqual(state.updateActiveTrack(at(500))?.queuedBy, 'nyxthecat');
-        assert.strictEqual(state.updateActiveTrack(at(200000))?.queuedBy, 'nyxthecat');
+        assert.strictEqual(state.updateActiveTrack(...at(500, 0))?.queuedBy, 'nyxthecat');
+        assert.strictEqual(state.updateActiveTrack(...at(200000, 199500))?.queuedBy, 'nyxthecat');
 
         // Kip's copy now starts: same track id, but the playhead is back at the
         // beginning. This is why the rewind check exists, and it has to keep
         // working now that a mid-song scrub no longer triggers it.
-        const second = state.updateActiveTrack(at(400));
+        const second = state.updateActiveTrack(...at(400, 210000));
         assert.strictEqual(second?.queuedBy, 'kip',
             'the second copy belongs to whoever asked for it');
     } finally {

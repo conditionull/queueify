@@ -259,6 +259,32 @@ function subTierOf(tags) {
     return 1;
 }
 
+/**
+ * A chatter's sub tier, asking Twitch when the badge could be wrong.
+ *
+ * The badge always knows whether they subscribe, and a Tier 3 badge is
+ * always right. Anything less might be a Tier 2 or 3 sub in a channel without
+ * badges of its own for those - see services/subTiers.js. Twitch can only
+ * ever raise it: a sub is never locked out because Twitch did not answer.
+ */
+async function subTierFrom(tags) {
+    const badge = subTierOf(tags);
+    if (!badge || badge >= 3) return badge;
+    const asked = await require('./subTiers').tierOf(tags['user-id']);
+    return Math.max(badge, asked || 0);
+}
+
+/**
+ * A redeemer's sub tier. A redeem carries no badge, so it is Twitch's word,
+ * or failing that what chat last showed - and null if neither knows.
+ */
+async function redeemerSubTier(id) {
+    const asked = await require('./subTiers').tierOf(id);
+    const seen = subscribes(id);
+    if (asked === null) return seen;
+    return Math.max(asked, seen || 0);
+}
+
 /* --------------------------------------------------------------- counting */
 
 // Accepted requests per viewer. Built from the log once, then kept up by
@@ -415,7 +441,11 @@ function subscribes(id) {
 
 /** Any chat message: remember its sender's sub tier. */
 function noteChatter(tags) {
-    if (tags?.['user-id']) noteSub(tags['user-id'], subTierOf(tags));
+    const id = tags?.['user-id'];
+    if (!id) return;
+    // What Twitch said of their tier beats the badge, which may undersell it.
+    const badge = subTierOf(tags);
+    noteSub(id, badge ? Math.max(badge, require('./subTiers').cached(id) || 0) : 0);
 }
 
 function pickOf(id) {
@@ -575,6 +605,8 @@ module.exports = {
     noteChatter,
     subscribes,
     subTierOf,
+    subTierFrom,
+    redeemerSubTier,
     canPick,
     effectsFor,
     pickOf,

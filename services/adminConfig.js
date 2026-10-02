@@ -43,6 +43,11 @@ const QUEUE_FIELDS = {
     chatEnabled: { label: 'Requests from chat', type: 'boolean' },
     redeemsEnabled: { label: 'Channel point requests', type: 'boolean' },
     allowExplicit: { label: 'Allow explicit tracks', type: 'boolean' },
+    blockQueuedSongs: {
+        label: 'Turn away songs already in the queue',
+        type: 'boolean',
+        hint: "Checks the next 20 songs in Spotify's queue"
+    },
     queueEnabled: { label: 'Queue open', type: 'boolean' }
 };
 

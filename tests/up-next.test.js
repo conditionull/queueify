@@ -42,7 +42,15 @@ test('a requester is named only for the song Queueify queued for them', () => {
     const state = { activeTrack: { id: 'a', queuedBy: 'nightowl' }, pendingQueue: [item('b', 'lena')] };
 
     assert.strictEqual(requesterOf(state, 'a'), 'nightowl', 'the song that has been carried onto activeTrack');
-    assert.strictEqual(requesterOf(state, 'b'), 'lena', 'the next request, just begun');
+    // Only core/state decides that a request has started. The widget syncs
+    // before it asks, so by then a request that began is already activeTrack;
+    // guessing from the head of the list here was a second rule that could
+    // disagree with !np about the same song.
+    assert.strictEqual(requesterOf(state, 'b'), null, 'the next request is not playing until state says so');
+    assert.strictEqual(requesterOf({ activeTrack: { id: 'a', queuedBy: null }, pendingQueue: [] }, 'a'), null,
+        'a song nobody asked for');
+    assert.strictEqual(requesterOf({ activeTrack: { id: 'relinked', ids: ['relinked', 'a'], queuedBy: 'nightowl' }, pendingQueue: [] }, 'a'),
+        'nightowl', 'a request Spotify swapped for a local copy is still found by the id it was asked for');
     assert.strictEqual(requesterOf(state, 'z'), null, 'something the streamer put on');
     assert.strictEqual(requesterOf({ activeTrack: null, pendingQueue: [item('a'), item('b', 'lena')] }, 'b'), null,
         'further down the list is not proof it came from there');
@@ -66,11 +74,37 @@ test('requests in Spotify\'s queue carry who asked for them, in order', () => {
     ]);
 });
 
+test('with the read it came from, each song is named by the place core/state gave it', () => {
+    const at = (id, queuedBy, queueAt, extra = {}) => ({ ...item(id, queuedBy), queueAt, queueReadAt: 7, ...extra });
+    const pending = [
+        at('a', 'nightowl', 2),
+        at('a', 'lena', 4),
+        // Placed by a later read than the queue being named: no name yet,
+        // rather than one off by a place.
+        at('b', 'toast', 1, { queueReadAt: 8 }),
+        // A copy nobody can tell apart from another: never named.
+        at('c', 'kip', 3, { creditable: false })
+    ];
+    const queue = [track('a'), track('b'), track('a'), track('c'), track('a')];
+
+    assert.deepStrictEqual(withRequesters(queue, pending, 7).map(song => [song.id, song.queuedBy]), [
+        ['a', null],
+        ['b', null],
+        ['a', 'nightowl'],
+        ['c', null],
+        ['a', 'lena']
+    ]);
+});
+
 test('the widget gets the real queue, requests named, and nothing else', async () => {
     const state = { activeTrack: null, pendingQueue: [item('a', 'nightowl'), item('b', 'lena')] };
     const read = createUpNext({
         state,
-        syncWithQueue: async () => ({ queue: [track('b'), track('z')] }),
+        // What the real sync does when a request starts: it becomes activeTrack.
+        syncWithQueue: async () => {
+            if (state.pendingQueue[0]?.id === 'a') state.activeTrack = state.pendingQueue.shift();
+            return { queue: [track('b'), track('z')] };
+        },
         now: () => 0
     });
 

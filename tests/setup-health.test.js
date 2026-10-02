@@ -11,6 +11,8 @@ const authPath = path.join(__dirname, '..', 'services', 'twitchAuth.js');
 
 const CURRENT_CLIENT = 'current-client-id';
 const REQUIRED = 'chat:read chat:edit channel:read:redemptions channel:manage:redemptions user:read:chat'.split(' ');
+// What a login made today is granted: the required ones, and sub tiers.
+const GRANTED = [...REQUIRED, 'channel:read:subscriptions'];
 
 function sandbox({ token, settings } = {}) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'queueify-health-'));
@@ -171,6 +173,41 @@ test('clears a token that is missing required scopes', async () => {
   }
 });
 
+test('a login without sub tiers keeps working, and says to reconnect', async () => {
+  const { health, state, tokenFile } = sandbox({
+    token: { access_token: 'older', refresh_token: 'r', client_id: CURRENT_CLIENT, expires_at: Date.now() + 3_600_000 }
+  });
+  const originalFetch = global.fetch;
+  state.broadcasterId = 'broadcaster-1';
+
+  global.fetch = async () => validateResponse({ client_id: CURRENT_CLIENT, login: 'streamer', scopes: REQUIRED });
+
+  try {
+    const issues = await health.repairSetupState();
+    assert.deepStrictEqual(issues.map(issue => issue.code), ['twitch_sub_tiers_missing']);
+    assert.match(issues[0].message, /Reconnect Twitch/);
+    assert.strictEqual(fs.existsSync(tokenFile), true, 'the login must not be cleared over an optional scope');
+  } finally {
+    cleanup(originalFetch);
+  }
+});
+
+test('a channel with no subs is not told to reconnect for sub tiers', async () => {
+  const { health } = sandbox({
+    token: { access_token: 'older', refresh_token: 'r', client_id: CURRENT_CLIENT, expires_at: Date.now() + 3_600_000 }
+  });
+  const originalFetch = global.fetch;
+
+  // No broadcaster id: not an affiliate or partner.
+  global.fetch = async () => validateResponse({ client_id: CURRENT_CLIENT, login: 'streamer', scopes: REQUIRED });
+
+  try {
+    assert.deepStrictEqual(await health.repairSetupState(), []);
+  } finally {
+    cleanup(originalFetch);
+  }
+});
+
 test('a network failure must not wipe a working setup', async () => {
   const { health, tokenFile } = sandbox({
     token: { access_token: 'fine', refresh_token: 'r', client_id: CURRENT_CLIENT }
@@ -215,7 +252,7 @@ test('unlinks a reward this app cannot manage', async () => {
 
   global.fetch = async url => {
     if (String(url).includes('/oauth2/validate')) {
-      return validateResponse({ client_id: CURRENT_CLIENT, login: 'streamer', scopes: REQUIRED });
+      return validateResponse({ client_id: CURRENT_CLIENT, login: 'streamer', scopes: GRANTED });
     }
     // We own nothing on this channel.
     return { ok: true, status: 200, json: async () => ({ data: [] }) };
@@ -240,7 +277,7 @@ test('keeps a reward this app does manage', async () => {
 
   global.fetch = async url => {
     if (String(url).includes('/oauth2/validate')) {
-      return validateResponse({ client_id: CURRENT_CLIENT, login: 'streamer', scopes: REQUIRED });
+      return validateResponse({ client_id: CURRENT_CLIENT, login: 'streamer', scopes: GRANTED });
     }
     return { ok: true, status: 200, json: async () => ({ data: [{ id: 'ours', title: 'Spotify Queue' }] }) };
   };

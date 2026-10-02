@@ -38,7 +38,7 @@ const TOKEN_RESPONSE = {
   access_token: 'device-access-token',
   refresh_token: 'device-refresh-token',
   expires_in: 3600,
-  scope: ['chat:read', 'chat:edit', 'channel:read:redemptions', 'channel:manage:redemptions', 'user:read:chat'],
+  scope: ['chat:read', 'chat:edit', 'channel:read:redemptions', 'channel:manage:redemptions', 'user:read:chat', 'channel:read:subscriptions'],
   token_type: 'bearer'
 };
 
@@ -65,6 +65,7 @@ test('requestDeviceCode returns the user code and prefers the pre-filled verific
     assert.strictEqual(requests[0].url, 'https://id.twitch.tv/oauth2/device');
     assert.strictEqual(requests[0].body.get('client_id'), 'public-client-id');
     assert.ok(requests[0].body.get('scopes').includes('channel:read:redemptions'));
+    assert.ok(requests[0].body.get('scopes').includes('channel:read:subscriptions'), 'asks for sub tiers too');
     // No client secret is ever sent - this is a public client flow.
     assert.strictEqual(requests[0].body.get('client_secret'), null);
   } finally {
@@ -291,7 +292,8 @@ test('reports scopes the user did not actually grant', async () => {
     assert.deepStrictEqual(result.missingScopes, [
       'channel:read:redemptions',
       'channel:manage:redemptions',
-      'user:read:chat'
+      'user:read:chat',
+      'channel:read:subscriptions'
     ]);
   } finally {
     cleanup(originalFetch);

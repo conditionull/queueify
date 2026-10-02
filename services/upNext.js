@@ -16,9 +16,13 @@
  */
 
 const perks = require('./perks');
+const { sameTrack } = require('../core/sameTrack');
 
 const LIMIT = 5;
-const QUEUE_TTL_MS = 10000;
+// Half a minute: a song changing or a request going in asks again straight
+// away, so this only bounds how long the streamer's own queue edits take to
+// show. Every ask is two Spotify calls, and they add up against its limit.
+const QUEUE_TTL_MS = 30000;
 
 /**
  * The requests still to come after the song playing - what is shown when
@@ -30,7 +34,7 @@ const QUEUE_TTL_MS = 10000;
  */
 function upcoming(pendingQueue, currentId, limit = LIMIT) {
     const list = Array.isArray(pendingQueue) ? pendingQueue : [];
-    const at = currentId ? list.findIndex(item => item && item.id === currentId) : -1;
+    const at = currentId ? list.findIndex(item => item && sameTrack(item, { id: currentId })) : -1;
 
     return list.slice(at + 1, at + 1 + limit);
 }
@@ -38,10 +42,11 @@ function upcoming(pendingQueue, currentId, limit = LIMIT) {
 /**
  * Who asked for the song playing, or null.
  *
- * The same caution as !np (commands/active.js): a name is only given when the
- * song playing is the one Queueify queued for that person. Either it has
- * already been carried onto activeTrack, or it is the very next request -
- * the head of the list - and has just begun.
+ * The same rule as !np (commands/active.js), read from the same place: the
+ * name core/state.js settled on for activeTrack. read() below syncs whenever
+ * the song changes, so activeTrack is already about this song. There used to
+ * be a second way in here - "the head of the pending list, just begun" - and
+ * two rules meant the widget and !np could disagree about the same song.
  */
 function requesterOf(state, currentId) {
     const item = requestPlaying(state, currentId);
@@ -51,30 +56,43 @@ function requesterOf(state, currentId) {
 /** The queued request that is the song playing, by the same rule, or null. */
 function requestPlaying(state, currentId) {
     if (!currentId) return null;
-    if (state.activeTrack && state.activeTrack.id === currentId) return state.activeTrack;
 
-    const head = state.pendingQueue && state.pendingQueue[0];
-    return head && head.id === currentId ? head : null;
+    const active = state.activeTrack;
+    return active && active.queuedBy && sameTrack(active, { id: currentId }) ? active : null;
 }
 
 /**
  * Spotify's queue, each song carrying who requested it, if chat did.
  *
- * Matched by track in order: the same song queued twice by two people is two
- * entries in both lists, and the first one in Spotify's queue is the first
- * one requested. A song nobody requested gets no name.
+ * Given `readAt` - the read this queue came from - each request is matched by
+ * its place in that read, worked out in core/state.js: the same name !np will
+ * give when the song starts, and none for a copy that could be anyone's. A
+ * request placed by a later read than this queue gets no name until the
+ * widget asks again, rather than a name off by one.
+ *
+ * Without it, matched by track in order: the same song queued twice by two
+ * people is two entries in both lists, and the first one in Spotify's queue
+ * is the first one requested. A song nobody requested gets no name.
  */
-function withRequesters(queue, pendingQueue) {
-    const waiting = new Map();
-    for (const item of Array.isArray(pendingQueue) ? pendingQueue : []) {
-        if (!item || !item.id) continue;
-        if (!waiting.has(item.id)) waiting.set(item.id, []);
-        waiting.get(item.id).push(item.queuedBy || null);
+function withRequesters(queue, pendingQueue, readAt = null) {
+    const list = Array.isArray(queue) ? queue : [];
+
+    if (readAt !== null) {
+        const byPlace = new Map();
+        for (const request of Array.isArray(pendingQueue) ? pendingQueue : []) {
+            if (request && request.creditable !== false && request.queueReadAt === readAt && Number.isInteger(request.queueAt)) {
+                byPlace.set(request.queueAt, request.queuedBy || null);
+            }
+        }
+        return list.map((item, index) => item && { ...item, queuedBy: byPlace.get(index) || null }).filter(Boolean);
     }
 
-    return (Array.isArray(queue) ? queue : []).filter(Boolean).map(item => {
-        const names = waiting.get(item.id);
-        return { ...item, queuedBy: names && names.length ? names.shift() : null };
+    const waiting = (Array.isArray(pendingQueue) ? pendingQueue : []).filter(item => item && item.id);
+
+    return list.filter(Boolean).map(item => {
+        const at = waiting.findIndex(request => sameTrack(request, item));
+        const request = at === -1 ? null : waiting.splice(at, 1)[0];
+        return { ...item, queuedBy: request ? request.queuedBy || null : null };
     });
 }
 
@@ -89,7 +107,7 @@ function forWidget(item) {
 }
 
 function createUpNext({ state, syncWithQueue, now = Date.now }) {
-    let cache = { key: null, at: 0, queue: null };
+    let cache = { key: null, at: 0, queue: null, readAt: null };
     let asking = null;
 
     // What the queue depends on. Either changing means the saved answer is
@@ -98,7 +116,7 @@ function createUpNext({ state, syncWithQueue, now = Date.now }) {
 
     function spotifyQueue(currentId) {
         if (cache.queue && cache.key === keyFor(currentId) && now() - cache.at < QUEUE_TTL_MS) {
-            return Promise.resolve(cache.queue);
+            return Promise.resolve(cache);
         }
 
         if (!asking) {
@@ -107,10 +125,15 @@ function createUpNext({ state, syncWithQueue, now = Date.now }) {
                 .then(result => {
                     // Keyed after the sync, which can move a request off the
                     // list - otherwise that alone would ask again straight away.
-                    cache = { key: keyFor(currentId), at: now(), queue: result ? result.queue || [] : null };
-                    return cache.queue;
+                    cache = {
+                        key: keyFor(currentId),
+                        at: now(),
+                        queue: result ? result.queue || [] : null,
+                        readAt: result && Number.isFinite(result.readAt) ? result.readAt : null
+                    };
+                    return cache;
                 })
-                .catch(() => null)
+                .catch(() => ({ queue: null, readAt: null }))
                 .finally(() => { asking = null; });
         }
 
@@ -119,11 +142,11 @@ function createUpNext({ state, syncWithQueue, now = Date.now }) {
 
     return async function read(currentTrack) {
         const currentId = currentTrack && currentTrack.id;
-        const queue = await spotifyQueue(currentId);
+        const { queue, readAt } = await spotifyQueue(currentId);
 
         // Spotify's queue when it answered, Queueify's own list when it did not.
         const songs = queue
-            ? withRequesters(queue, state.pendingQueue).slice(0, LIMIT)
+            ? withRequesters(queue, state.pendingQueue, readAt).slice(0, LIMIT)
             : upcoming(state.pendingQueue, currentId);
 
         return {

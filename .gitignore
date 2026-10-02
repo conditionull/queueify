@@ -11,6 +11,7 @@ queue-settings.json
 queue-history.jsonl
 queue-pending.json
 queue-recent.json
+queue-active.json
 queue-blacklist.json
 # The song effect each sub picked with !fx.
 viewer-effects.json

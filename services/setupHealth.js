@@ -146,6 +146,16 @@ async function repairSetupState() {
         return issues;
     }
 
+    // Not required, so nothing is cleared: the login works, but Tier 2 and 3
+    // subs go by their chat badge, which in a channel without its own tier
+    // badges says Tier 1. Only an affiliate or partner has subs to tell apart.
+    if (state.broadcasterId && !result.scopes.includes('channel:read:subscriptions')) {
+        issues.push({
+            code: 'twitch_sub_tiers_missing',
+            message: 'Reconnect Twitch to get the new scope for sub tiers. Until then, Tier 2 and Tier 3 subs may be treated as Tier 1.'
+        });
+    }
+
     if (state.spotifyRewardId && state.broadcasterId) {
         const manageable = await isRewardManageable(state.broadcasterId, state.spotifyRewardId);
 

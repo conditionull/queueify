@@ -1,9 +1,10 @@
 const { addToQueue, getTrackId, getTrack } = require("../spotify.js");
-const syncQueue = require("./syncQueue.js")
+const { syncWithQueue, placeRequest, takeTurn } = require("./syncQueue.js")
 const { sayMessage } = require('./messages');
 const refundRedeem = require('./refundRedeem');
 const history = require('./history');
 const perks = require('./perks');
+const { sameTrack } = require('../core/sameTrack');
 
 const activeQueueRequests = new Set();
 
@@ -43,7 +44,8 @@ async function queueSongInternal({
         ...extra
     });
 
-    const synced = await syncQueue(state);
+    // Kept: where Spotify puts the new song is worked out against this.
+    const synced = await syncWithQueue(state);
 
     if (!synced) {
         sayMessage(client, channel, 'queue.spotifyQueueCheckFailed', { username });
@@ -141,7 +143,10 @@ async function queueSongInternal({
         return;
     }
 
-    if (state.blockedSongs.has(track.id)) {
+    // The link's own id as well as the one Spotify will play: a link from
+    // another country is relinked to a local copy with a different id, and a
+    // song blocked by either is still that song.
+    if (state.blockedSongs.has(trackId) || state.blockedSongs.has(track.id)) {
         const refunded = await rejectRequest({
             client,
             channel,
@@ -187,18 +192,56 @@ async function queueSongInternal({
         return;
     }
 
-    const result = await addToQueue(url, state.maxSongLength, state.allowExplicit, track);
+    // One request goes into Spotify at a time, and from the moment it may be
+    // in Spotify's queue until it is in the pending list, nothing reads the
+    // queue - see takeTurn. `before` is the queue just before it goes in.
+    const { placed, before } = await takeTurn(state);
+    const queueBefore = before ? before.queue : synced.queue;
+
+    // Checked here, inside the turn, against the queue as it is right before
+    // the song would go in: two viewers asking for the same song at once must
+    // not both get through. A second copy of a song in the queue is what makes
+    // it impossible to tell later whose copy is playing, so by default it is
+    // never let in - nobody's name is then ever in doubt over it.
+    const asked = { id: track.id, ids: [trackId, track.id, track.linked_from?.id].filter(Boolean) };
+    if (state.blockQueuedSongs !== false && (queueBefore || []).some(item => sameTrack(item, asked))) {
+        placed();
+        const refunded = await rejectRequest({
+            client, channel, key: 'queue.alreadyQueued', values: { username, refundSuffix: '' },
+            isRedeem, redemptionId, broadcasterId, state
+        });
+
+        log('alreadyQueued', { track, refunded });
+        return;
+    }
+
+    let result;
+    try {
+        result = await addToQueue(url, state.maxSongLength, state.allowExplicit, track);
+    } catch (err) {
+        placed();
+        throw err;
+    }
     const status = typeof result === "string" ? result : result.status;
 
     if (status === "ok") {
         state.cooldowns.set(cooldownKey, Date.now());
+    } else {
+        placed();
     }
 
     setTimeout(async () => {
         if (status === "ok") {
-            // Counted before it is logged, so the count and the log agree.
-            state.addPendingTrack(result.track, username, perks.accept(requester, username));
-            state.rememberRecentRequest(username, result.track.id);
+            try {
+                const where = await placeRequest(state, queueBefore, result.track).catch(() => ({ copiesAhead: null }));
+
+                // Counted before it is logged, so the count and the log agree.
+                state.addPendingTrack(result.track, username, { ...perks.accept(requester, username), ...where });
+            } finally {
+                placed();
+            }
+            // The link's id, which is what getRecentRequest is asked with above.
+            state.rememberRecentRequest(username, trackId);
             sayMessage(client, channel, 'queue.added', {
                 username,
                 count: state.pendingQueue.length

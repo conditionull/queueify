@@ -37,6 +37,16 @@ is wrong. Never split that into resize-then-reposition.
 something against the source size it was measured at, and that size changes with
 every theme. Nothing outside `services/widgetPresets.js` should compute one.
 
+**Who queued a song is decided in one place.** `updateActiveTrack` in
+`core/state.js` is the only code that decides which request is playing. `!np`
+and the widget only read `state.activeTrack`. Requests are followed by their
+place in Spotify's queue, not matched by song. When two copies of a song can't
+be told apart, a viewer's song playing straight away is theirs (the
+streamer's rule); with two viewers' copies in doubt it names nobody. `tests/requester-tracking.test.js` runs
+thousands of made-up streams against a fake Spotify that knows the real
+answer. Keep it green, and add a scenario there for any new way a name could
+go wrong.
+
 **Themes are user data.** Adding a field to the theme model means bumping
 `MODEL_VERSION` in `services/themeStore.js` *and* giving `normalizeModel` a
 fallback, so a theme somebody already saved does not change under them.

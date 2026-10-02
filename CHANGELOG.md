@@ -5,6 +5,34 @@ What has changed in Queueify. The dashboard shows the same list under **What's n
 
 Newest version at the top.
 
+## 44.2.0
+
+### New
+
+- **Songs already in your queue are turned away.** If a viewer asks for a song that's already in
+  your Spotify queue, the bot says so instead of adding a second copy
+  - Channel points are refunded
+  - It's on by default. Switch it off under **Admin Panel → Settings → Turn away songs already in
+    the queue**
+  - It checks the next 20 songs in your Spotify queue
+  - Change the wording in **Admin Panel → Chat messages**
+
+### Fixed
+
+- **`!np` names who queued the song far more reliably.** Some requests used to show no name:
+  - Requests made with a link from another country
+  - Songs paused for a long time
+  - Songs playing when the bot restarts
+  - Requests behind more than 20 songs in your Spotify queue
+  - Requests ahead of a song you removed from the queue
+  - Several viewers requesting at the same moment
+- **`!np` no longer names the wrong viewer**
+  - A requested song you play yourself before its turn isn't credited to the viewer
+  - If you remove a viewer's song and the same song plays straight away, they're still credited
+- The widget's **Up next** row names requesters the same way
+- **Tier 2 and Tier 3 subs get their tier's effects.** Some were treated as Tier 1
+  - Reconnect Twitch on the dashboard to get the new permission scope
+
 ## 44.1.0
 
 ### New
