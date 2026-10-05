@@ -5,6 +5,13 @@ What has changed in Queueify. The dashboard shows the same list under **What's n
 
 Newest version at the top.
 
+## 44.3.0
+
+### New
+
+- **The fx reminder message requirement.** The scheduled reminder no longer sends if the queue is disabled or the chat & reward requests 
+  are disabled
+
 ## 44.2.0
 
 ### New

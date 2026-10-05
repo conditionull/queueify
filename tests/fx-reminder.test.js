@@ -1,17 +1,28 @@
 const test = require('node:test');
+const { beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
-
-/**
- * The !fx chat reminder: said every so often, only into a chat that has been
- * talking, and never while it or reward effects are off.
- *
- * Nothing here reaches a file: the settings and the clock are handed in.
- */
 
 const perks = require('../services/perks');
 const { createFxReminder } = require('../services/fxReminder');
+const state = require('../core/state');
 
 const MINUTE = 60 * 1000;
+
+let savedState;
+
+beforeEach(() => {
+    savedState = {
+        queueEnabled: state.queueEnabled,
+        chatEnabled: state.chatEnabled,
+        redeemsEnabled: state.redeemsEnabled
+    };
+    // The reminder is only allowed to speak with the queue and effects on.
+    Object.assign(state, { queueEnabled: true, chatEnabled: true, redeemsEnabled: true });
+});
+
+afterEach(() => {
+    Object.assign(state, savedState);
+});
 
 function setup(reminder = {}, overrides = {}) {
     let clock = 0;
@@ -126,4 +137,25 @@ test('switched on, the wait starts from then rather than from when the bot start
     wait(5);
     reminder.tick();
     assert.strictEqual(said.length, 1);
+});
+
+test('it stays quiet while the queue is off, or chat and redeems are both off', () => {
+    const attempt = (queueEnabled, chatEnabled, redeemsEnabled) => {
+        Object.assign(state, { queueEnabled, chatEnabled, redeemsEnabled });
+        const { reminder, said, wait } = setup();
+        reminder.noteChat();
+        wait(10);
+        reminder.tick();
+        return said.length;
+    };
+
+    // All off, or just the queue off, and it says nothing.
+    for (const [q, c, r] of [[false, true, true], [true, false, false]]) {
+        assert.strictEqual(attempt(q, c, r), 0, `queue=${q} chat=${c} redeems=${r}`);
+    }
+
+    // Either one of chat/redeems is enough, so these still send.
+    for (const [q, c, r] of [[true, true, true], [true, true, false], [true, false, true]]) {
+        assert.strictEqual(attempt(q, c, r), 1, `queue=${q} chat=${c} redeems=${r} should send`);
+    }
 });

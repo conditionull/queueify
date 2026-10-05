@@ -27,6 +27,12 @@ function createFxReminder({ say, settings = () => require('../core/state').perks
 
     /** Says the reminder if it is due. Returns what it said, or null. */
     function tick() {
+        const state = require('../core/state');
+
+        if (!state.queueEnabled || (!state.chatEnabled && !state.redeemsEnabled)) {
+            return null;
+        }
+
         const current = settings() || {};
         const reminder = current.reminder;
 
