@@ -69,7 +69,17 @@ async function queueSongInternal({
         return;
     }
 
-    const cooldownKey = String(username).trim().toLowerCase();
+    const requesterKey = String(username).trim().toLowerCase();
+        if (state.blacklist.has(requesterKey)) {
+            const refunded = await rejectRequest({
+                client, channel, key: 'queue.blockedUser', values: { username },
+                isRedeem, redemptionId, broadcasterId, state
+        });
+    log('blockedUser', { input: url, refunded });
+    return;
+    }
+
+    const cooldownKey = requesterKey;
     const cooldownMs = state.cooldownSeconds * 1000;
     const lastUsed = state.cooldowns.get(cooldownKey);
 
@@ -142,6 +152,7 @@ async function queueSongInternal({
         log('blockedArtist', { track, refunded, blockedArtistName: blockedArtist.name });
         return;
     }
+
 
     // The link's own id as well as the one Spotify will play: a link from
     // another country is relinked to a local copy with a different id, and a

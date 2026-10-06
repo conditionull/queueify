@@ -14,6 +14,7 @@
     "cooldown": "@{{username}} wait {{seconds}}s before queueing again",
     "invalidUrl": "@{{username}} invalid song URL, try: https://open.spotify.com/track/<id>",
     "notFound": "@{{username}} couldn't find that Spotify song",
+    "blockedUser":"@{{username}} you can't queue songs catPunchU",
     "blockedArtist": "@{{username}} the artist {{artist}} is blocked",
     "blockedSong": "@{{username}} that song is blocked",
     "recent": "@{{username}} you queued that song recently. Try again in {{seconds}}s{{refundSuffix}}",
