@@ -60,6 +60,7 @@ let turnQueue = [];
 
 const history = require('../services/history');
 const queueSong = require('../services/queueSong');
+const { blacklist } = require('../core/state');
 
 test.after(() => {
     delete process.env.QUEUEIFY_DATA_DIR;
@@ -92,6 +93,7 @@ function freshState(overrides = {}) {
         allowExplicit: true,
         blockedArtists: new Set(),
         blockedSongs: new Set(),
+        blacklist: new Set(),
         broadcasterId: 'B1',
         spotifyRewardId: 'R1',
         cooldowns: new Map(),
