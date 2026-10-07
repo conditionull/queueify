@@ -6,7 +6,7 @@ module.exports = {
     modOnly: true,
 
     execute({ client, channel, username, args, state }) {
-        const target = args[0]?.toLowerCase();
+        const target = args[0]?.replace(/^@+/, '').trim().toLowerCase();
 
         if (!target) {
             sayMessage(client, channel, 'moderation.usageDeny');
