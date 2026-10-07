@@ -5,6 +5,20 @@ What has changed in Queueify. The dashboard shows the same list under **What's n
 
 Newest version at the top.
 
+## 44.4.0
+
+### Fixed
+
+- **Blocked users can't queue songs.** Viewers on the blocked users list are turned away with a chat
+  message, and channel points are refunded. Thanks to [@meislucas](https://github.com/meislucas)
+- **`Command !deny @user` @ symbol stripped.** The `@` is stripped, so the name matches the viewer when they try to queue
+  
+### Changed
+
+- **The `otpauth` package is pinned to version 9.5.2.** It was set to "latest", so a future release
+  could have broken the bot. Thanks to [@meislucas](https://github.com/meislucas)
+- **Updated dependencies**, including `axios`, `body-parser` and `qs`
+
 ## 44.3.0
 
 ### New

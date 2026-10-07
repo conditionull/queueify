@@ -1,6 +1,6 @@
 {
   "name": "queueify",
-  "version": "44.3.0",
+  "version": "44.4.0",
   "description": "",
   "main": "index.js",
   "engines": {
@@ -14,8 +14,7 @@
     "test": "node --test",
     "check:secrets": "node scripts/check-secrets.js",
     "screenshot": "node scripts/export-widget-screenshot.js",
-    "setup:sandbox": "node setup-sandbox.js",
-    "zip": "node zip.js"
+    "setup:sandbox": "node setup-sandbox.js"
   },
   "keywords": [],
   "author": "",
@@ -29,7 +28,7 @@
     "nocache": "^4.0.0",
     "node-vibrant": "^4.0.4",
     "obs-websocket-js": "^5.0.8",
-    "otpauth": "latest",
+    "otpauth": "^9.5.2",
     "tmi.js": "^1.8.5",
     "ws": "^8.21.0"
   },
