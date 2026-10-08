@@ -340,8 +340,9 @@ async function handleMessage(client, channel, tags, message, self) {
   if (!message.startsWith('!')) return;
 
   const args = message.slice(1).split(' ').filter(Boolean);
-
-  const command = args.shift().toLowerCase();
+  
+  const command = args.shift()?.toLowerCase();
+  if (!command) return;
 
   const handler = commands.get(command);
   if (!handler) return;

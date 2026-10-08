@@ -5,6 +5,12 @@ What has changed in Queueify. The dashboard shows the same list under **What's n
 
 Newest version at the top.
 
+## 44.4.1
+
+### Fixed
+
+- **Empty command crashed bot.** Single character command was shifted then .toLowerCase() was applied to nothing. This is now resolved. Thanks to [@meislucas](https://github.com/meislucas) for finding it!
+
 ## 44.4.0
 
 ### Fixed
