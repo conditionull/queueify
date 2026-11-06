@@ -5,6 +5,13 @@ What has changed in Queueify. The dashboard shows the same list under **What's n
 
 Newest version at the top.
 
+## 44.5.0
+
+### New
+
+- **Queueify shuts down when your stream ends.** The widget, Canvas API and dashboard servers
+  stop with it, so there is no Ctrl+C or chat command left to do after ending the stream. By [meislucas](https://github.com/meislucas)
+
 ## 44.4.1
 
 ### Fixed
@@ -24,7 +31,6 @@ Newest version at the top.
 - **The `otpauth` package is pinned to version 9.5.2.** It was set to "latest", so a future release
   could have broken the bot. Thanks to [@meislucas](https://github.com/meislucas)
 - **Updated dependencies**, including `axios`, `body-parser` and `qs`
-
 ## 44.3.0
 
 ### New
