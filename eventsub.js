@@ -24,20 +24,14 @@ async function twitchGet(endpoint) {
     return data;
 }
 
-async function getBroadcasterId() {
+async function getBroadcaster() {
     const data = await twitchGet(`users?login=${encodeURIComponent(USERNAME)}`);
 
     if (!data.data?.length) {
         throw new Error(`Broadcaster username "${USERNAME}" not found`);
     }
 
-    const broadcaster = data.data[0];
-
-    if (!['affiliate', 'partner'].includes(broadcaster.broadcaster_type)) {
-        return null;
-    }
-
-    return broadcaster.id;
+    return data.data[0];
 }
 
 /**
@@ -55,24 +49,26 @@ async function findReward(broadcasterId, rewardName, knownId) {
         || (rewards.length === 1 ? rewards[0] : undefined);
 }
 
-async function createSubscription(sessionId, broadcasterId, rewardId) {
+async function createSubscription(sessionId, type, version, condition) {
     const res = await fetchTwitch('https://api.twitch.tv/helix/eventsub/subscriptions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-            type: 'channel.channel_points_custom_reward_redemption.add',
-            version: '1',
-            condition: { broadcaster_user_id: broadcasterId, reward_id: rewardId },
+            type,
+            version,
+            condition,
             transport: { method: 'websocket', session_id: sessionId }
         })
     });
     const data = await res.json().catch(() => ({}));
-    if (!res.ok && res.status !== 409) throw new Error(JSON.stringify(data, null, 2));
-    if (res.status === 409) return;
-    console.log('EventSub ready.');
+    if (!res.ok && res.status !== 409) {
+        const err = new Error(JSON.stringify(data, null, 2));
+        err.status = res.status;
+        throw err;
+    }
 }
 
-module.exports = function startEventSub(client) {
+module.exports = function startEventSub(client, { onStreamOffline } = {}) {
     let activeSocket = null;
     let reconnectTimer = null;
     let keepaliveTimer = null;
@@ -84,6 +80,7 @@ module.exports = function startEventSub(client) {
     const seenNotifications = new Map();
     let keepaliveSeconds = 10;
     let warnedAboutReward = false;
+    let warnedAboutStreamOffline = false;
 
     function clearKeepalive() {
         if (keepaliveTimer) clearTimeout(keepaliveTimer);
@@ -128,25 +125,38 @@ module.exports = function startEventSub(client) {
     }
 
     async function setupSession(sessionId, socketGeneration) {
-        const broadcasterId = await getBroadcasterId();
-
-        if (!broadcasterId) {
-            console.log(
-                'Channel Points unavailable - song requests from chat only.'
-            );
-            stopped = true;
-            return;
-        }
+        const broadcaster = await getBroadcaster();
 
         if (socketGeneration !== generation) return;
 
         let changed = false;
-        if (state.broadcasterId !== broadcasterId) {
-            state.broadcasterId = broadcasterId;
+        if (state.broadcasterId !== broadcaster.id) {
+            state.broadcasterId = broadcaster.id;
             changed = true;
         }
 
-        const reward = await findReward(broadcasterId, REWARD_NAME, state.spotifyRewardId);
+        try {
+            await createSubscription(sessionId, 'stream.offline', '1', { broadcaster_user_id: broadcaster.id });
+        } catch (err) {
+            if (!warnedAboutStreamOffline) {
+                warnedAboutStreamOffline = true;
+                if (err.status === 401 || err.status === 403) {
+                    console.warn('Could not subscribe to stream-offline events: Twitch rejected the login token.');
+                    console.warn('Reconnect Twitch on the dashboard and Queueify will shut down when your stream ends.');
+                } else {
+                    console.warn(`Could not subscribe to stream-offline events: ${err.message}`);
+                }
+            }
+        }
+        if (socketGeneration !== generation) return;
+
+        if (!['affiliate', 'partner'].includes(broadcaster.broadcaster_type)) {
+            console.log('Channel Points unavailable - song requests from chat only.');
+            if (changed) state.saveSettings();
+            return;
+        }
+
+        const reward = await findReward(broadcaster.id, REWARD_NAME, state.spotifyRewardId);
 
         // No reward is a perfectly normal way to run Queueify: channel points
         // need an Affiliate or Partner channel, and chat requests do not. Say
@@ -158,6 +168,7 @@ module.exports = function startEventSub(client) {
                 console.log('No channel point reward found - song requests from chat only.');
                 console.log('Create one on the dashboard and restart to accept redemptions.');
             }
+            if (changed) state.saveSettings();
             return;
         }
         if (state.spotifyRewardId !== reward.id) {
@@ -166,12 +177,30 @@ module.exports = function startEventSub(client) {
         }
         if (changed) state.saveSettings();
         if (socketGeneration !== generation) return;
-        await createSubscription(sessionId, broadcasterId, reward.id);
+        await createSubscription(sessionId, 'channel.channel_points_custom_reward_redemption.add', '1', {
+            broadcaster_user_id: broadcaster.id,
+            reward_id: reward.id
+        });
+        console.log('EventSub ready.');
     }
 
     async function handleNotification(msg) {
         const event = msg.payload.event;
-        if (msg.metadata.subscription_type !== 'channel.channel_points_custom_reward_redemption.add') return;
+        const type = msg.metadata.subscription_type;
+
+        if (type === 'stream.offline') {
+            if (String(event.broadcaster_user_id) !== String(state.broadcasterId)) return;
+            console.log(`Stream ended (${event.broadcaster_user_login || USERNAME}).`);
+            try { 
+                await onStreamOffline?.(event); 
+            } 
+            catch (err) { 
+                console.error('Stream-offline handler failed:', err.message); 
+            }
+            return;
+        }
+
+        if (type !== 'channel.channel_points_custom_reward_redemption.add') return;
         console.log('Redemption:', event.user_name, event.user_input);
 
         if (event.reward.id === state.spotifyRewardId) {

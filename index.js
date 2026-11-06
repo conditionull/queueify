@@ -217,8 +217,9 @@ async function main() {
 
   const { syncWithQueue } = require('./services/syncQueue');
 
+  let widgetServer;
   try {
-    await startWidgetServer({
+    widgetServer = await startWidgetServer({
       queue: createUpNext({ state, syncWithQueue })
     });
   } catch (err) {
@@ -228,8 +229,9 @@ async function main() {
 
   const { default: startCanvasApi } = await import("./Spotify-Canvas-API/index.js");
 
+  let canvasServer;
   try {
-    await startCanvasApi();
+    canvasServer = await startCanvasApi();
   } catch (err) {
     if (reportBusyPort(err, 'the Canvas API')) process.exit(1);
     throw err;
@@ -291,19 +293,29 @@ async function main() {
 
   await client.connect();
   fxReminder = require('./services/fxReminder').start(client);
-  const eventSub = startEventSub(client);
 
-  const dashboard = await openDashboard(startedDashboard);
-  printBanner(dashboard, await widgetSourceSize());
+  let eventSub = null;
+  let dashboard = null;
+  let shuttingDown = false;
 
-  const shutdown = async () => {
+  // A function declaration, so it can be handed to startEventSub() below ahead
+  // of its textual position - by the time it ever runs, everything it touches
+  // has been assigned.
+  async function shutdown() {
+    if (shuttingDown) return;
+    shuttingDown = true;
     console.log('Shutting down...');
-    eventSub.stop();
+    eventSub?.stop();
     playbackWatcher.stop();
-    if (dashboard.close) await dashboard.close().catch(() => {});
+    // The HTTP servers are closed here as well, so "shut down" means the
+    // ports are actually free, not only that the process is on its way out.
+    widgetServer?.close();
+    canvasServer?.close();
+    if (dashboard?.close) await dashboard.close().catch(() => {});
     await client.disconnect().catch(() => {});
     // Request-log appends are handed over without being waited for, so the
-    // last song of a stream would otherwise be lost to a Ctrl+C.
+    // last song of a stream would otherwise be lost to a Ctrl+C - or to the
+    // stream ending.
     await history.flush().catch(() => {});
     // Give debounced state writes (core/state.js, ~100ms) a moment to flush.
     // Registering a signal handler suppresses Node's default terminate-on-signal
@@ -311,7 +323,21 @@ async function main() {
     // indefinitely, so an explicit exit is required here.
     await new Promise(resolve => setTimeout(resolve, 250));
     process.exit(0);
-  };
+  }
+
+  eventSub = startEventSub(client, {
+    // On stream end, all the servers stop too
+    onStreamOffline: async () => {
+      console.log('');
+      console.log('Your stream ended - Queueify is shutting down with it.');
+      console.log('');
+      await shutdown();
+    }
+  });
+
+  dashboard = await openDashboard(startedDashboard);
+  printBanner(dashboard, await widgetSourceSize());
+
   process.once('SIGINT', shutdown);
   process.once('SIGTERM', shutdown);
 }
